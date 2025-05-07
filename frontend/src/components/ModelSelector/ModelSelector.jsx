@@ -24,7 +24,8 @@ import {
   IconCheck,
   IconX,
   IconAlertCircle,
-  IconChevronDown
+  IconChevronDown,
+  IconInfoCircle
 } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchModelsList, pullModel, setActiveModel } from '../../api/modelApi';
@@ -422,7 +423,7 @@ function ModelSelector({ onModelChange }) {
               sx={{ maxWidth: '400px' }}
             />
             
-            <Alert color="blue" title="Performance Tip" icon={<IconInfoCircle size={16} />} variant="light">
+            <Alert color="blue" variant="light">
               <Text size="xs">
                 For slower computers, we recommend using smaller models like "mistral:latest" or "phi3:latest" for 
                 faster response times. Larger models provide better explanations but require more processing power.
