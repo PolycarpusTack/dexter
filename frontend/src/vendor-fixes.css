@@ -1,0 +1,42 @@
+/* Browser compatibility fixes */
+
+/* Using standard approaches instead of non-standard vendor prefixes */
+html, body {
+  /* Standard property instead of non-standard vendor prefixes */
+  font-smooth: antialiased;
+  /* Remove problematic properties */
+  /* -webkit-font-smoothing: antialiased; */
+  /* -moz-osx-font-smoothing: grayscale; */
+  /* -webkit-text-size-adjust: 100%; */
+  /* -moz-text-size-adjust: 100%; */
+  /* text-size-adjust: 100%; */
+}
+
+/* Fix for password reveal icon - using standard approach */
+input[type="password"]::-webkit-contacts-auto-fill-button,
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-strong-password-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+  height: 0;
+  width: 0;
+  margin: 0;
+}
+
+/* Fix for field-sizing property */
+input, 
+select, 
+textarea {
+  box-sizing: border-box;
+}
+
+/* Animation fixes */
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s forwards;
+}
