@@ -18,7 +18,7 @@ import networkx as nx
 import hashlib
 import functools
 from typing import Dict, List, Set, Optional, Any, Tuple, Union, TypeVar, Type
-from pydantic import BaseModel, Field, validator, root_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 from datetime import datetime, timedelta
 from enum import Enum, auto
 
@@ -145,14 +145,16 @@ class LockInfo(BaseModel):
     process_id: int  # Process ID holding or waiting for the lock
     resource_id: Optional[str] = None  # Object ID, tuple ID, etc.
     
-    @validator('lock_type')
+    @field_validator('lock_type')
+    @classmethod
     def validate_lock_type(cls, v):
         """Convert string lock type to enum if possible."""
         if isinstance(v, str) and v in [lt.value for lt in LockType]:
             return LockType(v)
         return v
     
-    @validator('lock_mode')
+    @field_validator('lock_mode')
+    @classmethod
     def validate_lock_mode(cls, v):
         """Convert string lock mode to enum if possible."""
         if isinstance(v, str) and v in [lm.value for lm in LockMode]:
@@ -200,7 +202,7 @@ class LockInfo(BaseModel):
         return base
         
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class QueryFingerprint(BaseModel):
     """Query fingerprint for identifying similar queries."""
@@ -254,23 +256,23 @@ class Transaction(BaseModel):
     query_duration: Optional[timedelta] = None
     lock_wait_duration: Optional[timedelta] = None  
     
-    @validator('tables_accessed', pre=True, each_item=False)
+    @field_validator('tables_accessed')
+    @classmethod
     def ensure_unique_tables(cls, v):
         """Ensures table names are unique."""
         if isinstance(v, list):
             return list(set(v))
         return v
     
-    @root_validator
-    def create_fingerprint(cls, values):
+    @model_validator(mode='after')
+    def create_fingerprint(self):
         """Create query fingerprint if query exists."""
-        query = values.get('query')
-        if query and not values.get('query_fingerprint'):
-            values['query_fingerprint'] = QueryFingerprint.from_query(query)
-        return values
+        if self.query and not self.query_fingerprint:
+            self.query_fingerprint = QueryFingerprint.from_query(self.query)
+        return self
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class DeadlockCycle(BaseModel):
     """Represents a deadlock cycle between transactions."""
@@ -279,7 +281,7 @@ class DeadlockCycle(BaseModel):
     severity: int = 0  # Severity score (higher is more severe)
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class DeadlockInfo(BaseModel):
     """Complete representation of a PostgreSQL deadlock."""
@@ -330,7 +332,7 @@ class DeadlockInfo(BaseModel):
         return score
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 def redact_pii_from_query(query: str) -> str:
     """Redact potentially sensitive information from SQL queries."""

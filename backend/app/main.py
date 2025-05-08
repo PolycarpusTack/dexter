@@ -15,6 +15,8 @@ import sys
 
 # Import routers and config
 from .routers import issues, events, ai, config, analyzers
+# Import enhanced analyzers
+from .routers import enhanced_analyzers
 from .config import settings
 
 # Import error handling
@@ -80,6 +82,8 @@ app.include_router(issues.router, prefix=API_PREFIX, tags=["Issues"])
 app.include_router(events.router, prefix=API_PREFIX, tags=["Events"])
 app.include_router(ai.router, prefix=API_PREFIX, tags=["AI"])
 app.include_router(analyzers.router, prefix=API_PREFIX, tags=["Analyzers"])
+# Add the enhanced analyzers router
+app.include_router(enhanced_analyzers.router, prefix=API_PREFIX, tags=["Enhanced Analyzers"])
 logger.info("API Routers included.")
 
 # --- CORS Preflight Handler ---

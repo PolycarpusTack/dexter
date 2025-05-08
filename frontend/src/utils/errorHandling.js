@@ -6,6 +6,35 @@
 import { showNotification } from '@mantine/notifications';
 
 /**
+ * Format and display a success notification
+ * @param {Object} options - Notification options
+ * @param {string} options.title - Notification title
+ * @param {string} options.message - Success message
+ * @param {function} options.onAction - Optional action callback
+ * @param {string} options.actionLabel - Label for the action button
+ */
+export function showSuccessNotification({ title, message, onAction, actionLabel }) {
+  showNotification({
+    title,
+    message,
+    color: 'green',
+    autoClose: 5000,
+    icon: '✅',
+    ...(onAction && actionLabel && {
+      withCloseButton: true,
+      onClose: () => {}, // Required for autoClose to work with withCloseButton
+      action: {
+        label: actionLabel,
+        onClick: onAction,
+      }
+    })
+  });
+  
+  // Also log to console for debugging
+  console.info(`${title}:`, message);
+}
+
+/**
  * Format and display an error notification
  * @param {Object} options - Notification options
  * @param {string} options.title - Notification title

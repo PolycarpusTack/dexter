@@ -47,8 +47,9 @@ import EnhancedGraphView from './EnhancedGraphView';
 import TableInfo from './TableInfo';
 import RecommendationPanel from './RecommendationPanel';
 
-// Import API functions
-import { analyzeDeadlock, exportDeadlockSVG } from '../../api/deadlockApi';
+// Import API functions - Use the enhanced API
+import { analyzeDeadlock, exportDeadlockSVG } from '../../api/enhancedDeadlockApi';
+import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling';
 
 /**
  * Enhanced main component for PostgreSQL deadlock visualization and analysis
@@ -70,17 +71,17 @@ function EnhancedDeadlockDisplay({ eventId, eventDetails }) {
     const hasDeadlockMessage = message.toLowerCase().includes('deadlock detected');
     
     // Check tags for error code
-    const tags = eventDetails.tags || {};
-    const hasDeadlockCode = 
-      tags.error_code === '40P01' || 
-      tags.db_error_code === '40P01' ||
-      tags.sql_state === '40P01';
+    const tags = eventDetails.tags || [];
+    const hasDeadlockCode = tags.some(tag => 
+      (tag.key === 'error_code' || tag.key === 'db_error_code' || tag.key === 'sql_state') && 
+      tag.value === '40P01'
+    );
     
     // Check exception values
     const exception = eventDetails.exception?.values?.[0] || {};
     const hasDeadlockException = 
-      exception.value?.toLowerCase?.()?.includes('deadlock detected') || 
-      exception.type?.toLowerCase?.()?.includes('deadlock');
+      (exception.value?.toLowerCase()?.includes('deadlock detected')) || 
+      (exception.type?.toLowerCase()?.includes('deadlock'));
     
     return hasDeadlockMessage || hasDeadlockCode || hasDeadlockException;
   }, [eventDetails]);
@@ -120,8 +121,20 @@ function EnhancedDeadlockDisplay({ eventId, eventDetails }) {
   
   // Export visualization as SVG
   const handleExportSVG = () => {
-    // This would be implemented using the exportDeadlockSVG function from the API
-    console.log('Export SVG');
+    // Get the SVG element
+    const svgElement = document.querySelector('.deadlock-graph svg');
+    if (svgElement) {
+      exportDeadlockSVG(eventId, svgElement);
+      showSuccessNotification({
+        title: 'SVG Exported',
+        message: 'Deadlock visualization has been exported as SVG'
+      });
+    } else {
+      showErrorNotification({
+        title: 'Export Failed',
+        message: 'Could not find SVG element to export'
+      });
+    }
   };
   
   // Toggle enhanced analysis
@@ -291,7 +304,7 @@ function EnhancedDeadlockDisplay({ eventId, eventDetails }) {
           </Tabs>
           
           {/* Tab Content */}
-          <Box mb="md">
+          <Box mb="md" className="deadlock-graph">
             {activeTab === 'graph' && (
               <EnhancedGraphView data={deadlockData?.analysis?.visualization_data} isLoading={isLoading} />
             )}

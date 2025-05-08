@@ -10,15 +10,15 @@ import logging
 import time
 
 from ..services.sentry_client import SentryApiClient, get_sentry_client
-from ..utils.enhanced_deadlock_parser import parse_postgresql_deadlock
+from ..utils.enhanced_deadlock_parser import parse_postgresql_deadlock, LockMode, LOCK_COMPATIBILITY_MATRIX
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get(
-    "/analyze-deadlock/{event_id}",
-    summary="Analyze PostgreSQL Deadlock",
-    description="Parse and analyze a PostgreSQL deadlock error to provide visualization and recommendations.",
+    "/enhanced-analyzers/analyze-deadlock/{event_id}",
+    summary="Analyze PostgreSQL Deadlock with Enhanced Parser",
+    description="Parse and analyze a PostgreSQL deadlock error to provide detailed visualization and recommendations.",
     response_model=Dict[str, Any],
 )
 async def analyze_deadlock_endpoint(
@@ -27,7 +27,7 @@ async def analyze_deadlock_endpoint(
 ):
     """Analyze a PostgreSQL deadlock error from Sentry with enhanced details."""
     start_time = time.time()
-    logger.info(f"Analyzing deadlock for event {event_id}")
+    logger.info(f"Analyzing deadlock for event {event_id} with enhanced parser")
     
     try:
         # Fetch event details from Sentry
@@ -85,7 +85,7 @@ async def analyze_deadlock_endpoint(
         logger.info(f"Successfully analyzed deadlock for event {event_id} in {execution_time:.2f}s")
         
         # Convert to dict for JSON response
-        response_data = deadlock_info.dict()
+        response_data = deadlock_info.model_dump()
         
         # Add metadata for monitoring
         response_data["metadata"] = {
@@ -120,7 +120,31 @@ async def analyze_deadlock_endpoint(
         )
 
 @router.get(
-    "/deadlock-history",
+    "/enhanced-analyzers/lock-compatibility-matrix",
+    summary="PostgreSQL Lock Compatibility Matrix",
+    description="Get the PostgreSQL lock compatibility matrix for reference.",
+)
+async def lock_compatibility_matrix_endpoint():
+    """Return the PostgreSQL lock compatibility matrix for reference."""
+    # Convert enum keys to strings for JSON response
+    matrix = {}
+    for mode1 in LockMode:
+        matrix[mode1.value] = {}
+        for mode2 in LockMode:
+            matrix[mode1.value][mode2.value] = LOCK_COMPATIBILITY_MATRIX.get(mode1, {}).get(mode2, False)
+    
+    return {
+        "matrix": matrix,
+        "lock_modes": [mode.value for mode in LockMode],
+        "description": """
+        PostgreSQL uses a lock compatibility matrix to determine when transactions
+        can acquire locks. True values indicate compatibility (both locks can be held
+        simultaneously), while False values indicate conflict (the second lock will wait).
+        """
+    }
+
+@router.get(
+    "/enhanced-analyzers/deadlock-history",
     summary="Get Deadlock History",
     description="Retrieve history of analyzed deadlocks with severity and trends.",
     response_model=Dict[str, Any],
@@ -146,32 +170,3 @@ async def deadlock_history_endpoint(
             "Recurring query patterns"
         ]
     }
-
-@router.get(
-    "/lock-compatibility-matrix",
-    summary="PostgreSQL Lock Compatibility Matrix",
-    description="Get the PostgreSQL lock compatibility matrix for reference.",
-)
-async def lock_compatibility_matrix_endpoint():
-    """Return the PostgreSQL lock compatibility matrix for reference."""
-    from ..utils.enhanced_deadlock_parser import LOCK_COMPATIBILITY_MATRIX, LockMode
-    
-    # Convert enum keys to strings for JSON response
-    matrix = {}
-    for mode1 in LockMode:
-        matrix[mode1.value] = {}
-        for mode2 in LockMode:
-            matrix[mode1.value][mode2.value] = LOCK_COMPATIBILITY_MATRIX.get(mode1, {}).get(mode2, False)
-    
-    return {
-        "matrix": matrix,
-        "lock_modes": [mode.value for mode in LockMode],
-        "description": """
-        PostgreSQL uses a lock compatibility matrix to determine when transactions
-        can acquire locks. True values indicate compatibility (both locks can be held
-        simultaneously), while False values indicate conflict (the second lock will wait).
-        """
-    }
-
-# Add this router to main.py
-# app.include_router(enhanced_analyzers.router, prefix=API_PREFIX, tags=["Enhanced Analyzers"])

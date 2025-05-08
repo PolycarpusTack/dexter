@@ -46,6 +46,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import useAppStore from "../../store/appStore";
 import { getEventDetails, getLatestEventForIssue, updateIssueStatus } from "../../api/eventsApi";
 import ExplainError from "../ExplainError/ExplainError";
+import EnhancedDeadlockDisplay from "../DeadlockDisplay/EnhancedDeadlockDisplay";
 import { SENTRY_WEB_URL } from "../../api/config";
 import EmptyState from "../UI/EmptyState";
 import LoadingSkeleton from "../UI/LoadingSkeleton";
@@ -209,6 +210,30 @@ function EventDetail() {
         )}
       </Box>
     );
+  };
+
+  // Check if this is a PostgreSQL deadlock error
+  const isDeadlockError = (details) => {
+    if (!details) return false;
+    
+    // Check for deadlock keywords in message or 40P01 error code
+    const message = details.message || '';
+    const hasDeadlockMessage = message.toLowerCase().includes('deadlock detected');
+    
+    // Check tags for error code
+    const tags = details.tags || [];
+    const hasDeadlockCode = tags.some(tag => 
+      (tag.key === 'error_code' || tag.key === 'db_error_code' || tag.key === 'sql_state') && 
+      tag.value === '40P01'
+    );
+    
+    // Check exception values
+    const exception = details.exception?.values?.[0] || {};
+    const hasDeadlockException = 
+      (exception.value?.toLowerCase()?.includes('deadlock detected')) || 
+      (exception.type?.toLowerCase()?.includes('deadlock'));
+    
+    return hasDeadlockMessage || hasDeadlockCode || hasDeadlockException;
   };
 
   // Component states
@@ -434,6 +459,14 @@ function EventDetail() {
         {/* AI Explanation */}
         <ExplainError eventDetails={eventDetails} />
         <Space h="md" />
+
+        {/* PostgreSQL Deadlock Analyzer - Displayed only for deadlock errors */}
+        {isDeadlockError(eventDetails) && (
+          <>
+            <EnhancedDeadlockDisplay eventId={selectedEventId} eventDetails={eventDetails} />
+            <Space h="md" />
+          </>
+        )}
 
         {/* Error Message */}
         {message && (
