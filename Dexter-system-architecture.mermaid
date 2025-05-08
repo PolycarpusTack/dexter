@@ -1,0 +1,58 @@
+flowchart TB
+    subgraph "Data Sources"
+        Sentry[Sentry.io API]
+        GitHub[GitHub/GitLab Integration]
+        Jira[Jira/Ticketing Integration]
+        CICD[CI/CD Pipeline Integration]
+    end
+
+    subgraph "Dexter Backend"
+        DataLayer[Data Integration Layer]
+        LLMService[LLM Service Abstraction]
+        AnalyticsEngine[Analytics & Correlation Engine]
+        APILayer[Dexter API Gateway]
+        
+        subgraph "Specialized Analyzers"
+            DeadlockAnalyzer[Deadlock Analyzer]
+            PerfAnalyzer[Performance Analyzer]
+            ErrorGrouper[Error Grouping Engine]
+        end
+        
+        DataLayer --> AnalyticsEngine
+        DataLayer --> Specialized Analyzers
+        Specialized Analyzers --> APILayer
+        AnalyticsEngine --> APILayer
+    end
+    
+    subgraph "AI Processing"
+        Ollama[Ollama (Local LLM)]
+        CloudLLM[Cloud LLM (Optional)]
+        
+        LLMService --> Ollama
+        LLMService --> CloudLLM
+    end
+    
+    subgraph "Dexter Frontend"
+        Dashboard[Dashboard]
+        EventExplorer[Event Explorer]
+        RootCauseUI[Root Cause Assistant]
+        DeadlockUI[Deadlock Visualization]
+        TrendExplorer[Trend Explorer]
+        CaseBuilder[Case Builder]
+        KnowledgePanel[Knowledge Panel]
+    end
+
+    Sentry --> DataLayer
+    GitHub --> DataLayer
+    Jira --> DataLayer
+    CICD --> DataLayer
+    
+    APILayer --> Dashboard
+    APILayer --> EventExplorer
+    APILayer --> RootCauseUI
+    APILayer --> DeadlockUI
+    APILayer --> TrendExplorer
+    APILayer --> CaseBuilder
+    APILayer --> KnowledgePanel
+    
+    LLMService <--> APILayer
