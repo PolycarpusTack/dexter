@@ -1,6 +1,6 @@
 // File: frontend/src/App.jsx
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   AppShell, 
   Burger, 
@@ -29,11 +29,21 @@ import DashboardPage from './pages/DashboardPage';
 import SettingsInput from './components/Settings/SettingsInput';
 import ErrorBoundary from './components/ErrorHandling/ErrorBoundary';
 import AccessibleIcon from './components/UI/AccessibleIcon';
+import { initErrorTracking } from './utils/errorTracking';
+import packageInfo from '../package.json';
 
 function App() {
   const [opened, { toggle, close }] = useDisclosure();
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+
+  // Initialize error tracking on component mount
+  useEffect(() => {
+    initErrorTracking({
+      environment: import.meta.env.MODE,
+      release: packageInfo.version
+    });
+  }, []);
 
   // Navigation items with icons and accessibility labels
   const navItems = [
@@ -99,7 +109,7 @@ function App() {
   );
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary name="root-error-boundary">
       <AppShell
         header={{ height: 60 }}
         navbar={{ 
@@ -172,7 +182,7 @@ function App() {
 
         <AppShell.Navbar p="md">
           <AppShell.Section id="settings-section">
-            <ErrorBoundary>
+            <ErrorBoundary name="settings-error-boundary">
               <SettingsInput />
             </ErrorBoundary>
           </AppShell.Section>
@@ -216,7 +226,7 @@ function App() {
         </AppShell.Navbar>
 
         <AppShell.Main>
-          <ErrorBoundary>
+          <ErrorBoundary name="dashboard-error-boundary">
             <DashboardPage />
           </ErrorBoundary>
         </AppShell.Main>
