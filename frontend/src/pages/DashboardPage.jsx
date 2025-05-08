@@ -1,6 +1,6 @@
 // File: frontend/src/pages/DashboardPage.jsx
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { 
   Grid, 
   Paper, 
@@ -21,16 +21,19 @@ import {
   IconBug,
   IconAlertCircle
 } from '@tabler/icons-react';
-import EventTable from '../components/EventTable/EventTable';
-import EventDetail from '../components/EventDetail/EventDetail';
-import ErrorBoundary from '../components/ErrorHandling/ErrorBoundary';
+import EventTable from '../components/EventTable';
+import EventDetail from '../components/EventDetail';
+import { ErrorBoundary } from '../components/ErrorHandling';
+import ErrorFallback from '../components/ErrorHandling/ErrorFallback';
 import InfoTooltip from '../components/UI/InfoTooltip';
 import AccessibleIcon from '../components/UI/AccessibleIcon';
-import useAppStore from '../store/appStore.ts';
+import useAppStore from '../store/appStore';
 
 function DashboardPage() {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.md})`);
+  const eventTableRef = useRef(null);
+  const eventDetailRef = useRef(null);
   
   const { organizationSlug, projectSlug } = useAppStore(
     (state) => ({
@@ -149,7 +152,7 @@ function DashboardPage() {
       {/* Main content */}
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, md: 7 }}>
-          <ErrorBoundary>
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
             <Paper 
               withBorder 
               p="md" 
@@ -174,14 +177,14 @@ function DashboardPage() {
                   overflow: 'auto',
                 }}
               >
-                <EventTable />
+                <EventTable ref={eventTableRef} />
               </Box>
             </Paper>
           </ErrorBoundary>
         </Grid.Col>
         
         <Grid.Col span={{ base: 12, md: 5 }}>
-          <ErrorBoundary>
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
             <Paper 
               withBorder 
               p="md" 
@@ -201,7 +204,7 @@ function DashboardPage() {
                   overflow: 'auto',
                 }}
               >
-                <EventDetail />
+                <EventDetail ref={eventDetailRef} />
               </Box>
             </Paper>
           </ErrorBoundary>

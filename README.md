@@ -1,38 +1,68 @@
-# Dexter - Sentry Observability Companion (MVP)
+# Dexter - Sentry Observability Companion
 
-Dexter is an intelligent companion tool designed to enhance your Sentry.io experience. It provides a user-friendly interface to explore Sentry issues, leverage AI for error explanations, and perform basic issue management, making observability more accessible and actionable across different roles.
+Dexter is an intelligent companion tool designed to enhance your Sentry.io experience. It provides a user-friendly interface to explore Sentry issues, leverage AI for error explanations, and perform enhanced error analysis, making observability more accessible and actionable across different roles.
 
-This MVP focuses on laying a robust foundation with core features, built with best practices in mind for future scalability.
+## ✨ Key Features
 
-## ✨ Key Features (MVP)
+### Core Features
 
 * **Intuitive Event Explorer:**
-    * View Sentry issues for a configured project.
-    * Filter issues by status (`unresolved`, `resolved`, `ignored`, `all`) via backend Sentry queries.
-    * Search issues (current implementation filters based on title and other Sentry-searchable fields via backend query).
-    * Paginate through issue lists.
-* **Detailed Event Views:**
-    * Display comprehensive event details including title, level, tags, timestamp, platform.
-    * Render formatted stack traces, context data (user, browser, OS, device, custom), and breadcrumbs.
-* **AI-Powered Explanations:**
-    * Get plain-language explanations for errors using a local LLM (via Ollama).
-* **Direct Sentry Links:**
-    * Quickly navigate from Dexter to the corresponding issue or event page in your Sentry UI.
-* **Configuration Management:**
-    * Set target Sentry organization and project slugs via the UI.
-    * Backend status check for Sentry API token and Ollama connectivity.
-* **Data Export:**
-    * Export the currently filtered list of issues to CSV or JSON formats.
-* **Basic Issue Actions:**
-    * Resolve or Ignore Sentry issues directly from Dexter, with UI feedback via notifications.
-* **Robust Frontend Data Handling:**
-    * Uses TanStack Query (React Query) for efficient data fetching, caching, and server state synchronization.
-    * Uses Zustand for minimal global UI state management.
-* **Hardened Backend:**
-    * FastAPI backend with Pydantic data validation.
-    * Basic caching for Sentry API calls.
-    * Improved error handling and structured logging.
-* **(Deferred for MVP):** Detailed PostgreSQL Deadlock Analyzer visualization (backend parsing logic requires specific Sentry event examples).
+    * View Sentry issues with advanced sorting and filtering
+    * Filter issues by status (`unresolved`, `resolved`, `ignored`, `all`)
+    * Search issues by keywords
+    * Paginate through issue lists
+    * Multi-select issues for bulk actions
+
+* **Visual Decision Indicators:**
+    * Event frequency sparklines showing trends over time
+    * User impact visualizations with percentage of affected users
+    * Color-coded impact levels (critical, high, medium, low)
+    * Priority scoring based on frequency and impact
+
+* **Enhanced Event Details:**
+    * Comprehensive event information with PII protection
+    * Release information and deployment context
+    * Interactive stack trace navigation
+    * Timeline view for breadcrumbs
+    * Contextual data with privacy controls
+
+* **AI-Powered Analysis:**
+    * Plain-language explanations for errors using LLM integration
+    * Context-aware prompting for better explanations
+    * Support for multiple AI models via Ollama
+    * Response formatting and presentation options
+
+* **PostgreSQL Deadlock Analyzer:**
+    * Specialized visualization for PostgreSQL deadlocks
+    * Analysis of deadlock patterns and root causes
+    * Transaction and process relationship mapping
+    * Recommended resolution strategies
+
+* **Workflow Integration:**
+    * Resolve or ignore issues directly within Dexter
+    * Bulk actions for multiple selected issues
+    * Quick links to Sentry for deeper investigation
+    * Export options for sharing and reporting
+
+### Technical Features
+
+* **Robust Architecture:**
+    * Modular component design for maintainability
+    * Error boundaries for isolated component failures
+    * Performance optimizations for large datasets
+    * Accessibility enhancements for all users
+
+* **Data Security:**
+    * PII masking and data privacy controls
+    * Sensitive information protection
+    * Compliance with security best practices
+    * User control over data visibility
+
+* **Enhanced Visualization:**
+    * D3.js integration for advanced data visualization
+    * Responsive and interactive charts
+    * Tooltips with detailed contextual information
+    * Consistent design language across visualizations
 
 ## 🛠️ Tech Stack
 
@@ -51,6 +81,7 @@ This MVP focuses on laying a robust foundation with core features, built with be
     * TanStack Query (React Query) (data fetching & server state)
     * Zustand (global UI state)
     * Axios (HTTP client for calling Dexter backend)
+    * D3.js (for data visualization)
     * `@mantine/notifications` (for UI feedback)
 * **AI Integration:**
     * Ollama (running locally with a compatible model like Mistral, Llama3, etc.)
@@ -128,7 +159,7 @@ Before you begin, ensure you have the following installed on your system:
         ```dotenv
         # frontend/.env.development
         VITE_API_BASE_URL=http://localhost:8000/api/v1
-        VITE_SENTRY_WEB_URL=[https://sentry.io](https://sentry.io)
+        VITE_SENTRY_WEB_URL=https://sentry.io
         ```
 
 ## 🚀 Running the Application
@@ -179,50 +210,69 @@ You need to have three main components running simultaneously: Ollama, the Dexte
     * If the Sentry token is missing in the backend `.env` or Ollama is not reachable, it will be indicated here.
     * Enter your **Sentry Organization Slug** and **Sentry Project Slug** into the input fields.
     * Click "Save & Reload Issues". The issue list should then populate.
-3.  **Event Explorer (`EventTable`):**
-    * The main table lists Sentry issues.
-    * Use the **Status Filter** (`Unresolved`, `Resolved`, `Ignored`, `All`) to change the view.
-    * Use the **Search Input** and click "Search" to filter issues by keywords (this queries Sentry).
-    * Use the **Pagination Buttons** ("Previous", "Next") below the table to navigate through more issues.
-    * Click the **external link icon** next to an issue's `shortId` to open that issue directly in Sentry.
-    * Use the **Export Button** (select CSV or JSON) to download the current view of issues.
-4.  **Event Details (`EventDetail`):**
-    * Click on any row in the `EventTable` to load its details in the right-hand panel.
+3.  **Event Explorer:**
+    * The main table lists Sentry issues with event frequency and user impact visualizations.
+    * Use the **Status Filter** to change the view.
+    * Use the **Sort Options** to sort by different criteria (date, priority, frequency, impact).
+    * Use the **Search Input** to filter issues by keywords.
+    * **Select multiple issues** by clicking the checkbox on each row.
+    * Use the **Bulk Action Bar** to perform actions on multiple selected issues.
+    * Click the **More Options** menu on each row for additional actions.
+4.  **Event Details:**
+    * Click on any row in the table to load its details in the right-hand panel.
     * The detail panel shows:
-        * Title, level, tags, timestamp, platform.
-        * Links to view the event or issue group in Sentry.
-        * "Resolve" and "Ignore" buttons to update the issue's status in Sentry (success/error notifications will appear).
-        * An "Explain with AI" button.
-        * An accordion with sections for **Stack Trace**, **Breadcrumbs**, **Context Data** (User, Browser, OS, Device, other custom contexts), and **HTTP Request** details (if present).
-5.  **AI Explanation (`ExplainError`):**
-    * In the `EventDetail` panel, click the "Explain with AI" button.
-    * Dexter will send context to your local Ollama instance and display the generated explanation. Loading states and notifications will indicate progress/results.
+        * Title, level, tags, timestamp, platform, and other metadata.
+        * Release information (if available).
+        * "Resolve" and "Ignore" buttons to update the issue's status.
+        * Sections for Stack Trace, Breadcrumbs, Context Data, and HTTP Request details.
+        * Data privacy controls to mask sensitive information.
+5.  **AI Explanation:**
+    * In the Event Detail panel, click the "Explain with AI" button.
+    * Dexter will send context to your local Ollama instance and display the generated explanation.
+    * You can change the AI model from the settings panel.
+6.  **PostgreSQL Deadlock Analysis (for deadlock errors):**
+    * When a PostgreSQL deadlock error is detected, Dexter will automatically show the deadlock analyzer.
+    * Explore the visual representation of the deadlock.
+    * See tables involved and transaction details.
+    * Review recommended resolution strategies.
 
-## ⚠️ Known Limitations & Current Status (MVP)
+## 📈 Visualization Features
 
-* **Deadlock Parser:** The specific logic for parsing PostgreSQL deadlock details (`backend/app/utils/deadlock_parser.py`) is currently a **placeholder** and requires real Sentry event data examples for full implementation. The UI will show basic info if a deadlock signature is detected.
-* **Automated Testing:** Comprehensive unit and integration tests are **not yet implemented**. This is a critical next step for ensuring reliability and stability.
-* **Advanced Security:** Security measures are currently focused on managing the Sentry token via backend environment variables. Advanced hardening (e.g., more extensive input validation, rate limiting, dependency vulnerability scanning) is required for a production environment.
-* **Advanced Performance Tuning:** While basic backend caching and frontend data fetching with TanStack Query are in place, further performance profiling and optimization may be needed for very large-scale use or extremely large datasets.
-* **UI Polish:** The UI is functional and uses the Mantine component library for a clean look. However, further visual refinement, custom theming, and enhanced usability testing would improve the user experience.
-* **Event ID for Detail View:** The current logic for selecting an *event* to view in the detail panel after clicking an *issue* row in the table might need refinement to ensure the most relevant event (e.g., latest) is fetched or to allow selection from multiple events within an issue group. For MVP, it makes a best effort to show *an* event's details.
+### Sparkline Charts
 
-## 🚀 Future Work (Beyond MVP)
+Event frequency sparklines show:
+- Trends over time (24h, 7d, 30d)
+- Percentage change indicators
+- Peak detection for unusual activity
+- Interactive tooltips with detailed information
 
-* Full implementation of the detailed Deadlock Analyzer.
-* Development of a comprehensive automated test suite.
-* **Dexter+ Features:**
-    * Trend Explorer & advanced analytics dashboards.
-    * Full Case Builder with deeper Jira/ticketing integration.
-    * Enhanced AI capabilities (e.g., conversational AI, solution suggestions, predictive insights).
-    * User authentication and multi-tenancy.
-    * More sophisticated filtering and search capabilities.
-* Refer to the full Solution Design Document for a more detailed roadmap.
+### User Impact Visualization
 
-## 🤝 Contributing (Placeholder)
+The user impact visualization shows:
+- Number of affected users
+- Percentage of total user base affected
+- Color-coded impact levels
+- Detailed breakdown of affected user segments
 
-Details on how to contribute to Dexter will be added here if the project becomes open source or seeks external contributions.
+### Timeline View
 
-## 📄 License (Placeholder)
+The breadcrumbs timeline shows:
+- Chronological sequence of events leading to the error
+- Color-coded severity levels
+- Interactive expanding sections for detailed data
+- Timestamp information
 
-Specify your project's license here (e.g., MIT, Apache 2.0).# dexter
+## 🚀 Next Steps & Future Development
+
+Upcoming features and enhancements include:
+
+- **Smart Grouping Algorithm**: Automatically group similar issues by root cause patterns
+- **AI-Generated Summaries**: Concise one-line problem statements for each issue
+- **Geographic Impact Maps**: Visual representation of affected user locations
+- **Service Dependency Visualization**: Graph view of service relationships in distributed errors
+- **Timeline View with Deployment Markers**: Connect errors to specific deployments
+- **Collaborative Features**: @mentions, comments, and shared investigation sessions
+
+## 📄 License
+
+[Your License Information Here]

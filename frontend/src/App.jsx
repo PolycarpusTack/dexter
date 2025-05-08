@@ -13,7 +13,6 @@ import {
   ThemeIcon,
   Tooltip,
   useMantineTheme,
-  rem
 } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { 
@@ -27,13 +26,14 @@ import {
 } from '@tabler/icons-react';
 import DashboardPage from './pages/DashboardPage';
 import SettingsInput from './components/Settings/SettingsInput';
-import ErrorBoundary from './components/ErrorHandling/ErrorBoundary';
+import { AppErrorBoundary, ErrorBoundary } from './components/ErrorHandling';
+import ErrorFallback from './components/ErrorHandling/ErrorFallback';
 import AccessibleIcon from './components/UI/AccessibleIcon';
-import { initErrorTracking } from './utils/errorTracking.ts';
+import { initErrorTracking } from './utils/errorTracking';
 import packageInfo from '../package.json';
 
 function App() {
-  const [opened, { toggle, close }] = useDisclosure();
+  const [opened, { toggle }] = useDisclosure();
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
@@ -41,7 +41,7 @@ function App() {
   useEffect(() => {
     initErrorTracking({
       environment: import.meta.env.MODE,
-      release: packageInfo.version
+      release: packageInfo.version || '1.0.0'
     });
   }, []);
 
@@ -98,7 +98,7 @@ function App() {
         aria-current={active ? 'page' : undefined}
         aria-disabled={disabled}
       >
-        <Group spacing="xs">
+        <Group gap="xs">
           <AccessibleIcon icon={icon} label={label} />
           <Text size="sm" fw={active ? 600 : 400}>
             {label}
@@ -109,7 +109,7 @@ function App() {
   );
 
   return (
-    <ErrorBoundary name="root-error-boundary">
+    <AppErrorBoundary>
       <AppShell
         header={{ height: 60 }}
         navbar={{ 
@@ -182,7 +182,7 @@ function App() {
 
         <AppShell.Navbar p="md">
           <AppShell.Section id="settings-section">
-            <ErrorBoundary name="settings-error-boundary">
+            <ErrorBoundary FallbackComponent={ErrorFallback}>
               <SettingsInput />
             </ErrorBoundary>
           </AppShell.Section>
@@ -226,12 +226,12 @@ function App() {
         </AppShell.Navbar>
 
         <AppShell.Main>
-          <ErrorBoundary name="dashboard-error-boundary">
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
             <DashboardPage />
           </ErrorBoundary>
         </AppShell.Main>
       </AppShell>
-    </ErrorBoundary>
+    </AppErrorBoundary>
   );
 }
 
