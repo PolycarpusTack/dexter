@@ -104,7 +104,7 @@ function ProgressIndicator({
           value={progress}
           size="sm"
           radius="xl"
-          animate={isLoading}
+          animate={isLoading ? "true" : "false"}
           color={progress >= 95 ? "green" : "blue"}
         />
       </Box>

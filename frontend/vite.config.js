@@ -25,6 +25,12 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true
   },
+  optimizeDeps: {
+    esbuildOptions: {
+      // Improve sourcemap generation during development
+      sourcemap: true,
+    },
+  },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx']
   }

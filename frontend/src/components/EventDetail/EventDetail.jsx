@@ -182,7 +182,7 @@ function EventDetail() {
           borderLeft: inApp ? `3px solid ${theme.colors.blue[4]}` : 'none',
         })}
       >
-        <Group gap="xs" nowrap mb={4}>
+        <Group gap="xs" nowrap="true" mb={4}>
           {inApp && <Badge size="xs" color="blue">App</Badge>}
           <Text fw={isRelevant ? 600 : 400} c={isRelevant ? undefined : 'dimmed'} truncate>
             {funcName || '<anonymous>'}
