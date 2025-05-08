@@ -9,8 +9,8 @@ from typing import Optional, Dict, Any, List
 import logging
 
 from ..services.sentry_client import SentryApiClient
-# Import parser, but acknowledge it's a stub
-from ..utils.deadlock_parser import parse_postgresql_deadlock, DeadlockInfo
+# Use the enhanced deadlock parser instead of the stub
+from ..utils.enhanced_deadlock_parser import parse_postgresql_deadlock, DeadlockInfo, model_to_dict
 from ..models.events import EventDetail # Potentially use for response model validation
 
 logger = logging.getLogger(__name__)
@@ -42,25 +42,31 @@ async def get_event_details_endpoint(
         event_id=event_id
     )
 
-    # --- Deadlock Parsing Section (using stub) ---
-    is_potential_deadlock = False
-    exception_values = event_data.get("exception", {}).get("values", [])
-    # Basic check on exception value - enhance if needed
-    if exception_values and "40P01" in str(exception_values[0].get("value", "")):
-         is_potential_deadlock = True
-         # Could also check tags: e.g., if tag['sqlstate'] == '40P01'
+    # --- Deadlock Parsing Section (using enhanced parser) ---
+    try:
+        is_potential_deadlock = False
+        exception_values = event_data.get("exception", {}).get("values", [])
+        # Basic check on exception value - enhance if needed
+        if exception_values and "40P01" in str(exception_values[0].get("value", "")):
+            is_potential_deadlock = True
+            # Could also check tags: e.g., if tag['sqlstate'] == '40P01'
 
-    deadlock_info_result = None
-    if is_potential_deadlock:
-         logger.info(f"Event {event_id} identified as potential deadlock, attempting parse (using stub).")
-         # Call the parser (which currently does little)
-         deadlock_info_result = parse_postgresql_deadlock(event_data) # Returns DeadlockInfo or None
-         # Attach result to response, even if None (indicates attempt was made)
-         event_data["dexterParsedDeadlock"] = deadlock_info_result.model_dump() if deadlock_info_result else None
-         if deadlock_info_result:
-            logger.info(f"Deadlock parser stub returned info for event {event_id}.")
-         else:
-            logger.info(f"Deadlock parser stub returned None for event {event_id}.")
+        deadlock_info_result = None
+        if is_potential_deadlock:
+            logger.info(f"Event {event_id} identified as potential deadlock, attempting parse using enhanced parser.")
+            # Call the parser
+            deadlock_info_result = parse_postgresql_deadlock(event_data) # Returns DeadlockInfo or None
+            # Attach result to response, even if None (indicates attempt was made)
+            if deadlock_info_result:
+                event_data["dexterParsedDeadlock"] = model_to_dict(deadlock_info_result)
+                logger.info(f"Enhanced deadlock parser returned info for event {event_id}.")
+            else:
+                event_data["dexterParsedDeadlock"] = None
+                logger.info(f"Enhanced deadlock parser returned None for event {event_id}.")
+    except Exception as e:
+        logger.exception(f"Error in deadlock parsing for event {event_id}: {str(e)}")
+        # Don't fail the whole request if just the deadlock parsing fails
+        event_data["dexterParsedDeadlock"] = None
     # --- End Deadlock Parsing Section ---
 
     # Return potentially augmented event data
@@ -109,25 +115,31 @@ async def get_issue_event_endpoint(
         environment=environment
     )
 
-    # --- Deadlock Parsing Section (using stub) ---
-    is_potential_deadlock = False
-    exception_values = event_data.get("exception", {}).get("values", [])
-    # Basic check on exception value - enhance if needed
-    if exception_values and "40P01" in str(exception_values[0].get("value", "")):
-         is_potential_deadlock = True
-         # Could also check tags: e.g., if tag['sqlstate'] == '40P01'
+    # --- Deadlock Parsing Section (using enhanced parser) ---
+    try:
+        is_potential_deadlock = False
+        exception_values = event_data.get("exception", {}).get("values", [])
+        # Basic check on exception value - enhance if needed
+        if exception_values and "40P01" in str(exception_values[0].get("value", "")):
+            is_potential_deadlock = True
+            # Could also check tags: e.g., if tag['sqlstate'] == '40P01'
 
-    deadlock_info_result = None
-    if is_potential_deadlock:
-         logger.info(f"Event {event_id} identified as potential deadlock, attempting parse (using stub).")
-         # Call the parser (which currently does little)
-         deadlock_info_result = parse_postgresql_deadlock(event_data) # Returns DeadlockInfo or None
-         # Attach result to response, even if None (indicates attempt was made)
-         event_data["dexterParsedDeadlock"] = deadlock_info_result.model_dump() if deadlock_info_result else None
-         if deadlock_info_result:
-            logger.info(f"Deadlock parser stub returned info for event {event_id}.")
-         else:
-            logger.info(f"Deadlock parser stub returned None for event {event_id}.")
+        deadlock_info_result = None
+        if is_potential_deadlock:
+            logger.info(f"Event {event_id} identified as potential deadlock, attempting parse using enhanced parser.")
+            # Call the parser
+            deadlock_info_result = parse_postgresql_deadlock(event_data) # Returns DeadlockInfo or None
+            # Attach result to response, even if None (indicates attempt was made)
+            if deadlock_info_result:
+                event_data["dexterParsedDeadlock"] = model_to_dict(deadlock_info_result)
+                logger.info(f"Enhanced deadlock parser returned info for event {event_id}.")
+            else:
+                event_data["dexterParsedDeadlock"] = None
+                logger.info(f"Enhanced deadlock parser returned None for event {event_id}.")
+    except Exception as e:
+        logger.exception(f"Error in deadlock parsing for event {event_id}: {str(e)}")
+        # Don't fail the whole request if just the deadlock parsing fails
+        event_data["dexterParsedDeadlock"] = None
     # --- End Deadlock Parsing Section ---
 
     # Return potentially augmented event data
@@ -154,25 +166,31 @@ async def get_latest_issue_event_endpoint(
             environment=environment
         )
         
-        # --- Deadlock Parsing Section (using stub) ---
-        is_potential_deadlock = False
-        exception_values = event_data.get("exception", {}).get("values", [])
-        # Basic check on exception value - enhance if needed
-        if exception_values and "40P01" in str(exception_values[0].get("value", "")):
-            is_potential_deadlock = True
-            # Could also check tags: e.g., if tag['sqlstate'] == '40P01'
+        # --- Deadlock Parsing Section (using enhanced parser) ---
+        try:
+            is_potential_deadlock = False
+            exception_values = event_data.get("exception", {}).get("values", [])
+            # Basic check on exception value - enhance if needed
+            if exception_values and "40P01" in str(exception_values[0].get("value", "")):
+                is_potential_deadlock = True
+                # Could also check tags: e.g., if tag['sqlstate'] == '40P01'
 
-        deadlock_info_result = None
-        if is_potential_deadlock:
-            logger.info(f"Latest event for issue {issue_id} identified as potential deadlock, attempting parse (using stub).")
-            # Call the parser (which currently does little)
-            deadlock_info_result = parse_postgresql_deadlock(event_data) # Returns DeadlockInfo or None
-            # Attach result to response, even if None (indicates attempt was made)
-            event_data["dexterParsedDeadlock"] = deadlock_info_result.model_dump() if deadlock_info_result else None
-            if deadlock_info_result:
-                logger.info(f"Deadlock parser stub returned info for latest event of issue {issue_id}.")
-            else:
-                logger.info(f"Deadlock parser stub returned None for latest event of issue {issue_id}.")
+            deadlock_info_result = None
+            if is_potential_deadlock:
+                logger.info(f"Latest event for issue {issue_id} identified as potential deadlock, attempting parse using enhanced parser.")
+                # Call the parser
+                deadlock_info_result = parse_postgresql_deadlock(event_data) # Returns DeadlockInfo or None
+                # Attach result to response, even if None (indicates attempt was made)
+                if deadlock_info_result:
+                    event_data["dexterParsedDeadlock"] = model_to_dict(deadlock_info_result)
+                    logger.info(f"Enhanced deadlock parser returned info for latest event of issue {issue_id}.")
+                else:
+                    event_data["dexterParsedDeadlock"] = None
+                    logger.info(f"Enhanced deadlock parser returned None for latest event of issue {issue_id}.")
+        except Exception as e:
+            logger.exception(f"Error in deadlock parsing for latest event of issue {issue_id}: {str(e)}")
+            # Don't fail the whole request if just the deadlock parsing fails
+            event_data["dexterParsedDeadlock"] = None
         # --- End Deadlock Parsing Section ---
 
         # Return potentially augmented event data

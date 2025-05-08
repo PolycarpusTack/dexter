@@ -3,6 +3,7 @@
     "@mantine/core": "^7.10.1",
     "@mantine/hooks": "^7.10.1",
     "@mantine/notifications": "^7.10.1",
+    "@sentry/react": "^9.17.0",
     "@tabler/icons-react": "^3.5.0",
     "@tanstack/react-query": "^5.40.1",
     "@tanstack/react-query-devtools": "^5.40.1",

@@ -199,7 +199,7 @@ function ExplainError({ eventDetails }) {
                 <Group position="apart" align="center">
                   <Text size="sm">Generating explanation with {activeAIModel || 'AI model'}...</Text>
                   <Group spacing="xs">
-                    <Text size="xs" c="dimmed">This may take several minutes on slower hardware</Text>
+                    <Text size="xs" c="dimmed">This may take up to 20 minutes on first run or with larger models</Text>
                     <Loader size="xs" />
                   </Group>
                 </Group>

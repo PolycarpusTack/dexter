@@ -26,7 +26,7 @@ import EventDetail from '../components/EventDetail/EventDetail';
 import ErrorBoundary from '../components/ErrorHandling/ErrorBoundary';
 import InfoTooltip from '../components/UI/InfoTooltip';
 import AccessibleIcon from '../components/UI/AccessibleIcon';
-import useAppStore from '../store/appStore';
+import useAppStore from '../store/appStore.ts';
 
 function DashboardPage() {
   const theme = useMantineTheme();

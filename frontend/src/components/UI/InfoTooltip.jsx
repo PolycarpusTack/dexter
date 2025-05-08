@@ -33,7 +33,7 @@ function InfoTooltip({
       withArrow
       arrowSize={8}
       transition="pop"
-      transitionDuration={200}
+      transitionProps={{ duration: 200 }}
       multiline
       width={220}
       {...tooltipProps}

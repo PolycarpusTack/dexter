@@ -26,7 +26,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import useAppStore from '../../store/appStore';
-import { fetchIssuesList } from '../../api/issuesApi';
+import { fetchIssuesList } from '../../api/issuesApi.ts';
 import ExportControl from '../Export/ExportControl';
 import EmptyState from '../UI/EmptyState';
 import LoadingSkeleton from '../UI/LoadingSkeleton';

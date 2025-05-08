@@ -18,7 +18,34 @@ import networkx as nx
 import hashlib
 import functools
 from typing import Dict, List, Set, Optional, Any, Tuple, Union, TypeVar, Type
-from pydantic import BaseModel, Field, model_validator, field_validator
+from pydantic import BaseModel, Field
+
+# Handle compatibility between Pydantic v1 and v2
+try:
+    from pydantic import model_validator, field_validator
+except ImportError:
+    from pydantic.validators import validator as field_validator
+    from pydantic import validator as model_validator
+
+# Helper function to handle model serialization consistently
+def model_to_dict(model):
+    """Convert a Pydantic model to a dict, handling version differences."""
+    if model is None:
+        return None
+        
+    if hasattr(model, 'model_dump'):
+        return model.model_dump()  # Pydantic v2
+    if hasattr(model, 'dict'):
+        return model.dict()  # Pydantic v1
+        
+    # Fallback for non-model objects
+    if isinstance(model, dict):
+        return model
+    if isinstance(model, (list, tuple)):
+        return [model_to_dict(item) for item in model]
+        
+    # For primitive types
+    return model
 from datetime import datetime, timedelta
 from enum import Enum, auto
 
@@ -200,6 +227,14 @@ class LockInfo(BaseModel):
         if self.resource_id:
             base += f" (ID: {self.resource_id})"
         return base
+    
+    # Add method to convert to dict for Pydantic v1 compatibility
+    def dict(self, *args, **kwargs):
+        """Convert to dictionary for Pydantic v1 compatibility."""
+        if hasattr(self, 'model_dump'):
+            return self.model_dump(*args, **kwargs)
+        # Use the original method if we're on Pydantic v1
+        return super().dict(*args, **kwargs)
         
     class Config:
         from_attributes = True
@@ -241,6 +276,14 @@ class QueryFingerprint(BaseModel):
             parameterized_query=parameterized,
             hash=hash_obj.hexdigest()
         )
+        
+    # Add method to convert to dict for Pydantic v1 compatibility
+    def dict(self, *args, **kwargs):
+        """Convert to dictionary for Pydantic v1 compatibility."""
+        if hasattr(self, 'model_dump'):
+            return self.model_dump(*args, **kwargs)
+        # Use the original method if we're on Pydantic v1
+        return super().dict(*args, **kwargs)
 
 class Transaction(BaseModel):
     """Information about a transaction involved in a deadlock."""
@@ -271,6 +314,14 @@ class Transaction(BaseModel):
             self.query_fingerprint = QueryFingerprint.from_query(self.query)
         return self
     
+    # Add method to convert to dict for Pydantic v1 compatibility
+    def dict(self, *args, **kwargs):
+        """Convert to dictionary for Pydantic v1 compatibility."""
+        if hasattr(self, 'model_dump'):
+            return self.model_dump(*args, **kwargs)
+        # Use the original method if we're on Pydantic v1
+        return super().dict(*args, **kwargs)
+    
     class Config:
         from_attributes = True
 
@@ -279,6 +330,14 @@ class DeadlockCycle(BaseModel):
     processes: List[int]  # PIDs in cycle order
     relations: List[str] = Field(default_factory=list)  # Tables involved
     severity: int = 0  # Severity score (higher is more severe)
+    
+    # Add method to convert to dict for Pydantic v1 compatibility
+    def dict(self, *args, **kwargs):
+        """Convert to dictionary for Pydantic v1 compatibility."""
+        if hasattr(self, 'model_dump'):
+            return self.model_dump(*args, **kwargs)
+        # Use the original method if we're on Pydantic v1
+        return super().dict(*args, **kwargs)
     
     class Config:
         from_attributes = True
@@ -330,6 +389,14 @@ class DeadlockInfo(BaseModel):
         
         self.severity_score = score
         return score
+    
+    # Add method to convert to dict for Pydantic v1 compatibility
+    def dict(self, *args, **kwargs):
+        """Convert to dictionary for Pydantic v1 compatibility."""
+        if hasattr(self, 'model_dump'):
+            return self.model_dump(*args, **kwargs)
+        # Use the original method if we're on Pydantic v1
+        return super().dict(*args, **kwargs)
     
     class Config:
         from_attributes = True

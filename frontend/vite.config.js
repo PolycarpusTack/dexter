@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import autoprefixer from 'autoprefixer'; // You may need to install this
+import autoprefixer from 'autoprefixer';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -25,16 +25,7 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true
   },
-  esbuild: {
-    loader: 'jsx',
-    include: /src\/.*\.jsx?$/,
-    exclude: []
-  },
-  optimizeDeps: {
-    esbuildOptions: {
-      loader: {
-        '.js': 'jsx'
-      }
-    }
+  resolve: {
+    extensions: ['.ts', '.tsx', '.js', '.jsx']
   }
 });

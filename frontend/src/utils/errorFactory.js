@@ -1,7 +1,5 @@
 // File: src/utils/errorFactory.js
 
-import { categorizeError, isRetryableError } from './errorHandling';
-
 /**
  * EnhancedError class extends Error with additional context
  */
@@ -122,8 +120,8 @@ export const ErrorFactory = {
     
     // Handle regular errors
     if (error instanceof Error) {
-      const category = categorizeError(error);
-      const retryable = isRetryableError(error);
+      const category = this.categorizeError(error);
+      const retryable = this.isRetryableError(error);
       
       return new EnhancedError(message, {
         category,
@@ -160,6 +158,50 @@ export const ErrorFactory = {
    */
   createApiError(message, status, data, options = {}) {
     return new ApiError(message, { status, data, ...options });
+  },
+  
+  /**
+   * Determine if an error is retryable
+   */
+  isRetryableError(error) {
+    // Network errors are retryable
+    if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
+      return true;
+    }
+    
+    // Server errors (5xx) are retryable
+    if (error.response && error.response.status >= 500 && error.response.status < 600) {
+      return true;
+    }
+    
+    // Generally, client errors (4xx) are not retryable
+    return false;
+  },
+  
+  /**
+   * Categorize an error to help with reporting and handling
+   */
+  categorizeError(error) {
+    // Network errors
+    if (error.code === 'ECONNABORTED') return 'timeout';
+    if (error.code === 'ERR_NETWORK') return 'network';
+    
+    // Handle Axios error responses
+    if (error.response) {
+      const { status } = error.response;
+      
+      // Group by status code range
+      if (status >= 400 && status < 500) return 'client_error';
+      if (status >= 500) return 'server_error';
+    }
+    
+    // JavaScript errors
+    if (error instanceof TypeError) return 'type_error';
+    if (error instanceof SyntaxError) return 'syntax_error';
+    if (error instanceof ReferenceError) return 'reference_error';
+    
+    // Default
+    return 'unknown';
   }
 };
 

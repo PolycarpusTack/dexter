@@ -10,7 +10,7 @@ import { Progress, Text, Paper, Group, Box } from '@mantine/core';
 function ProgressIndicator({ 
   isLoading, 
   operation = 'loading', 
-  expectedDuration = 60,  // Expected duration in seconds
+  expectedDuration = 120,  // Expected duration in seconds (default 2 minutes)
   model = null,  // Optional model name to adjust expectations
 }) {
   const [progress, setProgress] = useState(0);
@@ -20,14 +20,14 @@ function ProgressIndicator({
   const getModelDuration = (modelName) => {
     if (!modelName) return expectedDuration;
     
-    // Rough estimates for various models
+    // Rough estimates for various models (in seconds)
     const durations = {
-      'mistral': 15,
-      'phi3': 20,
-      'gemma': 30,
-      'llama3': 45,
-      'codellama': 90,
-      'mixtral': 180,
+      'mistral': 60,    // 1 minute
+      'phi3': 120,      // 2 minutes
+      'gemma': 180,     // 3 minutes
+      'llama3': 300,    // 5 minutes
+      'codellama': 480, // 8 minutes
+      'mixtral': 900,   // 15 minutes
     };
     
     // Check for exact match or substring match

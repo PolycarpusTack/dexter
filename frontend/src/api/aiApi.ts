@@ -3,6 +3,10 @@
 import { apiClient } from './apiClient';
 import ErrorFactory from '../utils/errorHandling/errorFactory';
 import { createErrorHandler } from '../utils/errorHandling';
+import { axiosConfig } from './config';
+
+// Configure a longer timeout for AI requests (20 minutes)
+const AI_REQUEST_TIMEOUT = 20 * 60 * 1000; // 20 minutes in milliseconds
 
 // Create error handler for AI API
 const handleAiError = createErrorHandler('AI Explanation Failed', {
@@ -62,7 +66,10 @@ export const explainError = async (params: ExplainErrorParams): Promise<ExplainE
         retry_count,
         model
       },
-      {}, // Axios config
+      { 
+        // Set a much longer timeout for AI explanation requests
+        timeout: AI_REQUEST_TIMEOUT 
+      }, // Axios config
       {
         maxRetries: 2, // Retry configuration
         retryableCheck: (error) => {

@@ -29,7 +29,7 @@ import DashboardPage from './pages/DashboardPage';
 import SettingsInput from './components/Settings/SettingsInput';
 import ErrorBoundary from './components/ErrorHandling/ErrorBoundary';
 import AccessibleIcon from './components/UI/AccessibleIcon';
-import { initErrorTracking } from './utils/errorTracking';
+import { initErrorTracking } from './utils/errorTracking.ts';
 import packageInfo from '../package.json';
 
 function App() {
