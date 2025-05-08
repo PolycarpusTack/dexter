@@ -1,150 +1,136 @@
-// File: frontend/src/utils/errorHandling.js
-
-import { showNotification } from '@mantine/notifications';
-import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
+// File: src/utils/errorHandling.js
 
 /**
- * Standard error notification with consistent styling
+ * Utilities for error handling and notification
+ */
+import { showNotification } from '@mantine/notifications';
+
+/**
+ * Format and display an error notification
  * @param {Object} options - Notification options
  * @param {string} options.title - Notification title
- * @param {string|Error} options.error - Error message or Error object
- * @param {string} [options.defaultMessage] - Default message if error doesn't provide one
+ * @param {string|Error} options.error - Error object or message
+ * @param {string} options.message - Optional override message
+ * @param {function} options.onRetry - Optional retry callback
  */
-export const showErrorNotification = ({ title, error, defaultMessage = 'An unexpected error occurred' }) => {
-  // Extract error message from different possible error formats
-  let message = defaultMessage;
-  
-  if (typeof error === 'string') {
-    message = error;
-  } else if (error instanceof Error) {
-    message = error.message || defaultMessage;
-  } else if (error?.response?.data?.detail) {
-    message = error.response.data.detail;
-  } else if (error?.message) {
-    message = error.message;
-  }
+export function showErrorNotification({ title, error, message, onRetry }) {
+  const errorMessage = message || formatErrorMessage(error);
   
   showNotification({
     title,
-    message,
+    message: errorMessage,
     color: 'red',
-    icon: <IconAlertCircle size={18} />,
     autoClose: 5000,
+    icon: '⚠️',
+    ...(onRetry && {
+      withCloseButton: true,
+      onClose: () => {}, // Required for autoClose to work with withCloseButton
+      action: {
+        label: 'Retry',
+        onClick: onRetry,
+      }
+    })
   });
   
   // Also log to console for debugging
   console.error(`${title}:`, error);
-};
+}
 
 /**
- * Success notification with consistent styling
- * @param {Object} options - Notification options
- * @param {string} options.title - Notification title
- * @param {string} options.message - Success message
- */
-export const showSuccessNotification = ({ title, message }) => {
-  showNotification({
-    title,
-    message,
-    color: 'teal',
-    autoClose: 3000,
-  });
-};
-
-/**
- * Info notification with consistent styling
- * @param {Object} options - Notification options
- * @param {string} options.title - Notification title
- * @param {string} options.message - Info message
- */
-export const showInfoNotification = ({ title, message }) => {
-  showNotification({
-    title,
-    message,
-    color: 'blue',
-    icon: <IconInfoCircle size={18} />,
-    autoClose: 3000,
-  });
-};
-
-/**
- * Format API errors to human-readable format
- * @param {Error|Object} error - Error object from API call
- * @param {string} [defaultMessage] - Default message if error doesn't provide one
+ * Format an error message from various error types
+ * @param {string|Error|Object} error - The error to format
  * @returns {string} - Formatted error message
  */
-export const formatApiError = (error, defaultMessage = 'An error occurred while communicating with the server') => {
-  if (typeof error === 'string') {
-    return error;
+export function formatErrorMessage(error) {
+  if (!error) return 'An unknown error occurred';
+  
+  // Handle string errors
+  if (typeof error === 'string') return error;
+  
+  // Handle Error objects
+  if (error instanceof Error) return error.message;
+  
+  // Handle Axios error responses
+  if (error.response) {
+    const { status, data } = error.response;
+    
+    // Handle structured API error responses
+    if (data?.detail) return data.detail;
+    if (data?.message) return data.message;
+    if (data?.error) return data.error;
+    
+    // Handle status code
+    return `Request failed with status ${status}`;
   }
   
-  if (error?.response) {
-    // Axios error with response
-    const status = error.response.status;
-    const detail = error.response.data?.detail;
-    
-    if (detail) {
-      return detail;
-    }
-    
-    // Standard HTTP errors
-    if (status === 401) {
-      return 'Authentication failed. Please check your Sentry API token.';
-    }
-    if (status === 403) {
-      return 'You do not have permission to perform this action.';
-    }
-    if (status === 404) {
-      return 'The requested resource was not found.';
-    }
-    if (status === 429) {
-      return 'Rate limit exceeded. Please try again later.';
-    }
-    if (status >= 500) {
-      return 'The server encountered an error. Please try again later.';
-    }
-    
-    return `Server error (${status}): ${defaultMessage}`;
-  }
+  // Handle timeout
+  if (error.code === 'ECONNABORTED') return 'Request timed out';
   
-  if (error?.request) {
-    // Request was made but no response received
-    if (error.code === 'ECONNABORTED') {
-      return 'The request timed out. Please check your connection and try again.';
-    }
-    return 'No response received from server. Please check your connection.';
-  }
+  // Handle network errors
+  if (error.message) return error.message;
   
-  // Something happened in setting up the request
-  return error?.message || defaultMessage;
-};
+  // Fallback
+  return 'An unexpected error occurred';
+}
 
 /**
- * Create an error handler for API requests
- * @param {Object} options - Error handler options 
- * @param {string} options.operation - Name of the operation (for logging/display)
- * @param {string} [options.component] - Component name (for better error tracking)
- * @param {Function} [options.onError] - Optional callback for custom error handling
- * @returns {Function} - Error handler function that takes an error and handles it
+ * Handle form errors returned from API
+ * @param {Object} error - Error object from API response
+ * @param {function} setErrors - Form error setter function
  */
-export const createErrorHandler = ({ operation, component, onError }) => {
-  return (error) => {
-    const errorMessage = formatApiError(error);
-    
+export function handleFormErrors(error, setErrors) {
+  if (!error.response?.data) {
     showErrorNotification({
-      title: `${operation} Failed`,
-      error: errorMessage,
+      title: 'Form Submission Error',
+      error
+    });
+    return;
+  }
+  
+  const { data } = error.response;
+  
+  // Handle structured validation errors 
+  if (data.detail && Array.isArray(data.detail)) {
+    // FastAPI validation errors format
+    const formErrors = {};
+    
+    data.detail.forEach(item => {
+      // Convert from ['body', 'field_name'] to 'field_name'
+      const fieldName = item.loc[item.loc.length - 1];
+      formErrors[fieldName] = item.msg;
     });
     
-    // Log with component info for better debugging
-    console.error(`Error in ${component || 'unknown component'} during ${operation}:`, error);
+    setErrors(formErrors);
+  } else if (data.errors && typeof data.errors === 'object') {
+    // Generic {field: [error messages]} format
+    const formErrors = {};
     
-    // Optional callback for custom handling
-    if (onError && typeof onError === 'function') {
-      onError(error, errorMessage);
+    Object.entries(data.errors).forEach(([field, messages]) => {
+      formErrors[field] = Array.isArray(messages) ? messages[0] : messages;
+    });
+    
+    setErrors(formErrors);
+  } else {
+    // Fallback: show general error notification
+    showErrorNotification({
+      title: 'Form Submission Error',
+      error: data.detail || data.message || 'Form validation failed'
+    });
+  }
+}
+
+/**
+ * Create an error handler function for async operations
+ * @param {string} title - Error notification title
+ * @param {function} onError - Optional additional error handler
+ * @returns {function} - Error handler function
+ */
+export function createErrorHandler(title, onError) {
+  return (error) => {
+    showErrorNotification({ title, error });
+    
+    if (typeof onError === 'function') {
+      onError(error);
     }
-    
-    // Re-throw for promise chaining if needed
-    throw error;
   };
-};
+}

@@ -14,7 +14,7 @@ import logging
 import sys
 
 # Import routers and config
-from .routers import issues, events, ai, config
+from .routers import issues, events, ai, config, analyzers
 from .config import settings
 
 # Import error handling
@@ -79,6 +79,7 @@ app.include_router(config.router, prefix=API_PREFIX, tags=["Configuration & Stat
 app.include_router(issues.router, prefix=API_PREFIX, tags=["Issues"])
 app.include_router(events.router, prefix=API_PREFIX, tags=["Events"])
 app.include_router(ai.router, prefix=API_PREFIX, tags=["AI"])
+app.include_router(analyzers.router, prefix=API_PREFIX, tags=["Analyzers"])
 logger.info("API Routers included.")
 
 # --- CORS Preflight Handler ---
