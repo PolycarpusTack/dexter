@@ -3,6 +3,32 @@
 import axios from 'axios';
 import { API_BASE_URL, axiosConfig } from './config';
 
+// Create an axios instance with our configuration
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  ...axiosConfig,
+  headers: {
+    ...axiosConfig.headers,
+    'Accept': 'application/json',
+  }
+});
+
+// Add response interceptor to handle common errors
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API Error:', error);
+    
+    // Check for CORS errors
+    if (error.message === 'Network Error') {
+      console.warn('Possible CORS issue detected');
+      // You could add custom CORS error handling here
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
 /**
  * Fetch detailed information about a specific Sentry event
  * @param {Object} options - Query options
@@ -15,9 +41,8 @@ export const getEventDetails = async ({ organizationSlug, projectSlug, eventId }
   try {
     console.log(`Fetching event details for: ${organizationSlug}/${projectSlug}/events/${eventId}`);
     
-    const response = await axios.get(
-      `${API_BASE_URL}/organizations/${organizationSlug}/projects/${projectSlug}/events/${eventId}`,
-      axiosConfig
+    const response = await apiClient.get(
+      `/organizations/${organizationSlug}/projects/${projectSlug}/events/${eventId}`
     );
     
     console.log(`Successfully received event details for ${eventId}`);
@@ -47,9 +72,8 @@ export const getLatestEventForIssue = async ({ organizationSlug, projectSlug, is
     // Try using the new dedicated endpoint for the latest event
     try {
       console.log(`Trying latest-event endpoint...`);
-      const response = await axios.get(
-        `${API_BASE_URL}/organizations/${organizationSlug}/issues/${issueId}/latest-event`,
-        axiosConfig
+      const response = await apiClient.get(
+        `/organizations/${organizationSlug}/issues/${issueId}/latest-event`
       );
       
       if (response.data) {
@@ -64,9 +88,8 @@ export const getLatestEventForIssue = async ({ organizationSlug, projectSlug, is
     // Try using the events endpoint with 'latest' as event ID
     try {
       console.log(`Trying events/latest endpoint...`);
-      const response = await axios.get(
-        `${API_BASE_URL}/organizations/${organizationSlug}/issues/${issueId}/events/latest`,
-        axiosConfig
+      const response = await apiClient.get(
+        `/organizations/${organizationSlug}/issues/${issueId}/events/latest`
       );
       
       if (response.data) {
@@ -81,9 +104,8 @@ export const getLatestEventForIssue = async ({ organizationSlug, projectSlug, is
     // Try listing events and taking the first one
     try {
       console.log(`Trying to list events and use the first one...`);
-      const response = await axios.get(
-        `${API_BASE_URL}/organizations/${organizationSlug}/issues/${issueId}/events`,
-        axiosConfig
+      const response = await apiClient.get(
+        `/organizations/${organizationSlug}/issues/${issueId}/events`
       );
       
       if (response.data?.data && response.data.data.length > 0) {
@@ -98,9 +120,8 @@ export const getLatestEventForIssue = async ({ organizationSlug, projectSlug, is
     // Final attempt: try to get issue details directly
     try {
       console.log(`Trying direct issue details endpoint...`);
-      const response = await axios.get(
-        `${API_BASE_URL}/organizations/${organizationSlug}/issues/${issueId}`,
-        axiosConfig
+      const response = await apiClient.get(
+        `/organizations/${organizationSlug}/issues/${issueId}`
       );
       
       if (response.data) {
@@ -184,12 +205,9 @@ export const getIssueEvents = async ({ organizationSlug, issueId, cursor, enviro
     if (cursor) params.cursor = cursor;
     if (environment) params.environment = environment;
     
-    const response = await axios.get(
-      `${API_BASE_URL}/organizations/${organizationSlug}/issues/${issueId}/events`,
-      { 
-        ...axiosConfig,
-        params
-      }
+    const response = await apiClient.get(
+      `/organizations/${organizationSlug}/issues/${issueId}/events`,
+      { params }
     );
     
     console.log(`Successfully fetched events for issue ${issueId}`);
@@ -220,12 +238,9 @@ export const getIssueEvent = async ({ organizationSlug, issueId, eventId, enviro
     const params = {};
     if (environment) params.environment = environment;
     
-    const response = await axios.get(
-      `${API_BASE_URL}/organizations/${organizationSlug}/issues/${issueId}/events/${eventId}`,
-      { 
-        ...axiosConfig,
-        params
-      }
+    const response = await apiClient.get(
+      `/organizations/${organizationSlug}/issues/${issueId}/events/${eventId}`,
+      { params }
     );
     
     console.log(`Successfully fetched event ${eventId} for issue ${issueId}`);
@@ -252,10 +267,9 @@ export const updateIssueStatus = async ({ issueId, statusUpdatePayload }) => {
   try {
     console.log(`Updating issue status for ${issueId} to ${statusUpdatePayload.status}`);
     
-    const response = await axios.put(
-      `${API_BASE_URL}/issues/${issueId}/status`,
-      statusUpdatePayload,
-      axiosConfig
+    const response = await apiClient.put(
+      `/issues/${issueId}/status`,
+      statusUpdatePayload
     );
     
     console.log(`Successfully updated issue status`);

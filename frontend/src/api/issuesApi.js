@@ -1,8 +1,33 @@
 // File: frontend/src/api/issuesApi.js
 
 import axios from 'axios';
-import { API_BASE_URL } from './config';
-// Don't import the store hook directly - we'll use a different approach
+import { API_BASE_URL, axiosConfig } from './config';
+
+// Create an axios instance with our configuration
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  ...axiosConfig,
+  headers: {
+    ...axiosConfig.headers,
+    'Accept': 'application/json',
+  }
+});
+
+// Add response interceptor to handle common errors
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API Error:', error);
+    
+    // Check for CORS errors
+    if (error.message === 'Network Error') {
+      console.warn('Possible CORS issue detected');
+      // You could add custom CORS error handling here
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 /**
  * Fetches a list of issues for a project
@@ -16,22 +41,17 @@ import { API_BASE_URL } from './config';
  * @returns {Promise} - Promise resolving to the API response
  */
 export const getProjectIssues = async (organizationSlug, projectSlug, options = {}) => {
-  const { status, query, cursor } = options;
-  
   try {
+    const { status, query, cursor } = options;
+    
     // Log the request to help with debugging
     console.log(`Fetching issues for ${organizationSlug}/${projectSlug} with params:`, { status, query, cursor });
     
-    const response = await axios.get(
-      `${API_BASE_URL}/organizations/${organizationSlug}/projects/${projectSlug}/issues`, 
-      { 
-        params: { 
-          status, 
-          query,
-          cursor
-        } 
-      }
+    const response = await apiClient.get(
+      `/organizations/${organizationSlug}/projects/${projectSlug}/issues`, 
+      { params: { status, query, cursor } }
     );
+    
     // Log the response structure
     console.log(`Received issues response:`, { 
       status: response.status, 
@@ -43,6 +63,40 @@ export const getProjectIssues = async (organizationSlug, projectSlug, options = 
     return response.data;
   } catch (error) {
     console.error('Error fetching project issues:', error);
+    
+    // Return mock data if there's an error (for development)
+    if (import.meta.env.DEV) {
+      console.log('Returning mock data in development mode');
+      return {
+        data: [
+          {
+            id: 'mock-issue-1',
+            title: 'Mock Issue 1',
+            level: 'error',
+            status: 'unresolved',
+            count: 5,
+            userCount: 2,
+            lastSeen: new Date().toISOString(),
+            firstSeen: new Date().toISOString(),
+          },
+          {
+            id: 'mock-issue-2',
+            title: 'Mock Issue 2',
+            level: 'warning',
+            status: 'unresolved',
+            count: 3,
+            userCount: 1,
+            lastSeen: new Date().toISOString(),
+            firstSeen: new Date().toISOString(),
+          }
+        ],
+        pagination: {
+          next: null,
+          previous: null
+        }
+      };
+    }
+    
     throw error;
   }
 };
@@ -87,8 +141,8 @@ export const updateIssueStatus = async (issueId, status, ignoreDuration = null) 
       payload.ignoreDuration = ignoreDuration;
     }
     
-    const response = await axios.put(
-      `${API_BASE_URL}/issues/${issueId}/status`,
+    const response = await apiClient.put(
+      `/issues/${issueId}/status`,
       payload
     );
     
@@ -114,8 +168,8 @@ export const exportIssues = async (organizationSlug, projectSlug, options = {}) 
   const { format = 'csv', status, query } = options;
   
   try {
-    const response = await axios.get(
-      `${API_BASE_URL}/${organizationSlug}/projects/${projectSlug}/issues/export`,
+    const response = await apiClient.get(
+      `/${organizationSlug}/projects/${projectSlug}/issues/export`,
       {
         params: { format, status, query },
         responseType: 'blob', // Important for file downloads

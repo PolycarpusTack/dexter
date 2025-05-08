@@ -9,6 +9,8 @@ export const axiosConfig = {
     'Content-Type': 'application/json',
   },
   timeout: 30000, // 30 seconds
+  // Add withCredentials for CORS with credentials
+  withCredentials: false,
 };
 
 // Sentry Web URL for direct links

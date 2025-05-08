@@ -116,6 +116,14 @@ def format_validation_errors(exc: RequestValidationError) -> Dict[str, Any]:
     }
 
 
+def add_cors_headers(response: JSONResponse) -> JSONResponse:
+    """Add CORS headers to a response."""
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
+
 async def exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Global exception handler for all errors."""
     
@@ -125,7 +133,7 @@ async def exception_handler(request: Request, exc: Exception) -> JSONResponse:
         if exc.details:
             logger.debug(f"Error details: {exc.details}")
         
-        return JSONResponse(
+        response = JSONResponse(
             status_code=exc.status_code,
             content={
                 "detail": exc.message,
@@ -133,23 +141,25 @@ async def exception_handler(request: Request, exc: Exception) -> JSONResponse:
                 **({"details": exc.details} if exc.details else {})
             }
         )
+        return add_cors_headers(response)
     
     # Handle FastAPI/Starlette built-in HTTP exceptions
     if isinstance(exc, StarletteHTTPException):
         logger.warning(f"HTTP Exception {exc.status_code}: {exc.detail}")
-        return JSONResponse(
+        response = JSONResponse(
             status_code=exc.status_code,
             content={
                 "detail": exc.detail,
                 "code": "HTTP_ERROR",
             }
         )
+        return add_cors_headers(response)
     
     # Handle Pydantic validation errors
     if isinstance(exc, RequestValidationError):
         formatted_errors = format_validation_errors(exc)
         logger.warning(f"Validation Error: {formatted_errors}")
-        return JSONResponse(
+        response = JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "detail": formatted_errors["message"],
@@ -157,6 +167,7 @@ async def exception_handler(request: Request, exc: Exception) -> JSONResponse:
                 "details": formatted_errors["details"]
             }
         )
+        return add_cors_headers(response)
     
     # Unhandled exceptions (500 Internal Server Error)
     error_id = id(exc)  # Simple unique ID for the error instance
@@ -167,7 +178,7 @@ async def exception_handler(request: Request, exc: Exception) -> JSONResponse:
     )
     
     # In production, don't expose the actual error message/traceback
-    return JSONResponse(
+    response = JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "detail": "An unexpected error occurred",
@@ -175,3 +186,4 @@ async def exception_handler(request: Request, exc: Exception) -> JSONResponse:
             "error_id": str(error_id)  # Include error ID for debugging
         }
     )
+    return add_cors_headers(response)

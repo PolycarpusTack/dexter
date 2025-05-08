@@ -46,25 +46,43 @@ origins = [
     "http://localhost:3000",  # Default Create React App port
     "http://localhost:5173",  # Default Vite dev server port
     "http://localhost:5175",  # Your current Vite port
+    "http://localhost:5176",  # Additional port for testing
+    "http://localhost:5177",  # New port we're using
     "http://127.0.0.1:5175",  # Alternative localhost format
-    "*",  # Allow all origins during development
-    # Add production frontend URL(s) here later
+    "http://127.0.0.1:5176",  # Alternative localhost format
+    "http://127.0.0.1:5177",  # Alternative localhost format for new port
+    "*"  # Allow all origins during development for simplicity
 ]
+
+# Use CORSMiddleware with more permissive settings for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Simplify by allowing all origins during development
+    allow_origins=["*"],  # Allow all origins during development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
+    expose_headers=["*"]
 )
 
-# --- Custom CORS Middleware for Error Responses ---
+# --- Custom Middleware for CORS Headers ---
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
+    # Process the request
     response = await call_next(request)
+    
+    # Add CORS headers to every response
     response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+    
+    return response
+
+# --- CORS Preflight Handler ---
+@app.options("/{rest_of_path:path}")
+async def options_handler(request: Request, rest_of_path: str):
+    response = JSONResponse(content={"detail": "OK"})
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
     response.headers["Access-Control-Allow-Headers"] = "*"
     return response
 
@@ -85,15 +103,6 @@ app.include_router(analyzers.router, prefix=API_PREFIX, tags=["Analyzers"])
 # Add the enhanced analyzers router
 app.include_router(enhanced_analyzers.router, prefix=API_PREFIX, tags=["Enhanced Analyzers"])
 logger.info("API Routers included.")
-
-# --- CORS Preflight Handler ---
-@app.options("/{rest_of_path:path}")
-async def options_handler(request: Request, rest_of_path: str):
-    response = JSONResponse(content={"detail": "OK"})
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    return response
 
 # --- Root & Health Endpoints ---
 @app.get("/", tags=["Root"])

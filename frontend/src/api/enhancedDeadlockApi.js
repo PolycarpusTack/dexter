@@ -4,10 +4,34 @@
  * Enhanced API functions for deadlock analysis
  */
 import axios from 'axios';
+import { API_BASE_URL, axiosConfig } from './config';
 import { showErrorNotification } from '../utils/errorHandling';
 
-// API base URL from environment or default to localhost
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
+// Create an axios instance with our configuration
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  ...axiosConfig,
+  headers: {
+    ...axiosConfig.headers,
+    'Accept': 'application/json',
+  }
+});
+
+// Add response interceptor to handle common errors
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API Error:', error);
+    
+    // Check for CORS errors
+    if (error.message === 'Network Error') {
+      console.warn('Possible CORS issue detected');
+      // You could add custom CORS error handling here
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 /**
  * Analyze a deadlock for a specific event using the enhanced analyzer
@@ -21,12 +45,12 @@ export async function analyzeDeadlock(eventId, options = {}) {
   const { useEnhancedAnalysis = true, apiPath = 'enhanced-analyzers' } = options;
   
   try {
-    const url = `${API_BASE_URL}/${apiPath}/analyze-deadlock/${eventId}`;
+    const url = `/${apiPath}/analyze-deadlock/${eventId}`;
     
     // Track analysis start time for performance monitoring
     const startTime = performance.now();
     
-    const response = await axios.get(url);
+    const response = await apiClient.get(url);
     
     // Calculate analysis duration
     const duration = performance.now() - startTime;
@@ -60,7 +84,7 @@ export async function analyzeDeadlock(eventId, options = {}) {
  */
 export async function getLockCompatibilityMatrix() {
   try {
-    const response = await axios.get(`${API_BASE_URL}/enhanced-analyzers/lock-compatibility-matrix`);
+    const response = await apiClient.get(`/enhanced-analyzers/lock-compatibility-matrix`);
     return response.data;
   } catch (error) {
     const errorMessage = error.response?.data?.detail || error.message || 'Unknown error';
@@ -85,7 +109,7 @@ export async function getLockCompatibilityMatrix() {
  */
 export async function getDeadlockHistory(options = { days: 30 }) {
   try {
-    const response = await axios.get(`${API_BASE_URL}/enhanced-analyzers/deadlock-history`, {
+    const response = await apiClient.get(`/enhanced-analyzers/deadlock-history`, {
       params: { days: options.days }
     });
     return response.data;
@@ -168,50 +192,61 @@ export function exportDeadlockSVG(eventId, svgElement) {
   }
 }
 
-/**
- * Mock implementation for local development
- * This will be replaced with real API calls in production
- */
-export async function mockAnalyzeDeadlock(eventId, options = {}) {
-  console.log(`[Mock] Analyzing deadlock for event ${eventId} with options:`, options);
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Return different mock data based on options
-  if (options.useEnhancedAnalysis) {
-    return {
-      analysis: {
-        ...MOCK_ANALYSIS_DATA,
-        visualization_data: {
-          ...MOCK_VISUALIZATION_DATA,
-          severity: 75  // Enhanced version includes severity score
-        },
-        metadata: {
-          execution_time_ms: 235,
-          parser_version: "enhanced-1.0.0",
-          cycles_found: 1,
-          severity_score: 75
-        }
-      }
-    };
-  } else {
-    return {
-      analysis: MOCK_ANALYSIS_DATA
-    };
-  }
-}
+// Mock data for development - Defined in the correct order to avoid circular reference issues
 
-// Mock data for development
-const MOCK_ANALYSIS_DATA = {
-  visualization_data: MOCK_VISUALIZATION_DATA,
-  recommended_fix: MOCK_RECOMMENDATION,
-  transactions: MOCK_TRANSACTIONS,
-  locks: MOCK_LOCKS,
-  cycles: MOCK_CYCLES,
-  timestamp: new Date().toISOString()
-};
+// Define mock recommendation text first
+const MOCK_RECOMMENDATION = `
+## Deadlock Analysis
 
+This deadlock involves **2** processes that were attempting to access the following tables: **users, accounts**.
+
+### Root Cause
+
+The deadlock occurred because multiple transactions were trying to acquire locks (ShareLock) on the same tables but in different orders, creating a circular waiting pattern.
+
+The deadlock was caused by concurrent UPDATE statements that acquired row locks in different orders.
+
+### Recommended Solutions
+
+1. **Consistent Access Order**: Ensure all transactions access tables in the same order:
+   \`\`\`
+   accounts → users
+   \`\`\`
+
+2. **Row Locking Strategy**: For UPDATE operations:
+   - Consider using optimistic concurrency control instead of locks where possible
+   - Add \`FOR UPDATE SKIP LOCKED\` for queue-like workloads
+   - Add explicit transaction ordering in the application
+
+3. **Lock Mode Optimization**: Consider using less restrictive lock modes:
+   - Use \`FOR SHARE\` instead of \`FOR UPDATE\` when possible
+   - Use \`NOWAIT\` option to fail fast rather than deadlock
+   - Consider optimistic concurrency control where appropriate
+
+4. **Application Changes**: Review application code that accesses these tables:
+   - Look for functions/methods that update multiple tables
+   - Ensure all code paths use consistent table access ordering
+   - Consider using advisory locks for complex operations
+
+5. **Database Configuration**:
+   - Review and possibly adjust \`deadlock_timeout\` setting (current default is 1s)
+   - Consider setting appropriate \`statement_timeout\` to prevent long-running transactions
+   - Enable \`log_lock_waits\` to catch potential deadlock situations before they occur
+
+### Example Code Pattern
+
+Based on the queries involved, consider refactoring your transactions to follow this pattern:
+
+\`\`\`sql
+BEGIN;
+-- Always access tables in alphabetical order
+UPDATE accounts SET balance = balance - 100 WHERE user_id = 42;
+UPDATE users SET last_login = now() WHERE id = 42;
+COMMIT;
+\`\`\`
+`;
+
+// Define visualization data
 const MOCK_VISUALIZATION_DATA = {
   nodes: [
     {
@@ -325,6 +360,7 @@ const MOCK_VISUALIZATION_DATA = {
   severity: 75
 };
 
+// Define transaction data
 const MOCK_TRANSACTIONS = {
   '12345': {
     process_id: 12345,
@@ -352,6 +388,7 @@ const MOCK_TRANSACTIONS = {
   }
 };
 
+// Define locks data
 const MOCK_LOCKS = [
   {
     lock_type: 'relation',
@@ -383,6 +420,7 @@ const MOCK_LOCKS = [
   }
 ];
 
+// Define cycles data
 const MOCK_CYCLES = [
   {
     processes: [12345, 67890],
@@ -391,53 +429,46 @@ const MOCK_CYCLES = [
   }
 ];
 
-const MOCK_RECOMMENDATION = `
-## Deadlock Analysis
+// Define full analysis data object last, after all its dependencies are defined
+const MOCK_ANALYSIS_DATA = {
+  visualization_data: MOCK_VISUALIZATION_DATA,
+  recommended_fix: MOCK_RECOMMENDATION,
+  transactions: MOCK_TRANSACTIONS,
+  locks: MOCK_LOCKS,
+  cycles: MOCK_CYCLES,
+  timestamp: new Date().toISOString()
+};
 
-This deadlock involves **2** processes that were attempting to access the following tables: **users, accounts**.
-
-### Root Cause
-
-The deadlock occurred because multiple transactions were trying to acquire locks (ShareLock) on the same tables but in different orders, creating a circular waiting pattern.
-
-The deadlock was caused by concurrent UPDATE statements that acquired row locks in different orders.
-
-### Recommended Solutions
-
-1. **Consistent Access Order**: Ensure all transactions access tables in the same order:
-   \`\`\`
-   accounts → users
-   \`\`\`
-
-2. **Row Locking Strategy**: For UPDATE operations:
-   - Consider using optimistic concurrency control instead of locks where possible
-   - Add \`FOR UPDATE SKIP LOCKED\` for queue-like workloads
-   - Add explicit transaction ordering in the application
-
-3. **Lock Mode Optimization**: Consider using less restrictive lock modes:
-   - Use \`FOR SHARE\` instead of \`FOR UPDATE\` when possible
-   - Use \`NOWAIT\` option to fail fast rather than deadlock
-   - Consider optimistic concurrency control where appropriate
-
-4. **Application Changes**: Review application code that accesses these tables:
-   - Look for functions/methods that update multiple tables
-   - Ensure all code paths use consistent table access ordering
-   - Consider using advisory locks for complex operations
-
-5. **Database Configuration**:
-   - Review and possibly adjust \`deadlock_timeout\` setting (current default is 1s)
-   - Consider setting appropriate \`statement_timeout\` to prevent long-running transactions
-   - Enable \`log_lock_waits\` to catch potential deadlock situations before they occur
-
-### Example Code Pattern
-
-Based on the queries involved, consider refactoring your transactions to follow this pattern:
-
-\`\`\`sql
-BEGIN;
--- Always access tables in alphabetical order
-UPDATE accounts SET balance = balance - 100 WHERE user_id = 42;
-UPDATE users SET last_login = now() WHERE id = 42;
-COMMIT;
-\`\`\`
-`;
+/**
+ * Mock implementation for local development
+ * This will be replaced with real API calls in production
+ */
+export async function mockAnalyzeDeadlock(eventId, options = {}) {
+  console.log(`[Mock] Analyzing deadlock for event ${eventId} with options:`, options);
+  
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  // Return different mock data based on options
+  if (options.useEnhancedAnalysis) {
+    return {
+      analysis: {
+        ...MOCK_ANALYSIS_DATA,
+        visualization_data: {
+          ...MOCK_VISUALIZATION_DATA,
+          severity: 75  // Enhanced version includes severity score
+        },
+        metadata: {
+          execution_time_ms: 235,
+          parser_version: "enhanced-1.0.0",
+          cycles_found: 1,
+          severity_score: 75
+        }
+      }
+    };
+  } else {
+    return {
+      analysis: MOCK_ANALYSIS_DATA
+    };
+  }
+}

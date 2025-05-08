@@ -7,7 +7,8 @@ import axios from 'axios';
 import { showErrorNotification } from '../utils/errorHandling';
 
 // API base URL from environment or default to localhost
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
+// Use Vite's environment variable format
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 /**
  * Analyze a deadlock for a specific event
@@ -16,7 +17,7 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:800
  */
 export async function analyzeDeadlock(eventId) {
   try {
-    const response = await axios.get(`${API_BASE_URL}/analyze-deadlock/${eventId}`);
+    const response = await axios.get(`${API_BASE_URL}/analyzers/deadlock/${eventId}`);
     return response.data;
   } catch (error) {
     const errorMessage = error.response?.data?.detail || error.message || 'Unknown error';
@@ -83,28 +84,44 @@ export function exportDeadlockSVG(eventId, svgElement) {
   }
 }
 
-/**
- * Mock implementation for local development
- * This will be replaced with real API calls in production
- */
-export async function mockAnalyzeDeadlock(eventId) {
-  console.log(`[Mock] Analyzing deadlock for event ${eventId}`);
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  return {
-    analysis: {
-      visualization_data: MOCK_VISUALIZATION_DATA,
-      recommended_fix: MOCK_RECOMMENDATION,
-      transactions: MOCK_TRANSACTIONS,
-      locks: MOCK_LOCKS,
-      cycles: MOCK_CYCLES
-    }
-  };
-}
+// Mock data for development - Defined in the correct order to avoid circular reference issues
 
-// Mock data for development
+// Define Mock Recommendation first
+const MOCK_RECOMMENDATION = `
+## Deadlock Analysis
+
+This deadlock involves **2** processes that were attempting to access the following tables: **users, accounts**.
+
+### Root Cause
+
+The deadlock occurred because multiple transactions were trying to acquire locks on the same tables but in different orders, creating a circular waiting pattern.
+
+### Recommended Solutions
+
+1. **Consistent Access Order**: Ensure all transactions access tables in the same order:
+   \`\`\`
+   accounts → users
+   \`\`\`
+
+2. **Transaction Scope**: Reduce the scope of transactions to minimize lock contention:
+   - Keep transactions as short as possible
+   - Only lock the tables you actually need to modify
+
+3. **Lock Mode Optimization**: Consider using less restrictive lock modes:
+   - Use \`FOR SHARE\` instead of \`FOR UPDATE\` when possible
+   - Use \`NOWAIT\` option to fail fast rather than deadlock
+
+4. **Application Changes**: Review application code that accesses these tables:
+   - Look for functions/methods that update multiple tables
+   - Ensure all code paths use consistent table access ordering
+   - Consider using advisory locks for complex operations
+
+5. **Database Configuration**:
+   - Review and possibly adjust \`deadlock_timeout\` setting
+   - Consider setting appropriate \`statement_timeout\` to prevent long-running transactions
+`;
+
+// Define visualization data
 const MOCK_VISUALIZATION_DATA = {
   nodes: [
     {
@@ -210,6 +227,7 @@ const MOCK_VISUALIZATION_DATA = {
   ]
 };
 
+// Define transactions data
 const MOCK_TRANSACTIONS = {
   '12345': {
     process_id: 12345,
@@ -227,6 +245,7 @@ const MOCK_TRANSACTIONS = {
   }
 };
 
+// Define locks data
 const MOCK_LOCKS = [
   {
     lock_type: 'relation',
@@ -258,6 +277,7 @@ const MOCK_LOCKS = [
   }
 ];
 
+// Define cycles data
 const MOCK_CYCLES = [
   {
     processes: [12345, 67890],
@@ -265,36 +285,23 @@ const MOCK_CYCLES = [
   }
 ];
 
-const MOCK_RECOMMENDATION = `
-## Deadlock Analysis
-
-This deadlock involves **2** processes that were attempting to access the following tables: **users, accounts**.
-
-### Root Cause
-
-The deadlock occurred because multiple transactions were trying to acquire locks on the same tables but in different orders, creating a circular waiting pattern.
-
-### Recommended Solutions
-
-1. **Consistent Access Order**: Ensure all transactions access tables in the same order:
-   \`\`\`
-   accounts → users
-   \`\`\`
-
-2. **Transaction Scope**: Reduce the scope of transactions to minimize lock contention:
-   - Keep transactions as short as possible
-   - Only lock the tables you actually need to modify
-
-3. **Lock Mode Optimization**: Consider using less restrictive lock modes:
-   - Use \`FOR SHARE\` instead of \`FOR UPDATE\` when possible
-   - Use \`NOWAIT\` option to fail fast rather than deadlock
-
-4. **Application Changes**: Review application code that accesses these tables:
-   - Look for functions/methods that update multiple tables
-   - Ensure all code paths use consistent table access ordering
-   - Consider using advisory locks for complex operations
-
-5. **Database Configuration**:
-   - Review and possibly adjust \`deadlock_timeout\` setting
-   - Consider setting appropriate \`statement_timeout\` to prevent long-running transactions
-`;
+/**
+ * Mock implementation for local development
+ * This will be replaced with real API calls in production
+ */
+export async function mockAnalyzeDeadlock(eventId) {
+  console.log(`[Mock] Analyzing deadlock for event ${eventId}`);
+  
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  return {
+    analysis: {
+      visualization_data: MOCK_VISUALIZATION_DATA,
+      recommended_fix: MOCK_RECOMMENDATION,
+      transactions: MOCK_TRANSACTIONS,
+      locks: MOCK_LOCKS,
+      cycles: MOCK_CYCLES
+    }
+  };
+}

@@ -37,6 +37,43 @@ import {
 } from '@tabler/icons-react';
 
 /**
+ * Helper function to convert color to rgba
+ * This replaces theme.fn.rgba which isn't available in our Mantine version
+ */
+function rgba(color, alpha = 1) {
+  // If color is already rgba, just update the alpha
+  if (color.startsWith('rgba')) {
+    return color.replace(/[\d.]+\)$/g, `${alpha})`);
+  }
+  
+  // If color is rgb, convert to rgba
+  if (color.startsWith('rgb')) {
+    return color.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
+  }
+  
+  // If color is hex, convert to rgba
+  if (color.startsWith('#')) {
+    let r = 0, g = 0, b = 0;
+    
+    // Convert hex to rgb
+    if (color.length === 4) {
+      r = parseInt(color[1] + color[1], 16);
+      g = parseInt(color[2] + color[2], 16);
+      b = parseInt(color[3] + color[3], 16);
+    } else {
+      r = parseInt(color.slice(1, 3), 16);
+      g = parseInt(color.slice(3, 5), 16);
+      b = parseInt(color.slice(5, 7), 16);
+    }
+    
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  
+  // Default fallback
+  return `rgba(128, 128, 128, ${alpha})`;
+}
+
+/**
  * Enhanced interactive graph visualization of PostgreSQL deadlock with advanced features
  */
 function EnhancedGraphView({ data, isLoading }) {
@@ -116,7 +153,8 @@ function EnhancedGraphView({ data, isLoading }) {
         layout,
         physicsEnabled,
         chargeStrength,
-        theme
+        theme,
+        rgba
       }
     );
     
@@ -429,7 +467,7 @@ function EnhancedGraphView({ data, isLoading }) {
                 position: 'absolute',
                 bottom: '10px',
                 right: '10px',
-                background: theme.fn.rgba(theme.white, 0.9),
+                background: rgba(theme.white, 0.9),
                 padding: '8px',
                 borderRadius: theme.radius.sm,
                 border: `1px solid ${theme.colors.gray[2]}`,
@@ -522,7 +560,7 @@ function EnhancedGraphView({ data, isLoading }) {
  * Create the interactive deadlock visualization with enhanced features
  */
 function createDeadlockVisualization(svgElement, data, tooltipElement, options) {
-  const { layout = 'force', physicsEnabled = true, chargeStrength = -300, theme } = options;
+  const { layout = 'force', physicsEnabled = true, chargeStrength = -300, theme, rgba } = options;
   
   // Create SVG and get dimensions
   const svg = d3.select(svgElement);
@@ -604,8 +642,8 @@ function createDeadlockVisualization(svgElement, data, tooltipElement, options) 
     .attr('y2', '100%')
     .selectAll('stop')
     .data([
-      { offset: '0%', color: theme.fn.rgba(theme.colors.gray[2], 0.9) },
-      { offset: '100%', color: theme.fn.rgba(theme.colors.gray[4], 0.9) }
+      { offset: '0%', color: rgba(theme.colors.gray[2], 0.9) },
+      { offset: '100%', color: rgba(theme.colors.gray[4], 0.9) }
     ])
     .enter()
     .append('stop')
@@ -621,8 +659,8 @@ function createDeadlockVisualization(svgElement, data, tooltipElement, options) 
     .attr('y2', '100%')
     .selectAll('stop')
     .data([
-      { offset: '0%', color: theme.fn.rgba(theme.colors.blue[5], 0.9) },
-      { offset: '100%', color: theme.fn.rgba(theme.colors.blue[7], 0.9) }
+      { offset: '0%', color: rgba(theme.colors.blue[5], 0.9) },
+      { offset: '100%', color: rgba(theme.colors.blue[7], 0.9) }
     ])
     .enter()
     .append('stop')
@@ -638,8 +676,8 @@ function createDeadlockVisualization(svgElement, data, tooltipElement, options) 
     .attr('y2', '100%')
     .selectAll('stop')
     .data([
-      { offset: '0%', color: theme.fn.rgba(theme.colors.red[5], 0.9) },
-      { offset: '100%', color: theme.fn.rgba(theme.colors.red[7], 0.9) }
+      { offset: '0%', color: rgba(theme.colors.red[5], 0.9) },
+      { offset: '100%', color: rgba(theme.colors.red[7], 0.9) }
     ])
     .enter()
     .append('stop')
@@ -781,7 +819,7 @@ function createDeadlockVisualization(svgElement, data, tooltipElement, options) 
         .attr('y', -15)
         .attr('rx', 3)
         .attr('ry', 3)
-        .attr('fill', d.inCycle ? theme.fn.rgba(theme.colors.red[1], 0.8) : 'url(#table-gradient)')
+        .attr('fill', d.inCycle ? rgba(theme.colors.red[1], 0.8) : 'url(#table-gradient)')
         .attr('stroke', d.inCycle ? theme.colors.red[6] : theme.colors.gray[6])
         .attr('stroke-width', 1.5);
       
