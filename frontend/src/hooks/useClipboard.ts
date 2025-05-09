@@ -1,35 +1,55 @@
-// frontend/src/hooks/useClipboard.ts
+// File: src/hooks/useClipboard.ts
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { showSuccessNotification, showErrorNotification } from '../utils/errorHandling';
-import { UseClipboardOptions } from '../types/deadlock';
+
+export interface UseClipboardOptions {
+  /** Message to show on success */
+  successMessage?: string;
+  /** Message to show on error */
+  errorMessage?: string;
+  /** Duration to display success state (ms) */
+  successDuration?: number;
+  /** Whether to show a notification */
+  showNotification?: boolean;
+}
 
 /**
- * Custom hook for clipboard operations with error handling
- * and success feedback
+ * Hook for copying text to clipboard with success/error state
  * 
- * @returns Functions and state for clipboard operations
+ * @returns Object with copy function and status
  */
 export function useClipboard() {
-  const [isCopied, setIsCopied] = useState<boolean>(false);
+  const [isCopied, setIsCopied] = useState(false);
   
-  const copyToClipboard = useCallback(async (text: string, options: UseClipboardOptions = {}) => {
+  // Reset copied state after timeout
+  useEffect(() => {
+    if (isCopied) {
+      const timer = setTimeout(() => {
+        setIsCopied(false);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isCopied]);
+  
+  /**
+   * Copy text to clipboard
+   * 
+   * @param text - Text to copy
+   * @param options - Additional options
+   * @returns Promise resolving to success status
+   */
+  const copyToClipboard = useCallback(async (
+    text: string, 
+    options: UseClipboardOptions = {}
+  ): Promise<boolean> => {
     const {
       successMessage = 'Copied to clipboard',
       errorMessage = 'Failed to copy to clipboard',
-      successDuration = 2000,
-      showNotification = true
+      successDuration = 3000,
+      showNotification = false
     } = options;
-    
-    if (!text) {
-      if (showNotification) {
-        showErrorNotification({
-          title: 'Copy Failed',
-          message: 'Nothing to copy'
-        });
-      }
-      return false;
-    }
     
     try {
       await navigator.clipboard.writeText(text);
@@ -37,13 +57,17 @@ export function useClipboard() {
       
       if (showNotification) {
         showSuccessNotification({
-          title: 'Copied!',
-          message: successMessage
+          title: 'Copied',
+          message: successMessage,
+          autoClose: successDuration
         });
       }
       
-      // Reset after success duration
-      setTimeout(() => setIsCopied(false), successDuration);
+      // Reset after duration
+      setTimeout(() => {
+        setIsCopied(false);
+      }, successDuration);
+      
       return true;
     } catch (error) {
       console.error('Error copying to clipboard:', error);
@@ -51,43 +75,16 @@ export function useClipboard() {
       if (showNotification) {
         showErrorNotification({
           title: 'Copy Failed',
-          message: `${errorMessage}: ${(error as Error).message || 'Unknown error'}`
+          message: errorMessage,
+          error: error as Error
         });
-      }
-      
-      // Fallback to legacy method
-      try {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.style.position = 'fixed';  // Avoid scrolling to bottom
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        
-        const successful = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        
-        if (successful) {
-          setIsCopied(true);
-          if (showNotification) {
-            showSuccessNotification({
-              title: 'Copied!',
-              message: successMessage
-            });
-          }
-          setTimeout(() => setIsCopied(false), successDuration);
-          return true;
-        }
-      } catch (fallbackError) {
-        console.error('Fallback copying failed:', fallbackError);
       }
       
       return false;
     }
   }, []);
   
-  return {
-    isCopied,
-    copyToClipboard
-  };
+  return { isCopied, copyToClipboard };
 }
+
+export default useClipboard;

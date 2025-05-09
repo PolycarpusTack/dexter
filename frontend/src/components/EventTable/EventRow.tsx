@@ -1,6 +1,6 @@
 // frontend/src/components/EventTable/EventRow.tsx
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { 
   Group, 
   Text, 
@@ -23,12 +23,13 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { DeadlockColumn } from './columns';
 import { useAuditLog } from '../../hooks/useAuditLog';
-import { SentryEvent } from '../../types/deadlock';
+import { EventRowProps } from './types';
+import { EventTag } from '../../types/eventTypes';
 
-interface EventRowProps {
-  event: SentryEvent;
-  onClick?: (event: SentryEvent) => void;
-  onAction?: (action: string, event: SentryEvent) => void;
+interface ExtendedEventRowProps extends EventRowProps {
+  isSelected?: boolean;
+  'aria-selected'?: boolean;
+  onMouseEnter?: () => void;
 }
 
 /**
@@ -36,11 +37,14 @@ interface EventRowProps {
  * 
  * Renders a single event row in the EventTable with enhanced features
  * including the DeadlockColumn for PostgreSQL deadlock events.
+ * Supports keyboard navigation and selection state.
  */
-const EventRow: React.FC<EventRowProps> = ({ 
+const EventRow: React.FC<ExtendedEventRowProps> = ({ 
   event, 
   onClick, 
-  onAction 
+  onAction, 
+  isSelected = false,
+  ...otherProps
 }) => {
   const theme = useMantineTheme();
   const logEvent = useAuditLog('EventRow');
@@ -61,17 +65,10 @@ const EventRow: React.FC<EventRowProps> = ({
   }[level.toLowerCase()] || 'gray';
   
   // Handle row click
-  const handleRowClick = useCallback(() => {
+  const handleRowClick = (): void => {
     logEvent('event_row_click', { eventId: event.id });
     if (onClick) onClick(event);
-  }, [event, onClick, logEvent]);
-  
-  // Handle action click
-  const handleAction = useCallback((actionType: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onAction) onAction(actionType, event);
-    logEvent('event_action', { action: actionType, eventId: event.id });
-  }, [event, onAction, logEvent]);
+  };
   
   // Extract tags for display
   const tags = event.tags || [];
@@ -82,9 +79,12 @@ const EventRow: React.FC<EventRowProps> = ({
     <tr
       onClick={handleRowClick}
       style={{ 
-        cursor: 'pointer'
+        cursor: 'pointer',
+        backgroundColor: isSelected ? theme.colors.blue[0] : undefined,
+        outline: isSelected ? `2px solid ${theme.colors.blue[4]}` : undefined
       }}
       data-event-id={event.id}
+      {...otherProps}
     >
       {/* Status/Level indicator */}
       <td>
@@ -103,15 +103,21 @@ const EventRow: React.FC<EventRowProps> = ({
       {/* Tags */}
       <td>
         <Group spacing="xs">
-          {displayTags.map((tag, index) => (
-            <Badge 
-              key={`${tag.key}-${index}`}
-              size="sm" 
-              variant="outline"
-            >
-              {tag.key}: {tag.value}
-            </Badge>
-          ))}
+          {displayTags.map((tag, index) => {
+            const tagData = typeof tag === 'string' 
+              ? { key: tag, value: tag } 
+              : tag as EventTag;
+              
+            return (
+              <Badge 
+                key={`${tagData.key}-${index}`}
+                size="sm" 
+                variant="outline"
+              >
+                {tagData.key}: {tagData.value}
+              </Badge>
+            );
+          })}
           {hasMoreTags && (
             <Badge size="sm" variant="filled" color="gray">
               +{tags.length - 3} more
@@ -134,32 +140,44 @@ const EventRow: React.FC<EventRowProps> = ({
       
       {/* Actions */}
       <td>
-        <Group spacing="xs" position="right" noWrap>
+        <Group spacing="xs" position="right" style={{ whiteSpace: 'nowrap' }}>
           <Menu shadow="md" width={200} position="bottom-end">
             <Menu.Target>
-              <ActionIcon size="sm" variant="subtle">
+              <ActionIcon size="sm" variant="subtle" onClick={(e) => e.stopPropagation()}>
                 <IconDots size={14} />
               </ActionIcon>
             </Menu.Target>
             
-            <Menu.Dropdown>
+            <Menu.Dropdown onClick={(e) => e.stopPropagation()}>
               <Menu.Item 
                 icon={<IconEye size={14} />}
-                onClick={(e) => handleAction('view', e)}
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  if (onAction) onAction('view', event);
+                  logEvent('event_action', { action: 'view', eventId: event.id });
+                }}
               >
                 View Details
               </Menu.Item>
               
               <Menu.Item 
                 icon={<IconBookmark size={14} />}
-                onClick={(e) => handleAction('bookmark', e)}
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  if (onAction) onAction('bookmark', event);
+                  logEvent('event_action', { action: 'bookmark', eventId: event.id });
+                }}
               >
                 Bookmark
               </Menu.Item>
               
               <Menu.Item 
                 icon={<IconShare size={14} />}
-                onClick={(e) => handleAction('share', e)}
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  if (onAction) onAction('share', event);
+                  logEvent('event_action', { action: 'share', eventId: event.id });
+                }}
               >
                 Share
               </Menu.Item>
@@ -169,7 +187,11 @@ const EventRow: React.FC<EventRowProps> = ({
               <Menu.Item 
                 icon={<IconTrash size={14} />}
                 color="red"
-                onClick={(e) => handleAction('delete', e)}
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  if (onAction) onAction('delete', event);
+                  logEvent('event_action', { action: 'delete', eventId: event.id });
+                }}
               >
                 Delete
               </Menu.Item>

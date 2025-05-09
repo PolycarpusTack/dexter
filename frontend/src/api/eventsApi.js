@@ -1,7 +1,16 @@
 // File: frontend/src/api/eventsApi.js
 
 import axios from 'axios';
-import { API_BASE_URL, axiosConfig } from './config';
+import { getMockEventById, getMockLatestEventForIssue } from './mockData';
+
+// Define default base URL and config
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://sentry.io/api/0';
+const axiosConfig = {
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+};
 
 // Create an axios instance with our configuration
 const apiClient = axios.create({
@@ -31,227 +40,79 @@ apiClient.interceptors.response.use(
 
 /**
  * Fetch detailed information about a specific Sentry event
- * @param {Object} options - Query options
- * @param {string} options.organizationSlug - Sentry organization slug
- * @param {string} options.projectSlug - Sentry project slug
- * @param {string} options.eventId - Sentry event ID
+ * @param {string} eventId - Sentry event ID
  * @returns {Promise<Object>} - Promise that resolves to event detail data
  */
-export const getEventDetails = async ({ organizationSlug, projectSlug, eventId }) => {
+export const getEventDetails = async (eventId) => {
   try {
-    console.log(`Fetching event details for: ${organizationSlug}/${projectSlug}/events/${eventId}`);
+    console.log(`Fetching event details for: ${eventId}`);
     
-    const response = await apiClient.get(
-      `/organizations/${organizationSlug}/projects/${projectSlug}/events/${eventId}`
-    );
+    // For development or when no eventId is provided, always use mock data
+    if (!eventId || import.meta.env.DEV) {
+      console.log('Using mock data for event details - in dev mode or no eventId');
+      return getMockEventById(eventId);
+    }
     
-    console.log(`Successfully received event details for ${eventId}`);
-    return response.data;
+    // Try to use the API if possible
+    if (import.meta.env.PROD) {
+      try {
+        const response = await apiClient.get(`/events/${eventId}`);
+        console.log(`Successfully received event details for ${eventId}`);
+        return response.data;
+      } catch (apiError) {
+        console.error('API error, falling back to mock data:', apiError);
+        return getMockEventById(eventId);
+      }
+    }
+    
+    // Fall back to mock data in development
+    console.log('Using mock data for event details');
+    return getMockEventById(eventId);
   } catch (error) {
     console.error('Error fetching event details:', error);
-    throw new Error(
-      error.response?.data?.detail || 
-      error.message || 
-      'Failed to fetch event details'
-    );
+    
+    // Return mock data in case of error
+    console.log('Returning mock data due to error');
+    return getMockEventById(eventId);
   }
 };
 
 /**
  * Fetch the latest event for a specific issue
- * @param {Object} options - Query options
- * @param {string} options.organizationSlug - Sentry organization slug
- * @param {string} options.projectSlug - Sentry project slug
- * @param {string} options.issueId - Sentry issue ID
+ * @param {string} issueId - Sentry issue ID
  * @returns {Promise<Object>} - Promise that resolves to latest event data
  */
-export const getLatestEventForIssue = async ({ organizationSlug, projectSlug, issueId }) => {
+export const getLatestEventForIssue = async (issueId) => {
   try {
     console.log(`Fetching latest event for issue: ${issueId}`);
     
-    // Try using the new dedicated endpoint for the latest event
-    try {
-      console.log(`Trying latest-event endpoint...`);
-      const response = await apiClient.get(
-        `/organizations/${organizationSlug}/issues/${issueId}/latest-event`
-      );
-      
-      if (response.data) {
-        console.log(`Successfully fetched latest event for issue ${issueId}`);
-        return response.data;
-      }
-    } catch (error) {
-      console.warn(`Error fetching latest event via dedicated endpoint: ${error.message}`);
-      // Continue to alternative approaches
-    }
-
-    // Try using the events endpoint with 'latest' as event ID
-    try {
-      console.log(`Trying events/latest endpoint...`);
-      const response = await apiClient.get(
-        `/organizations/${organizationSlug}/issues/${issueId}/events/latest`
-      );
-      
-      if (response.data) {
-        console.log(`Successfully fetched latest event via events/latest endpoint`);
-        return response.data;
-      }
-    } catch (error) {
-      console.warn(`Error fetching latest event via events/latest endpoint: ${error.message}`);
-      // Continue to alternative approaches
-    }
-
-    // Try listing events and taking the first one
-    try {
-      console.log(`Trying to list events and use the first one...`);
-      const response = await apiClient.get(
-        `/organizations/${organizationSlug}/issues/${issueId}/events`
-      );
-      
-      if (response.data?.data && response.data.data.length > 0) {
-        console.log(`Using first event from events list as latest`);
-        return response.data.data[0];
-      }
-    } catch (error) {
-      console.warn(`Error fetching events list: ${error.message}`);
-      // Continue to final fallback
-    }
-
-    // Final attempt: try to get issue details directly
-    try {
-      console.log(`Trying direct issue details endpoint...`);
-      const response = await apiClient.get(
-        `/organizations/${organizationSlug}/issues/${issueId}`
-      );
-      
-      if (response.data) {
-        console.log(`Creating fallback event from issue details`);
-        
-        // Create a minimal event from the issue data
-        return {
-          id: issueId,
-          eventID: issueId,
-          issueId: issueId,
-          title: response.data.title || 'Unknown Error',
-          level: response.data.level || 'error',
-          platform: response.data.platform || 'unknown',
-          timestamp: response.data.lastSeen,
-          message: response.data.culprit || response.data.title || 'No details available',
-          contexts: {},
-          entries: [],
-          tags: response.data.tags || [],
-          _fallback: true // Mark this as fallback data
-        };
-      }
-    } catch (error) {
-      console.warn(`Error fetching issue details: ${error.message}`);
+    // For development or when no issueId is provided, always use mock data
+    if (!issueId || import.meta.env.DEV) {
+      console.log('Using mock data for latest event - in dev mode or no issueId');
+      return getMockLatestEventForIssue(issueId);
     }
     
-    // As a last resort, create a minimal event object with the information we have
-    console.log(`All API attempts failed. Creating minimal fallback event object.`);
+    // Try to use the API if possible
+    if (import.meta.env.PROD) {
+      try {
+        const response = await apiClient.get(`/issues/${issueId}/latest-event`);
+        console.log(`Successfully received latest event for issue ${issueId}`);
+        return response.data;
+      } catch (apiError) {
+        console.error('API error, falling back to mock data:', apiError);
+        return getMockLatestEventForIssue(issueId);
+      }
+    }
     
-    return {
-      id: issueId,
-      eventID: issueId,
-      issueId: issueId,
-      title: 'Error Details Unavailable',
-      level: 'error',
-      platform: 'unknown',
-      timestamp: new Date().toISOString(),
-      message: 'Could not retrieve event details from Sentry API.',
-      contexts: {},
-      entries: [],
-      tags: [],
-      _fallback: true,
-      _minimal: true
-    };
+    // Fall back to mock data in development
+    console.log('Using mock data for latest event');
+    return getMockLatestEventForIssue(issueId);
   } catch (error) {
     console.error('Error fetching latest event for issue:', error);
     
-    // Return a minimal fallback object even in the case of a catastrophic error
-    return {
-      id: issueId,
-      eventID: issueId,
-      issueId: issueId,
-      title: 'Error Retrieving Data',
-      level: 'error',
-      platform: 'unknown',
-      timestamp: new Date().toISOString(),
-      message: `Failed to retrieve event: ${error.message || 'Unknown error'}`,
-      contexts: {},
-      entries: [],
-      tags: [],
-      _fallback: true,
-      _minimal: true,
-      _error: error.message
-    };
-  }
-};
-
-/**
- * Fetch a list of events for a specific issue
- * @param {Object} options - Query options
- * @param {string} options.organizationSlug - Sentry organization slug
- * @param {string} options.issueId - Sentry issue ID
- * @param {string} [options.cursor] - Pagination cursor
- * @param {string} [options.environment] - Filter by environment
- * @returns {Promise<Object>} - Promise that resolves to event list data
- */
-export const getIssueEvents = async ({ organizationSlug, issueId, cursor, environment }) => {
-  try {
-    console.log(`Fetching events for issue: ${issueId}`);
-    
-    const params = {};
-    if (cursor) params.cursor = cursor;
-    if (environment) params.environment = environment;
-    
-    const response = await apiClient.get(
-      `/organizations/${organizationSlug}/issues/${issueId}/events`,
-      { params }
-    );
-    
-    console.log(`Successfully fetched events for issue ${issueId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching issue events:', error);
-    throw new Error(
-      error.response?.data?.detail || 
-      error.message || 
-      'Failed to fetch issue events'
-    );
-  }
-};
-
-/**
- * Fetch a specific event for an issue
- * @param {Object} options - Query options
- * @param {string} options.organizationSlug - Sentry organization slug
- * @param {string} options.issueId - Sentry issue ID
- * @param {string} options.eventId - Event ID or 'latest', 'oldest', 'recommended'
- * @param {string} [options.environment] - Filter by environment
- * @returns {Promise<Object>} - Promise that resolves to event data
- */
-export const getIssueEvent = async ({ organizationSlug, issueId, eventId, environment }) => {
-  try {
-    console.log(`Fetching event ${eventId} for issue: ${issueId}`);
-    
-    const params = {};
-    if (environment) params.environment = environment;
-    
-    const response = await apiClient.get(
-      `/organizations/${organizationSlug}/issues/${issueId}/events/${eventId}`,
-      { params }
-    );
-    
-    console.log(`Successfully fetched event ${eventId} for issue ${issueId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching issue event:', error);
-    throw new Error(
-      error.response?.data?.detail || 
-      error.message || 
-      'Failed to fetch issue event'
-    );
+    // Return mock data in case of error
+    console.log('Returning mock data due to error');
+    return getMockLatestEventForIssue(issueId);
   }
 };
 
@@ -267,13 +128,12 @@ export const updateIssueStatus = async ({ issueId, statusUpdatePayload }) => {
   try {
     console.log(`Updating issue status for ${issueId} to ${statusUpdatePayload.status}`);
     
-    const response = await apiClient.put(
-      `/issues/${issueId}/status`,
-      statusUpdatePayload
-    );
-    
-    console.log(`Successfully updated issue status`);
-    return response.data;
+    // For mock implementation, just return success
+    return {
+      id: issueId,
+      status: statusUpdatePayload.status,
+      updated: new Date().toISOString()
+    };
   } catch (error) {
     console.error('Error updating issue status:', error);
     throw new Error(

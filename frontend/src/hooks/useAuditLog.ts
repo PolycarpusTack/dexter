@@ -1,61 +1,61 @@
-// frontend/src/hooks/useAuditLog.ts
+// File: src/hooks/useAuditLog.ts
 
 import { useCallback } from 'react';
-import { useAppStore } from '../store/appStore';
-import { AuditLogEvent } from '../types/deadlock';
+import useAppStore from '../store/appStore';
+
+export interface AuditLogEvent {
+  timestamp: string;
+  component: string;
+  action: string;
+  details: Record<string, any>;
+}
 
 /**
- * Hook for audit logging user interactions
+ * Hook for logging user actions for audit purposes
  * 
- * @param componentName Name of the component using this hook
- * @returns Log function
+ * @param component - Component name for the log source
+ * @returns Function to log events
  */
-export function useAuditLog(componentName: string) {
-  // Get current user information from store
-  const userId = useAppStore(state => state.userInfo?.id || 'anonymous');
-  const organizationId = useAppStore(state => state.organization?.id || 'unknown');
+export function useAuditLog(component: string) {
+  const { userId, organizationId } = useAppStore(state => ({
+    userId: state.userId,
+    organizationId: state.organizationId
+  }));
   
   /**
-   * Log an audit event
+   * Log an action with details
    * 
-   * @param action The action being performed
-   * @param details Additional details about the action
-   * @returns The created audit event object
+   * @param action - Action name
+   * @param details - Additional details
    */
-  const logEvent = useCallback((action: string, details: Record<string, any> = {}) => {
-    const timestamp = new Date().toISOString();
-    const auditEvent: AuditLogEvent = {
-      timestamp,
-      userId,
-      organizationId,
-      component: componentName,
+  const logEvent = useCallback((
+    action: string,
+    details: Record<string, any> = {}
+  ) => {
+    // Create audit log event
+    const event: AuditLogEvent = {
+      timestamp: new Date().toISOString(),
+      component,
       action,
-      details
+      details: {
+        ...details,
+        userId,
+        organizationId
+      }
     };
     
     // In development, log to console
     if (process.env.NODE_ENV === 'development') {
-      console.log('[Audit]', auditEvent);
+      console.debug(`[AuditLog] ${component}:${action}`, event);
     }
     
-    // TODO: In the future, send to backend API
-    // Currently just storing in localStorage for development/demo purposes
-    try {
-      const existingLogsStr = localStorage.getItem('dexterAuditLogs');
-      const existingLogs: AuditLogEvent[] = existingLogsStr ? JSON.parse(existingLogsStr) : [];
-      
-      existingLogs.push(auditEvent);
-      // Keep only the last 100 events to avoid localStorage size limits
-      if (existingLogs.length > 100) {
-        existingLogs.shift();
-      }
-      localStorage.setItem('dexterAuditLogs', JSON.stringify(existingLogs));
-    } catch (error) {
-      console.error('Error storing audit log:', error);
-    }
+    // TODO: Send to backend API or analytics service in production
+    // This would typically use an API call to store the audit trail
     
-    return auditEvent;
-  }, [componentName, userId, organizationId]);
+    return event;
+  }, [component, userId, organizationId]);
   
   return logEvent;
 }
+
+export default useAuditLog;

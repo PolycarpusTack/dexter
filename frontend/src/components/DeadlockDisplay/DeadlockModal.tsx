@@ -23,7 +23,6 @@ import {
   IconDownload,
   IconClipboard,
   IconCheck,
-  IconHistory,
   IconMaximize,
   IconMinimize,
   IconChevronDown,
@@ -46,11 +45,11 @@ import { analyzeDeadlock, exportDeadlockSVG } from '../../api/enhancedDeadlockAp
 import { useQuery } from '@tanstack/react-query';
 import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling';
 
-// Import error boundary component (assuming it exists)
-import { ErrorBoundary } from '../ErrorHandling/ErrorBoundary';
+// Import error boundary component
+import { ErrorBoundary } from '../ErrorHandling';
 
 // Import types
-import { SentryEvent, DeadlockAnalysisResponse } from '../../types/deadlock';
+import { SentryEvent } from '../../types/deadlock';
 
 // Import schema validation
 import { safeValidateDeadlockAnalysisResponse } from '../../schemas/deadlockSchemas';
@@ -128,14 +127,13 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
     data: deadlockData,
     isLoading,
     isError,
-    error,
     refetch
   } = useQuery({
     queryKey: ['deadlockAnalysis', uniqueId, useEnhancedAnalysis], 
     queryFn: async () => {
       const response = await analyzeDeadlock(eventId, { 
-        useEnhancedAnalysis,
-        apiPath: useEnhancedAnalysis ? 'enhanced-analyzers' : 'analyzers'
+        useEnhancedAnalysis
+        // We no longer need to specify apiPath as it's handled in the API function
       });
       
       // Validate the response with Zod schema
@@ -237,8 +235,8 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
       }}
     >
       {/* Controls */}
-      <Group position="apart" mb="md">
-        <Group spacing="xs">
+      <Group justify="apart" mb="md">
+        <Group gap="xs">
           <Switch
             size="xs"
             label="Enhanced Analysis"
@@ -258,7 +256,7 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
           />
         </Group>
         
-        <Group spacing="xs">
+        <Group gap="xs">
           <Tooltip label="Refresh Analysis">
             <ActionIcon 
               onClick={() => {
@@ -298,7 +296,7 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
       
       {/* Analysis metadata */}
       {deadlockData?.analysis?.metadata && (
-        <Group spacing="xs" position="right" mb="xs">
+        <Group gap="xs" justify="right" mb="xs">
           <Text size="xs" c="dimmed">
             Analysis time: {deadlockData.analysis.metadata.execution_time_ms}ms
           </Text>
@@ -309,7 +307,7 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
       )}
       
       {/* Tabs and content */}
-      <Tabs value={activeTab} onChange={handleTabChange} mb="md">
+      <Tabs value={activeTab} onChange={(value: string | null) => handleTabChange(value || '')} mb="md">
         <Tabs.List>
           <Tabs.Tab 
             value="graph"
@@ -342,7 +340,7 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
       >
         {activeTab === 'graph' && (
           <ErrorBoundary
-            FallbackComponent={GraphErrorFallback}
+            fallback={<GraphErrorFallback />}
             onReset={() => {
               // Reset error state and try again
               refetch();
@@ -358,7 +356,7 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
         
         {activeTab === 'tables' && (
           <ErrorBoundary
-            FallbackComponent={TableErrorFallback}
+            fallback={<TableErrorFallback />}
             onReset={() => {
               refetch();
               logEvent('reset_error', { component: 'tables', eventId });
@@ -375,14 +373,14 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
         
         {activeTab === 'recommendation' && (
           <ErrorBoundary
-            FallbackComponent={RecommendationErrorFallback}
+            fallback={<RecommendationErrorFallback />}
             onReset={() => {
               refetch();
               logEvent('reset_error', { component: 'recommendation', eventId });
             }}
           >
             <Box>
-              <Group position="right" mb="sm">
+              <Group justify="right" mb="sm">
                 <Button
                   size="xs"
                   variant="light"
@@ -394,10 +392,13 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
                 </Button>
               </Group>
               <RecommendationPanel 
-                data={{
-                  ...deadlockData?.analysis?.visualization_data,
-                  recommendedFix: maskText(deadlockData?.analysis?.recommended_fix)
-                }} 
+                data={deadlockData ? {
+                  recommendedFix: maskText(deadlockData.analysis.recommended_fix || ''),
+                  processes: deadlockData.analysis.visualization_data.processes || [],
+                  relations: deadlockData.analysis.visualization_data.relations,
+                  deadlockChain: deadlockData.analysis.visualization_data.deadlockChain,
+                  pattern: deadlockData.analysis.visualization_data.pattern
+                } as any : undefined} 
                 isLoading={isLoading}
                 isMasked={isMasked}
               />

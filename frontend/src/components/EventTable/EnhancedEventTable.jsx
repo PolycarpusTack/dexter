@@ -45,6 +45,7 @@ import { ErrorBoundary } from '../ErrorHandling';
 import ErrorFallback from '../ErrorHandling/ErrorFallback';
 import EventRow from './EventRow';
 import { useAuditLog } from '../../hooks/useAuditLog';
+import './EventTable.css';
 
 /**
  * Enhanced Event Table Component
@@ -70,8 +71,20 @@ const EnhancedEventTable = forwardRef(({
   const [sortBy, setSortBy] = React.useState('timestamp');
   const [sortDirection, setSortDirection] = React.useState('desc');
   
-  // Get organization from global state
-  const organizationId = useAppStore(state => state.organization?.id);
+  // Get organization and project from global state
+  const organizationIdFromStore = useAppStore(state => state.organization?.id || state.organizationSlug);
+  const projectIdFromStore = useAppStore(state => state.project?.id || state.projectSlug);
+  
+  // Use provided projectId prop or fall back to store value
+  const effectiveProjectId = projectId || projectIdFromStore;
+  const effectiveOrgId = organizationIdFromStore;
+  
+  // Add debug message to help users understand the issue
+  useEffect(() => {
+    if (!effectiveOrgId || !effectiveProjectId) {
+      console.log("Organization or Project not set. Using mock data for development.");
+    }
+  }, [effectiveOrgId, effectiveProjectId]);
   
   // Fetch events/issues data
   const { 
@@ -80,10 +93,10 @@ const EnhancedEventTable = forwardRef(({
     error, 
     refetch 
   } = useQuery({
-    queryKey: ['issues', projectId, page, search, levelFilter, sortBy, sortDirection, timeRange],
+    queryKey: ['issues', effectiveProjectId, page, search, levelFilter, sortBy, sortDirection, timeRange],
     queryFn: () => fetchIssuesList({
-      organizationId,
-      projectId,
+      organizationId: effectiveOrgId || 'default',
+      projectId: effectiveProjectId || 'default',
       timeRange,
       query: search,
       level: levelFilter,
@@ -92,7 +105,9 @@ const EnhancedEventTable = forwardRef(({
       page,
       perPage: maxItems
     }),
-    enabled: !!projectId && !!organizationId,
+    // Allow the query to run even if we don't have real org/project IDs
+    // This will use mock data in development mode
+    enabled: true,
     refetchInterval: autoRefresh ? 30000 : false, // Auto refresh every 30 seconds if enabled
   });
   
@@ -130,6 +145,10 @@ const EnhancedEventTable = forwardRef(({
   
   // Handle event row click
   const handleEventClick = useCallback((event) => {
+    console.log("Event clicked in table:", event.id);
+    // Update the application store
+    useAppStore.getState().setSelectedIssue(event.id);
+    // Also call the prop callback if provided
     if (onEventSelect) {
       onEventSelect(event);
     }
@@ -257,14 +276,14 @@ const EnhancedEventTable = forwardRef(({
                 <tr>
                   <th style={{ width: 40 }}></th>
                   <th style={{ minWidth: 300 }}>
-                    <Group spacing="xs" noWrap onClick={() => handleSortChange('title')}>
+                    <Group spacing="xs" style={{ whiteSpace: 'nowrap' }} onClick={() => handleSortChange('title')}>
                       <Text size="sm">Message</Text>
                       {renderSortIcon('title')}
                     </Group>
                   </th>
                   <th style={{ minWidth: 150 }}>Tags</th>
                   <th style={{ width: 120 }}>
-                    <Group spacing="xs" noWrap onClick={() => handleSortChange('timestamp')}>
+                    <Group spacing="xs" style={{ whiteSpace: 'nowrap' }} onClick={() => handleSortChange('timestamp')}>
                       <Text size="sm">When</Text>
                       {renderSortIcon('timestamp')}
                     </Group>
@@ -285,7 +304,7 @@ const EnhancedEventTable = forwardRef(({
                     <td colSpan={6}>
                       <EmptyState 
                         title="No events found"
-                        description="Try adjusting your search or filter criteria"
+                        message="Try adjusting your search or filter criteria"
                         icon={<IconAlertCircle size={40} />}
                       />
                     </td>

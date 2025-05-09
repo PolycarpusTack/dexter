@@ -1,7 +1,7 @@
 // File: frontend/src/components/EventTable/EventTable.jsx
 
 import React, { forwardRef } from 'react';
-import EnhancedEventTable from './EnhancedEventTable';
+import EnhancedEventTable from './EnhancedEventTable.jsx';
 
 /**
  * EventTable component - wrapper around the enhanced implementation

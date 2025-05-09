@@ -1,0 +1,65 @@
+/* Event Table styling */
+
+/* Container */
+.keyboard-navigable-table {
+  outline: none;
+}
+
+.keyboard-navigable-table:focus {
+  outline: 2px solid var(--mantine-color-blue-5);
+  border-radius: 4px;
+}
+
+/* Table row styles */
+.keyboard-navigable-table tr[aria-selected="true"] {
+  background-color: var(--mantine-color-blue-0);
+  outline: 2px solid var(--mantine-color-blue-4);
+}
+
+.keyboard-navigable-table tr:hover {
+  background-color: var(--mantine-color-gray-0);
+}
+
+/* Table cell padding */
+.keyboard-navigable-table td {
+  padding: 10px;
+}
+
+/* Focus visible style */
+.keyboard-navigable-table:focus tr[aria-selected="true"] {
+  background-color: var(--mantine-color-blue-1);
+  outline: 2px solid var(--mantine-color-blue-6);
+}
+
+/* Remove dotted outline from buttons when clicked */
+button:focus {
+  outline: none;
+}
+
+/* Add visual feedback for keyboard focus */
+button:focus-visible {
+  outline: 2px solid var(--mantine-color-blue-5);
+  outline-offset: 2px;
+}
+
+/* Skip links for improved accessibility */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--mantine-color-blue-6);
+  color: white;
+  padding: 8px;
+  z-index: 100;
+  transition: top 0.1s ease-in-out;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Accessibility focus state */
+*:focus-visible {
+  outline: 2px solid var(--mantine-color-blue-5);
+  outline-offset: 2px;
+}

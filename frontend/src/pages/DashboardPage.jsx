@@ -1,6 +1,6 @@
 // File: frontend/src/pages/DashboardPage.jsx
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   Grid, 
   Paper, 
@@ -12,14 +12,16 @@ import {
   Breadcrumbs,
   Anchor,
   Flex,
-  Box
+  Box,
+  Alert
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { 
   IconHome, 
   IconChevronRight, 
   IconBug,
-  IconAlertCircle
+  IconAlertCircle,
+  IconInfoCircle
 } from '@tabler/icons-react';
 import EventTable from '../components/EventTable';
 import EventDetail from '../components/EventDetail';
@@ -28,6 +30,7 @@ import ErrorFallback from '../components/ErrorHandling/ErrorFallback';
 import InfoTooltip from '../components/UI/InfoTooltip';
 import AccessibleIcon from '../components/UI/AccessibleIcon';
 import useAppStore from '../store/appStore';
+import SettingsInput from '../components/Settings/SettingsInput';
 
 function DashboardPage() {
   const theme = useMantineTheme();
@@ -35,12 +38,22 @@ function DashboardPage() {
   const eventTableRef = useRef(null);
   const eventDetailRef = useRef(null);
   
+  // Get the selected event ID from the store instead of managing it locally
+  const selectedEventId = useAppStore(state => state.selectedEventId);
+  
   const { organizationSlug, projectSlug } = useAppStore(
     (state) => ({
       organizationSlug: state.organizationSlug,
       projectSlug: state.projectSlug
     })
   );
+
+  // Handler for event selection
+  const handleEventSelect = (event) => {
+    console.log("Event selected in Dashboard:", event.id);
+    // The actual state update happens in the EventTable component
+    // which calls setSelectedIssue on the app store
+  };
 
   // Create breadcrumb items based on available organization/project info
   const breadcrumbItems = [
@@ -150,6 +163,22 @@ function DashboardPage() {
       </Paper>
       
       {/* Main content */}
+      <SettingsInput />
+      
+      {!organizationSlug || !projectSlug ? (
+        <Alert
+          icon={<IconInfoCircle size={16} />}
+          title="Using Mock Data"
+          color="blue"
+          mb="md"
+        >
+          <Text size="sm">
+            No Sentry organization or project configured. Using mock data for development.
+            Configure Sentry settings above to connect to your own data.
+          </Text>
+        </Alert>
+      ) : null}
+      
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, md: 7 }}>
           <ErrorBoundary FallbackComponent={ErrorFallback}>
@@ -177,7 +206,10 @@ function DashboardPage() {
                   overflow: 'auto',
                 }}
               >
-                <EventTable ref={eventTableRef} />
+                <EventTable 
+                  ref={eventTableRef} 
+                  onEventSelect={handleEventSelect}
+                />
               </Box>
             </Paper>
           </ErrorBoundary>
@@ -204,7 +236,10 @@ function DashboardPage() {
                   overflow: 'auto',
                 }}
               >
-                <EventDetail ref={eventDetailRef} />
+                <EventDetail 
+                  ref={eventDetailRef} 
+                  eventId={selectedEventId}
+                />
               </Box>
             </Paper>
           </ErrorBoundary>

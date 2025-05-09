@@ -1,140 +1,110 @@
 // File: src/components/ErrorHandling/RefreshableContainer.tsx
 
-import React, { useState } from 'react';
-import { Paper, Button, Group, Stack, Text, Box, Loader, Alert } from '@mantine/core';
-import { IconRefresh, IconAlertCircle } from '@tabler/icons-react';
-import ErrorBoundary from './ErrorBoundary';
-import { useErrorHandler } from '../../hooks/useErrorHandler';
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  Paper, 
+  Text, 
+  Group, 
+  ActionIcon, 
+  Tooltip, 
+  Loader,
+  useMantineTheme,
+  Box
+} from '@mantine/core';
+import { IconRefresh } from '@tabler/icons-react';
+import { RefreshableContainerProps } from '../../types/errorHandling';
 
 /**
- * Props for the RefreshableContainer component
- */
-export interface RefreshableContainerProps {
-  /** Component title */
-  title?: string;
-  /** Children to render */
-  children: React.ReactNode;
-  /** Function to call when refreshing */
-  onRefresh?: () => Promise<any>;
-  /** Whether to refresh automatically on mount */
-  refreshOnMount?: boolean;
-  /** Whether to show refresh button */
-  showRefreshButton?: boolean;
-  /** Additional actions to show in the header */
-  actions?: React.ReactNode;
-  /** Optional ID for the container */
-  id?: string;
-  /** Additional class names */
-  className?: string;
-  /** Additional styles */
-  style?: React.CSSProperties;
-}
-
-/**
- * A container component that provides refresh capability and error handling
+ * Refreshable container for data components
+ * 
+ * Provides refresh functionality and can automatically refresh on interval
  */
 const RefreshableContainer: React.FC<RefreshableContainerProps> = ({
-  title,
   children,
+  title,
   onRefresh,
-  refreshOnMount = false,
-  showRefreshButton = true,
-  actions,
-  id,
-  className,
-  style
+  showRefreshButton = false,
+  refreshInterval = 0, // 0 means no auto-refresh
+  actions
 }) => {
-  // State for loading and error
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Error | null>(null);
+  const theme = useMantineTheme();
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   
-  // Create error handler
-  const handleError = useErrorHandler('Refresh Failed');
-  
-  // Function to refresh content
-  const handleRefresh = async () => {
-    if (!onRefresh) return;
+  // Handle refresh action
+  const handleRefresh = useCallback(async () => {
+    if (!onRefresh || isRefreshing) return;
     
-    setIsLoading(true);
-    setError(null);
-    
+    setIsRefreshing(true);
     try {
       await onRefresh();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to refresh data'));
-      handleError(err);
+      setLastRefreshed(new Date());
+    } catch (error) {
+      console.error('Error during refresh:', error);
     } finally {
-      setIsLoading(false);
+      setIsRefreshing(false);
     }
+  }, [onRefresh, isRefreshing]);
+  
+  // Set up auto-refresh interval if enabled
+  useEffect(() => {
+    if (refreshInterval > 0 && onRefresh) {
+      const intervalId = setInterval(handleRefresh, refreshInterval);
+      return () => clearInterval(intervalId);
+    }
+  }, [refreshInterval, handleRefresh, onRefresh]);
+  
+  // Format time since last refresh
+  const formatTimeSince = (): string => {
+    const diffMs = new Date().getTime() - lastRefreshed.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHour = Math.floor(diffMin / 60);
+    return `${diffHour}h ago`;
   };
   
-  // Refresh on mount if needed
-  React.useEffect(() => {
-    if (refreshOnMount && onRefresh) {
-      handleRefresh();
-    }
-  }, [refreshOnMount, onRefresh]);
-  
   return (
-    <Paper
-      p="md"
-      withBorder
-      radius="md"
-      shadow="xs"
-      id={id}
-      className={className}
-      style={style}
-    >
-      {/* Header */}
-      {(title || onRefresh || actions) && (
+    <Paper withBorder radius="md" p="md">
+      {/* Header with title and refresh button */}
+      {(title || showRefreshButton || actions) && (
         <Group position="apart" mb="md">
           {title && <Text fw={500}>{title}</Text>}
+          
           <Group spacing="xs">
             {actions}
-            {showRefreshButton && onRefresh && (
-              <Button
-                size="xs"
-                variant="light"
-                leftSection={<IconRefresh size={16} />}
-                onClick={handleRefresh}
-                loading={isLoading}
-              >
-                Refresh
-              </Button>
+            
+            {onRefresh && showRefreshButton && (
+              <Group spacing={4}>
+                {!isRefreshing && (
+                  <Text size="xs" color="dimmed">
+                    Last updated: {formatTimeSince()}
+                  </Text>
+                )}
+                
+                <Tooltip label="Refresh data">
+                  <ActionIcon
+                    onClick={handleRefresh}
+                    loading={isRefreshing}
+                    size="sm"
+                    color="blue"
+                    variant="subtle"
+                  >
+                    <IconRefresh size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
             )}
           </Group>
         </Group>
       )}
       
-      {/* Loading indicator */}
-      {isLoading && (
-        <Box mb="md">
-          <Group position="center">
-            <Loader size="sm" />
-            <Text size="sm" color="dimmed">Loading...</Text>
-          </Group>
-        </Box>
-      )}
-      
-      {/* Error state */}
-      {error && (
-        <Alert
-          icon={<IconAlertCircle size={16} />}
-          title="Error"
-          color="red"
-          variant="filled"
-          mb="md"
-          withCloseButton
-          onClose={() => setError(null)}
-        >
-          {error.message}
-        </Alert>
-      )}
-      
-      {/* Content with error boundary */}
-      <ErrorBoundary>
+      {/* Content */}
+      <Box>
         {children}
-      </ErrorBoundary>
+      </Box>
     </Paper>
   );
 };

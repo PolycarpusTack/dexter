@@ -46,8 +46,8 @@ import { analyzeDeadlock, exportDeadlockSVG } from '../../api/enhancedDeadlockAp
 import { useQuery } from '@tanstack/react-query';
 import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling';
 
-// Import error boundary component (assuming it exists)
-import { ErrorBoundary } from '../ErrorHandling/ErrorBoundary';
+// Import error boundary component
+import { ErrorBoundary } from '../ErrorHandling';
 
 // Import fallback components for error boundaries
 const GraphErrorFallback = ({ error, resetErrorBoundary }) => (

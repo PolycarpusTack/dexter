@@ -1,74 +1,35 @@
 // File: src/components/ErrorHandling/withErrorBoundary.tsx
 
-import React from 'react';
+import React, { ComponentType } from 'react';
 import ErrorBoundary from './ErrorBoundary';
+import { WithErrorBoundaryOptions } from '../../types/errorHandling';
 
 /**
- * Interface for withErrorBoundary options
- */
-export interface WithErrorBoundaryOptions {
-  /** Optional name for the error boundary */
-  name?: string;
-  /** Whether to show error details */
-  showDetails?: boolean;
-  /** Whether to show reload button */
-  showReloadButton?: boolean;
-  /** Whether to show home button */
-  showHomeButton?: boolean;
-  /** Whether to show error ID */
-  showErrorId?: boolean;
-  /** Custom fallback component or function */
-  fallback?: React.ReactNode | ((error: Error, errorInfo: React.ErrorInfo, reset: () => void, errorId: string) => React.ReactNode);
-  /** Function to call when resetting the error boundary */
-  onReset?: () => void;
-}
-
-/**
- * Higher-Order Component that wraps a component with an ErrorBoundary
+ * Higher-order component that wraps a component with an error boundary
  * 
- * @param Component - The component to wrap
- * @param options - Configuration options for the ErrorBoundary
- * @returns Wrapped component with error boundary
+ * @param Component - Component to wrap
+ * @param options - Error boundary options
+ * @returns Component wrapped with error boundary
  */
 export function withErrorBoundary<P>(
-  Component: React.ComponentType<P>,
+  Component: ComponentType<P>,
   options: WithErrorBoundaryOptions = {}
 ): React.FC<P> {
-  // Get the display name of the wrapped component for easier debugging
-  const componentName = Component.displayName || Component.name || 'Component';
+  const { name = Component.displayName || Component.name, showDetails = true } = options;
   
-  // Create a wrapper component that includes the error boundary
-  const WrappedComponent: React.FC<P> = (props) => {
-    // Merge options with defaults
-    const {
-      name = `${componentName}ErrorBoundary`,
-      showDetails = false,
-      showReloadButton = true,
-      showHomeButton = true,
-      showErrorId = true,
-      fallback,
-      onReset
-    } = options;
-    
+  // Define the wrapper component
+  const WithErrorBoundary: React.FC<P> = (props) => {
     return (
-      <ErrorBoundary 
-        name={name}
-        showDetails={showDetails}
-        showReloadButton={showReloadButton}
-        showHomeButton={showHomeButton}
-        showErrorId={showErrorId}
-        fallback={fallback}
-        onReset={onReset}
-      >
+      <ErrorBoundary name={name} showDetails={showDetails}>
         <Component {...props} />
       </ErrorBoundary>
     );
   };
   
-  // Set display name for easier debugging
-  WrappedComponent.displayName = `withErrorBoundary(${componentName})`;
+  // Set display name for debugging
+  WithErrorBoundary.displayName = `WithErrorBoundary(${name})`;
   
-  return WrappedComponent;
+  return WithErrorBoundary;
 }
 
 export default withErrorBoundary;

@@ -1,12 +1,11 @@
 // File: frontend/src/api/aiApi.ts
 
 import { apiClient } from './apiClient';
-import ErrorFactory from '../utils/errorHandling/errorFactory';
+import ErrorFactory from '../utils/errorFactory';
 import { createErrorHandler } from '../utils/errorHandling';
-import { axiosConfig } from './config';
 
 // Configure a longer timeout for AI requests (20 minutes)
-const AI_REQUEST_TIMEOUT = 20 * 60 * 1000; // 20 minutes in milliseconds
+const AI_REQUEST_TIMEOUT = 20 * 60 * 1000; // 20 minutes in milliseconds, overriding LLM_TIMEOUT from config if needed
 
 // Create error handler for AI API
 const handleAiError = createErrorHandler('AI Explanation Failed', {
@@ -72,7 +71,7 @@ export const explainError = async (params: ExplainErrorParams): Promise<ExplainE
       }, // Axios config
       {
         maxRetries: 2, // Retry configuration
-        retryableCheck: (error) => {
+        retryableCheck: (error: any) => {
           // Special retry check for AI service
           // If the service is busy, retry
           const isBusy = error.response?.status === 503 && 
@@ -87,7 +86,7 @@ export const explainError = async (params: ExplainErrorParams): Promise<ExplainE
     handleAiError(error);
     
     // Enhanced error with specific context
-    throw ErrorFactory.create(error, {
+    throw ErrorFactory.create(error as Error, {
       category: 'llm_api_error',
       metadata: {
         operation: 'explainError',
@@ -106,13 +105,13 @@ export const explainError = async (params: ExplainErrorParams): Promise<ExplainE
 export const getAvailableModels = async (): Promise<string[]> => {
   try {
     const response = await apiClient.get<{ models: string[] }>('/explain/models');
-    return response.models;
+    return response.models || [];
   } catch (error) {
     // Use our error handler to show notification and log to Sentry
     handleAiError(error);
     
     // Enhanced error with specific context
-    throw ErrorFactory.create(error, {
+    throw ErrorFactory.create(error as Error, {
       category: 'llm_api_error',
       metadata: {
         operation: 'getAvailableModels'

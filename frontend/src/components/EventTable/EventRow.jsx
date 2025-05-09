@@ -119,7 +119,7 @@ function EventRow({ event, onClick, onAction }) {
       
       {/* Actions */}
       <td>
-        <Group spacing="xs" position="right" noWrap>
+        <Group spacing="xs" position="right" style={{ whiteSpace: 'nowrap' }}>
           <Menu shadow="md" width={200} position="bottom-end">
             <Menu.Target>
               <ActionIcon size="sm" variant="subtle">

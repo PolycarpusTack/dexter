@@ -20,6 +20,7 @@ import {
   ThemeIcon
 } from '@mantine/core';
 import * as d3 from 'd3';
+import { Simulation } from 'd3-force';
 import { 
   IconMaximize, 
   IconMinimize, 
@@ -37,56 +38,16 @@ import {
 } from '@tabler/icons-react';
 import { DeadlockVisualizationData } from '../../types/deadlock';
 
-// Custom node type for D3 visualization
-interface VisualizationNode {
-  id: string | number;
-  type: string;
-  label: string;
-  inCycle?: boolean;
-  application?: string;
-  username?: string;
-  query?: string;
-  locks_held?: string[];
-  locks_waiting?: string[];
-  tables?: string[];
-  queryFingerprint?: string;
-  x?: number;
-  y?: number;
-  fx?: number;
-  fy?: number;
-}
-
-// Custom edge type for D3 visualization
-interface VisualizationEdge {
-  source: string | number;
-  target: string | number;
-  label?: string;
-  inCycle?: boolean;
-  details?: string;
-}
-
-// Visualization data structure
-interface GraphData {
-  nodes: VisualizationNode[];
-  edges: VisualizationEdge[];
-  cycles?: string[][];
-  severity?: number;
-  tables?: Record<string, {
-    accessPattern?: string;
-  }>;
-}
+import { 
+  VisualizationNode, 
+  VisualizationEdge, 
+  GraphData, 
+  VisualizationOptions 
+} from '../../types/visualization';
 
 interface EnhancedGraphViewProps {
   data?: GraphData | DeadlockVisualizationData | any; // Allow any temporarily for backward compatibility
   isLoading: boolean;
-}
-
-interface VisualizationOptions {
-  layout: string;
-  physicsEnabled: boolean;
-  chargeStrength: number;
-  theme: any;
-  rgba: (color: string, alpha?: number) => string;
 }
 
 /**
@@ -640,7 +601,7 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
  */
 function createDeadlockVisualization(
   svgElement: SVGSVGElement, 
-  data: any, 
+  data: GraphData, 
   tooltipElement: HTMLDivElement, 
   options: VisualizationOptions
 ) {
@@ -929,13 +890,13 @@ function createDeadlockVisualization(
     .text((d: VisualizationNode) => d.label);
   
   // Create simulation for layout
-  let simulation: d3.Simulation<VisualizationNode, undefined> | undefined;
+  let simulation: Simulation<VisualizationNode, VisualizationEdge> | undefined;
   
   if (layout === 'force' && physicsEnabled) {
     // Force-directed layout with physics
-    simulation = d3.forceSimulation<VisualizationNode>(nodesWithPosition)
-      .force('link', d3.forceLink<VisualizationNode, d3.SimulationLinkDatum<VisualizationNode>>()
-        .id((d: VisualizationNode) => d.id)
+    simulation = d3.forceSimulation<VisualizationNode, VisualizationEdge>(nodesWithPosition)
+      .force('link', d3.forceLink<VisualizationNode, VisualizationEdge>()
+        .id((d: VisualizationNode) => d.id.toString())
         .links(linksForSimulation)
         .distance(120)
       )
@@ -946,14 +907,22 @@ function createDeadlockVisualization(
     // Update positions on simulation tick
     simulation.on('tick', () => {
       link
-        .attr('x1', (d: any) => getNodeById(d.source).x || 0)
-        .attr('y1', (d: any) => getNodeById(d.source).y || 0)
-        .attr('x2', (d: any) => getNodeById(d.target).x || 0)
-        .attr('y2', (d: any) => getNodeById(d.target).y || 0);
+        .attr('x1', (d: VisualizationEdge) => getNodeById(d.source).x || 0)
+        .attr('y1', (d: VisualizationEdge) => getNodeById(d.source).y || 0)
+        .attr('x2', (d: VisualizationEdge) => getNodeById(d.target).x || 0)
+        .attr('y2', (d: VisualizationEdge) => getNodeById(d.target).y || 0);
       
       edgeLabels
-        .attr('x', (d: any) => (getNodeById(d.source).x + getNodeById(d.target).x) / 2 || 0)
-        .attr('y', (d: any) => (getNodeById(d.source).y + getNodeById(d.target).y) / 2 || 0);
+        .attr('x', (d: VisualizationEdge) => {
+          const sourceNode = getNodeById(d.source);
+          const targetNode = getNodeById(d.target);
+          return ((sourceNode.x || 0) + (targetNode.x || 0)) / 2;
+        })
+        .attr('y', (d: VisualizationEdge) => {
+          const sourceNode = getNodeById(d.source);
+          const targetNode = getNodeById(d.target);
+          return ((sourceNode.y || 0) + (targetNode.y || 0)) / 2;
+        });
       
       node.attr('transform', (d: VisualizationNode) => `translate(${d.x || 0},${d.y || 0})`);
     });
@@ -962,14 +931,22 @@ function createDeadlockVisualization(
     initializePositions(nodesWithPosition, width, height);
     
     link
-      .attr('x1', (d: any) => getNodeById(d.source).x || 0)
-      .attr('y1', (d: any) => getNodeById(d.source).y || 0)
-      .attr('x2', (d: any) => getNodeById(d.target).x || 0)
-      .attr('y2', (d: any) => getNodeById(d.target).y || 0);
+      .attr('x1', (d: VisualizationEdge) => getNodeById(d.source).x || 0)
+      .attr('y1', (d: VisualizationEdge) => getNodeById(d.source).y || 0)
+      .attr('x2', (d: VisualizationEdge) => getNodeById(d.target).x || 0)
+      .attr('y2', (d: VisualizationEdge) => getNodeById(d.target).y || 0);
     
     edgeLabels
-      .attr('x', (d: any) => (getNodeById(d.source).x + getNodeById(d.target).x) / 2 || 0)
-      .attr('y', (d: any) => (getNodeById(d.source).y + getNodeById(d.target).y) / 2 || 0);
+      .attr('x', (d: VisualizationEdge) => {
+        const sourceNode = getNodeById(d.source);
+        const targetNode = getNodeById(d.target);
+        return ((sourceNode.x || 0) + (targetNode.x || 0)) / 2;
+      })
+      .attr('y', (d: VisualizationEdge) => {
+        const sourceNode = getNodeById(d.source);
+        const targetNode = getNodeById(d.target);
+        return ((sourceNode.y || 0) + (targetNode.y || 0)) / 2;
+      });
     
     node.attr('transform', (d: VisualizationNode) => `translate(${d.x || 0},${d.y || 0})`);
     
@@ -981,7 +958,7 @@ function createDeadlockVisualization(
     
     // Process circle
     const processRadius = Math.min(width, height) / 3;
-    const processAngleStep = (2 * Math.PI) / processes.length;
+    const processAngleStep = (2 * Math.PI) / Math.max(1, processes.length);
     
     processes.forEach((node, i) => {
       node.x = width / 2 + processRadius * Math.cos(i * processAngleStep);
@@ -990,7 +967,7 @@ function createDeadlockVisualization(
     
     // Table circle (outer ring)
     const tableRadius = processRadius * 1.6;
-    const tableAngleStep = (2 * Math.PI) / tables.length;
+    const tableAngleStep = (2 * Math.PI) / Math.max(1, tables.length);
     
     tables.forEach((node, i) => {
       node.x = width / 2 + tableRadius * Math.cos(i * tableAngleStep);
@@ -999,14 +976,22 @@ function createDeadlockVisualization(
     
     // Update positions immediately
     link
-      .attr('x1', (d: any) => getNodeById(d.source).x || 0)
-      .attr('y1', (d: any) => getNodeById(d.source).y || 0)
-      .attr('x2', (d: any) => getNodeById(d.target).x || 0)
-      .attr('y2', (d: any) => getNodeById(d.target).y || 0);
+      .attr('x1', (d: VisualizationEdge) => getNodeById(d.source).x || 0)
+      .attr('y1', (d: VisualizationEdge) => getNodeById(d.source).y || 0)
+      .attr('x2', (d: VisualizationEdge) => getNodeById(d.target).x || 0)
+      .attr('y2', (d: VisualizationEdge) => getNodeById(d.target).y || 0);
     
     edgeLabels
-      .attr('x', (d: any) => (getNodeById(d.source).x + getNodeById(d.target).x) / 2 || 0)
-      .attr('y', (d: any) => (getNodeById(d.source).y + getNodeById(d.target).y) / 2 || 0);
+      .attr('x', (d: VisualizationEdge) => {
+        const sourceNode = getNodeById(d.source);
+        const targetNode = getNodeById(d.target);
+        return ((sourceNode.x || 0) + (targetNode.x || 0)) / 2;
+      })
+      .attr('y', (d: VisualizationEdge) => {
+        const sourceNode = getNodeById(d.source);
+        const targetNode = getNodeById(d.target);
+        return ((sourceNode.y || 0) + (targetNode.y || 0)) / 2;
+      });
     
     node.attr('transform', (d: VisualizationNode) => `translate(${d.x || 0},${d.y || 0})`);
     
@@ -1032,20 +1017,31 @@ function createDeadlockVisualization(
     
     // Update positions immediately
     link
-      .attr('x1', (d: any) => getNodeById(d.source).x || 0)
-      .attr('y1', (d: any) => getNodeById(d.source).y || 0)
-      .attr('x2', (d: any) => getNodeById(d.target).x || 0)
-      .attr('y2', (d: any) => getNodeById(d.target).y || 0);
+      .attr('x1', (d: VisualizationEdge) => getNodeById(d.source).x || 0)
+      .attr('y1', (d: VisualizationEdge) => getNodeById(d.source).y || 0)
+      .attr('x2', (d: VisualizationEdge) => getNodeById(d.target).x || 0)
+      .attr('y2', (d: VisualizationEdge) => getNodeById(d.target).y || 0);
     
     edgeLabels
-      .attr('x', (d: any) => (getNodeById(d.source).x + getNodeById(d.target).x) / 2 || 0)
-      .attr('y', (d: any) => (getNodeById(d.source).y + getNodeById(d.target).y) / 2 || 0);
+      .attr('x', (d: VisualizationEdge) => {
+        const sourceNode = getNodeById(d.source);
+        const targetNode = getNodeById(d.target);
+        return ((sourceNode.x || 0) + (targetNode.x || 0)) / 2;
+      })
+      .attr('y', (d: VisualizationEdge) => {
+        const sourceNode = getNodeById(d.source);
+        const targetNode = getNodeById(d.target);
+        return ((sourceNode.y || 0) + (targetNode.y || 0)) / 2;
+      });
     
     node.attr('transform', (d: VisualizationNode) => `translate(${d.x || 0},${d.y || 0})`);
   }
   
   // Helper function to get node by ID
-  function getNodeById(id: string | number): VisualizationNode {
+  function getNodeById(id: string | number | VisualizationNode): VisualizationNode {
+    if (typeof id === 'object' && id !== null) {
+      return id as VisualizationNode;
+    }
     return nodesWithPosition.find(n => n.id === id) || { id: 'unknown', type: 'unknown', label: 'unknown', x: 0, y: 0 };
   }
   
@@ -1092,15 +1088,23 @@ function createDeadlockVisualization(
       
       // Update links
       link
-        .attr('x1', (d: any) => getNodeById(d.source).x || 0)
-        .attr('y1', (d: any) => getNodeById(d.source).y || 0)
-        .attr('x2', (d: any) => getNodeById(d.target).x || 0)
-        .attr('y2', (d: any) => getNodeById(d.target).y || 0);
+        .attr('x1', (d: VisualizationEdge) => getNodeById(d.source).x || 0)
+        .attr('y1', (d: VisualizationEdge) => getNodeById(d.source).y || 0)
+        .attr('x2', (d: VisualizationEdge) => getNodeById(d.target).x || 0)
+        .attr('y2', (d: VisualizationEdge) => getNodeById(d.target).y || 0);
       
       // Update edge labels
       edgeLabels
-        .attr('x', (d: any) => (getNodeById(d.source).x + getNodeById(d.target).x) / 2 || 0)
-        .attr('y', (d: any) => (getNodeById(d.source).y + getNodeById(d.target).y) / 2 || 0);
+        .attr('x', (d: VisualizationEdge) => {
+          const sourceNode = getNodeById(d.source);
+          const targetNode = getNodeById(d.target);
+          return ((sourceNode.x || 0) + (targetNode.x || 0)) / 2;
+        })
+        .attr('y', (d: VisualizationEdge) => {
+          const sourceNode = getNodeById(d.source);
+          const targetNode = getNodeById(d.target);
+          return ((sourceNode.y || 0) + (targetNode.y || 0)) / 2;
+        });
       
       // Update node positions
       node.attr('transform', (d: VisualizationNode) => `translate(${d.x || 0},${d.y || 0})`);

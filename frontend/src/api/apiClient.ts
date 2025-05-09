@@ -1,9 +1,9 @@
 // File: frontend/src/api/apiClient.ts
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 import { API_BASE_URL, axiosConfig } from './config';
 import retryManager, { RetryConfig } from '../utils/retryManager';
-import ErrorFactory, { ApiError, NetworkError } from '../utils/errorFactory';
+import ErrorFactory, { ApiError } from '../utils/errorFactory';
 import { logErrorToService } from '../utils/errorTracking';
 
 /**
@@ -126,14 +126,14 @@ export class EnhancedApiClient {
         if (typeof data === 'string') {
           message = data;
         } else if (typeof data === 'object') {
-          if (data.detail) {
-            message = typeof data.detail === 'string' ? 
-              data.detail : 
-              (data.detail.message || JSON.stringify(data.detail));
-          } else if (data.message) {
-            message = data.message;
-          } else if (data.error) {
-            message = data.error;
+          if ((data as any).detail) {
+            message = typeof (data as any).detail === 'string' ? 
+              (data as any).detail : 
+              ((data as any).detail.message || JSON.stringify((data as any).detail));
+          } else if ((data as any).message) {
+            message = (data as any).message;
+          } else if ((data as any).error) {
+            message = (data as any).error;
           }
         }
       }

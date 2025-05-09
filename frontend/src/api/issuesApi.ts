@@ -1,288 +1,321 @@
-// File: frontend/src/api/issuesApi.ts
+// File: src/api/issuesApi.ts
 
-import { apiClient } from './apiClient';
-import ErrorFactory from '../utils/errorFactory';
+import apiClient from './apiClient';
 import { createErrorHandler } from '../utils/errorHandling';
 
-/**
- * Interface for issue list query options
- */
-export interface IssueListOptions {
-  /** Filter by status ('unresolved', 'resolved', 'ignored', 'all') */
-  status?: string;
-  /** Text search term */
-  query?: string;
-  /** Pagination cursor */
-  cursor?: string;
-}
+// Error handler for issues API
+const handleIssuesError = createErrorHandler('Issues API Error', {
+  context: { apiModule: 'issuesApi' }
+});
 
 /**
- * Interface for issue status update options
- */
-export interface IssueStatusUpdateOptions {
-  /** New status ('resolved', 'unresolved', 'ignored') */
-  status: string;
-  /** If status is 'ignored', duration in minutes */
-  ignoreDuration?: number;
-}
-
-/**
- * Interface for issue export options
- */
-export interface IssueExportOptions {
-  /** Export format ('csv' or 'json') */
-  format?: 'csv' | 'json';
-  /** Filter by status */
-  status?: string;
-  /** Text search term */
-  query?: string;
-}
-
-/**
- * Interface for the issue data structure
+ * Interface for issue data
  */
 export interface Issue {
   id: string;
-  shortId?: string;
   title: string;
-  culprit?: string;
-  level: string;
-  status: string;
   count: number;
-  userCount: number;
-  lastSeen: string;
+  status: string;
   firstSeen: string;
+  lastSeen: string;
+  project: {
+    id: string;
+    name: string;
+    slug?: string;
+  };
   [key: string]: any;
 }
 
 /**
- * Interface for pagination information
+ * Interface for issues response from API
  */
-export interface Pagination {
-  next: string | null;
-  previous: string | null;
+export interface IssuesResponse {
+  issues: Issue[];
+  links?: {
+    previous?: {
+      cursor: string;
+      [key: string]: any;
+    };
+    next?: {
+      cursor: string;
+      [key: string]: any;
+    };
+  };
+  meta?: Record<string, any>;
 }
 
 /**
- * Interface for issue list response
+ * Options for fetching issues
  */
-export interface IssueListResponse {
-  data: Issue[];
-  pagination: Pagination;
-}
-
-// Error handler factory for issues API
-const handleIssuesError = createErrorHandler('Issue API Error');
-
-/**
- * Fetches a list of issues for a project
- * 
- * @param organizationSlug - Organization slug
- * @param projectSlug - Project slug
- * @param options - Query options
- * @returns Promise resolving to the API response
- */
-export const getProjectIssues = async (
-  organizationSlug: string, 
-  projectSlug: string, 
-  options: IssueListOptions = {}
-): Promise<IssueListResponse> => {
-  try {
-    const { status, query, cursor } = options;
-    
-    // Log the request to help with debugging
-    console.log(`Fetching issues for ${organizationSlug}/${projectSlug} with params:`, { status, query, cursor });
-    
-    // Use the enhanced API client with automatic retry
-    const response = await apiClient.get<IssueListResponse>(
-      `/organizations/${organizationSlug}/projects/${projectSlug}/issues`, 
-      { params: { status, query, cursor } }
-    );
-    
-    return response;
-  } catch (error) {
-    console.error('Error fetching project issues:', error);
-    
-    // Return mock data if there's an error and in development mode
-    if (import.meta.env.DEV) {
-      console.log('Returning mock data in development mode');
-      const mockResponse: IssueListResponse = {
-        data: [
-          {
-            id: 'mock-issue-1',
-            shortId: 'MOCK-1',
-            title: 'Mock Issue 1',
-            level: 'error',
-            status: 'unresolved',
-            count: 5,
-            userCount: 2,
-            lastSeen: new Date().toISOString(),
-            firstSeen: new Date().toISOString(),
-          },
-          {
-            id: 'mock-issue-2',
-            shortId: 'MOCK-2',
-            title: 'Mock Issue 2',
-            level: 'warning',
-            status: 'unresolved',
-            count: 3,
-            userCount: 1,
-            lastSeen: new Date().toISOString(),
-            firstSeen: new Date().toISOString(),
-          }
-        ],
-        pagination: {
-          next: null,
-          previous: null
-        }
-      };
-      return mockResponse;
-    }
-    
-    // Use our error handler which will show a notification and log to Sentry
-    handleIssuesError(error);
-    
-    // Convert the error to an EnhancedError and rethrow
-    throw ErrorFactory.create(error, {
-      category: 'client_error',
-      metadata: {
-        organizationSlug,
-        projectSlug,
-        options
-      }
-    });
-  }
-};
-
-/**
- * Interface for React Query parameters
- */
-export interface FetchIssuesQueryParams {
-  /** Organization slug */
-  organizationSlug: string;
-  /** Project slug */
-  projectSlug: string;
-  /** Status filter */
-  statusFilter?: string;
-  /** Search query */
-  searchQuery?: string;
-  /** Pagination cursor */
+export interface FetchIssuesOptions {
+  /** Number of issues to fetch */
+  limit?: number;
+  /** Cursor for pagination */
   cursor?: string;
+  /** Query parameters for filtering */
+  query?: string;
+  /** Project IDs to filter by */
+  project?: string | string[];
+  /** Organization ID to filter by */
+  organization?: string;
+  /** Environment to filter by */
+  environment?: string;
+  /** Status to filter by */
+  status?: string;
+  /** Sort field */
+  sort?: string;
+  /** Stats period */
+  statsPeriod?: string;
+  /** Start date */
+  start?: string;
+  /** End date */
+  end?: string;
 }
 
 /**
- * Function used by EventTable component for React Query
+ * Interface for issue update response
  */
-export const fetchIssuesList = async (params: FetchIssuesQueryParams): Promise<IssueListResponse> => {
-  const { organizationSlug, projectSlug, statusFilter, searchQuery, cursor } = params;
-  
+export interface IssueUpdateResponse {
+  id: string;
+  status: string;
+  [key: string]: any;
+}
+
+/**
+ * Interface for issue assignment response
+ */
+export interface IssueAssignmentResponse {
+  id: string;
+  assignee: {
+    id: string;
+    name: string;
+    email?: string;
+  } | null;
+  [key: string]: any;
+}
+
+/**
+ * Interface for issue comment response
+ */
+export interface IssueCommentResponse {
+  id: string;
+  comment: string;
+  user: {
+    id: string;
+    name: string;
+    email?: string;
+  };
+  dateCreated: string;
+  [key: string]: any;
+}
+
+/**
+ * Fetch issues with filtering
+ * 
+ * @param options - Filter and pagination options
+ * @returns Promise with issues response
+ */
+export const fetchIssues = async (
+  options: FetchIssuesOptions = {}
+): Promise<IssuesResponse> => {
   try {
-    const response = await getProjectIssues(
-      organizationSlug, 
-      projectSlug, 
-      {
-        status: statusFilter,
-        query: searchQuery,
-        cursor: cursor
-      }
+    return await apiClient.get<IssuesResponse>(
+      '/issues',
+      { params: options }
     );
-    
-    return response;
   } catch (error) {
-    console.error('Error in fetchIssuesList:', error);
-    throw error; // React Query will handle this error
+    handleIssuesError(error, {
+      operation: 'fetchIssues',
+      ...options
+    });
+    throw error;
   }
 };
 
 /**
- * Updates the status of an issue
+ * Fetch a single issue by ID
  * 
- * @param issueId - The ID of the issue to update
- * @param options - Status update options
- * @returns Promise resolving to the API response
+ * @param issueId - Issue ID to fetch
+ * @param projectId - Optional project ID
+ * @returns Promise with issue data
+ */
+export const fetchIssue = async (
+  issueId: string,
+  projectId?: string
+): Promise<Issue> => {
+  try {
+    return await apiClient.get<Issue>(
+      `/issue/${issueId}`,
+      { params: { project_id: projectId } }
+    );
+  } catch (error) {
+    handleIssuesError(error, {
+      operation: 'fetchIssue',
+      issueId,
+      projectId
+    });
+    throw error;
+  }
+};
+
+/**
+ * Update an issue's status
+ * 
+ * @param issueId - Issue ID to update
+ * @param status - New status
+ * @param projectId - Optional project ID
+ * @returns Promise with updated issue data
  */
 export const updateIssueStatus = async (
-  issueId: string, 
-  options: IssueStatusUpdateOptions
-): Promise<any> => {
+  issueId: string,
+  status: string,
+  projectId?: string
+): Promise<IssueUpdateResponse> => {
   try {
-    const { status, ignoreDuration } = options;
-    const payload: IssueStatusUpdateOptions = { status };
-    
-    if (status === 'ignored' && ignoreDuration) {
-      payload.ignoreDuration = ignoreDuration;
-    }
-    
-    const response = await apiClient.put(
-      `/issues/${issueId}/status`,
-      payload
+    return await apiClient.put<IssueUpdateResponse>(
+      `/issue/${issueId}/status`,
+      { status },
+      { params: { project_id: projectId } }
     );
-    
-    return response;
   } catch (error) {
-    console.error('Error updating issue status:', error);
-    
-    // Use our error handler
-    handleIssuesError(error);
-    
-    // Convert the error to an EnhancedError and rethrow
-    throw ErrorFactory.create(error, {
-      category: 'client_error',
-      metadata: {
-        issueId,
-        options
-      }
+    handleIssuesError(error, {
+      operation: 'updateIssueStatus',
+      issueId,
+      status,
+      projectId
     });
+    throw error;
   }
 };
 
 /**
- * Exports issues as CSV or JSON
+ * Assign an issue to a user
  * 
- * @param organizationSlug - Organization slug
- * @param projectSlug - Project slug
- * @param options - Export options
- * @returns Promise resolving to the file data
+ * @param issueId - Issue ID to assign
+ * @param assigneeId - User ID to assign to (empty for unassign)
+ * @param projectId - Optional project ID
+ * @returns Promise with assignment response
  */
-export const exportIssues = async (
-  organizationSlug: string, 
-  projectSlug: string, 
-  options: IssueExportOptions = {}
-): Promise<Blob> => {
-  const { format = 'csv', status, query } = options;
-  
+export const assignIssue = async (
+  issueId: string,
+  assigneeId: string,
+  projectId?: string
+): Promise<IssueAssignmentResponse> => {
   try {
-    // For file downloads, we need to use the raw axios instance
-    const response = await apiClient.getAxiosInstance().get(
-      `/${organizationSlug}/projects/${projectSlug}/issues/export`,
-      {
-        params: { format, status, query },
-        responseType: 'blob', // Important for file downloads
-      }
+    return await apiClient.put<IssueAssignmentResponse>(
+      `/issue/${issueId}/assign`,
+      { assignee: assigneeId || null },
+      { params: { project_id: projectId } }
     );
-    
-    return response.data;
   } catch (error) {
-    console.error('Error exporting issues:', error);
-    
-    // Use our error handler
-    handleIssuesError(error);
-    
-    // Convert the error to an EnhancedError and rethrow
-    throw ErrorFactory.create(error, {
-      category: 'client_error',
-      metadata: {
-        organizationSlug,
-        projectSlug,
-        options
-      }
+    handleIssuesError(error, {
+      operation: 'assignIssue',
+      issueId,
+      assigneeId,
+      projectId
     });
+    throw error;
+  }
+};
+
+/**
+ * Add a comment to an issue
+ * 
+ * @param issueId - Issue ID to comment on
+ * @param comment - Comment text
+ * @param projectId - Optional project ID
+ * @returns Promise with comment response
+ */
+export const addIssueComment = async (
+  issueId: string,
+  comment: string,
+  projectId?: string
+): Promise<IssueCommentResponse> => {
+  try {
+    return await apiClient.post<IssueCommentResponse>(
+      `/issue/${issueId}/comments`,
+      { comment },
+      { params: { project_id: projectId } }
+    );
+  } catch (error) {
+    handleIssuesError(error, {
+      operation: 'addIssueComment',
+      issueId,
+      projectId
+    });
+    throw error;
+  }
+};
+
+/**
+ * Add tags to an issue
+ * 
+ * @param issueId - Issue ID to tag
+ * @param tags - Array of tags to add
+ * @param projectId - Optional project ID
+ * @returns Promise with updated issue data
+ */
+export const addIssueTags = async (
+  issueId: string,
+  tags: string[],
+  projectId?: string
+): Promise<Issue> => {
+  try {
+    return await apiClient.post<Issue>(
+      `/issue/${issueId}/tags`,
+      { tags },
+      { params: { project_id: projectId } }
+    );
+  } catch (error) {
+    handleIssuesError(error, {
+      operation: 'addIssueTags',
+      issueId,
+      tags,
+      projectId
+    });
+    throw error;
+  }
+};
+
+/**
+ * Merge issues together
+ * 
+ * @param targetIssueId - Target issue ID
+ * @param issueIds - Issue IDs to merge
+ * @param projectId - Optional project ID
+ * @returns Promise with merged issue data
+ */
+export const mergeIssues = async (
+  targetIssueId: string,
+  issueIds: string[],
+  projectId?: string
+): Promise<Issue> => {
+  try {
+    return await apiClient.post<Issue>(
+      `/issues/merge`,
+      { 
+        target: targetIssueId, 
+        issues: issueIds 
+      },
+      { params: { project_id: projectId } }
+    );
+  } catch (error) {
+    handleIssuesError(error, {
+      operation: 'mergeIssues',
+      targetIssueId,
+      issueIds,
+      projectId
+    });
+    throw error;
   }
 };
 
 export default {
-  getProjectIssues,
-  fetchIssuesList,
+  fetchIssues,
+  fetchIssue,
   updateIssueStatus,
-  exportIssues
+  assignIssue,
+  addIssueComment,
+  addIssueTags,
+  mergeIssues
 };

@@ -1,329 +1,401 @@
 // File: src/services/errorAnalyticsService.ts
 
-import { ErrorCategory } from '../utils/errorHandling/errorHandling';
-import ErrorFactory, { EnhancedError } from '../utils/errorHandling/errorFactory';
-import { logErrorToService } from '../utils/errorHandling/errorTracking';
+import { ErrorAnalyticsData, ErrorCountByCategory, ErrorCountByTime, ErrorDetails, TimeRange } from '../types/index';
 
 /**
- * Interface for error analytics entry
+ * Service configuration
  */
-export interface ErrorAnalyticsEntry {
-  /** Error ID (UUID) */
-  id: string;
-  /** Timestamp when the error occurred */
-  timestamp: string;
-  /** Error message */
-  message: string;
-  /** Error category */
-  category: ErrorCategory;
-  /** Component or function where the error occurred */
-  source: string;
-  /** Error stack trace */
-  stack?: string;
-  /** User ID if available */
-  userId?: string;
-  /** Session ID if available */
-  sessionId?: string;
-  /** URL where the error occurred */
-  url: string;
-  /** Browser and OS information */
-  userAgent: string;
-  /** Additional metadata */
-  metadata?: Record<string, unknown>;
-  /** Whether this is a repeated error */
-  isRepeated: boolean;
-  /** Error frequency (for repeated errors) */
-  frequency?: number;
-  /** Error impact level */
-  impact: 'High' | 'Medium' | 'Low';
+interface ErrorAnalyticsConfig {
+  applicationId: string;
+  environment: string;
+  version: string;
+  endpoint?: string;
+  batchSize?: number;
+  flushInterval?: number;
 }
 
 /**
- * Error analytics storage service
+ * Default configuration
+ */
+const DEFAULT_CONFIG: ErrorAnalyticsConfig = {
+  applicationId: 'dexter',
+  environment: 'development',
+  version: '1.0.0',
+  endpoint: '/api/analytics',
+  batchSize: 10,
+  flushInterval: 30000 // 30 seconds
+};
+
+/**
+ * Error data for reporting
+ */
+interface ErrorReport {
+  timestamp: string;
+  error: string;
+  message: string;
+  stack?: string;
+  metadata: Record<string, any>;
+}
+
+/**
+ * Error analytics service
  */
 class ErrorAnalyticsService {
-  private storageKey = 'dexter_error_analytics';
-  private sessionId: string;
-  private errors: ErrorAnalyticsEntry[] = [];
+  private config: ErrorAnalyticsConfig;
+  private buffer: ErrorReport[] = [];
+  private flushTimer: NodeJS.Timeout | null = null;
   private initialized = false;
-  private maxStoredErrors = 100;
   
-  constructor() {
-    // Generate session ID
-    this.sessionId = this.generateSessionId();
-    
-    // Try to load cached errors
-    this.loadErrors();
-    
-    // Mark as initialized
+  /**
+   * Initialize the service with configuration
+   * 
+   * @param config - Service configuration
+   */
+  public initialize(config: Partial<ErrorAnalyticsConfig> = {}): void {
+    this.config = { ...DEFAULT_CONFIG, ...config };
     this.initialized = true;
+    
+    console.log(`Error Analytics Service initialized for ${this.config.applicationId} (${this.config.environment})`);
+    
+    // Start flush timer
+    this.startFlushTimer();
   }
   
   /**
-   * Generate a unique session ID
+   * Shutdown the service
    */
-  private generateSessionId(): string {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-  
-  /**
-   * Load errors from localStorage
-   */
-  private loadErrors(): void {
-    try {
-      const storedErrors = localStorage.getItem(this.storageKey);
-      
-      if (storedErrors) {
-        this.errors = JSON.parse(storedErrors);
-      }
-    } catch (error) {
-      console.error('Failed to load error analytics:', error);
-      
-      // Clear corrupted data
-      localStorage.removeItem(this.storageKey);
-      this.errors = [];
-    }
-  }
-  
-  /**
-   * Save errors to localStorage
-   */
-  private saveErrors(): void {
-    try {
-      // Trim errors to maximum limit
-      if (this.errors.length > this.maxStoredErrors) {
-        this.errors = this.errors.slice(-this.maxStoredErrors);
-      }
-      
-      localStorage.setItem(this.storageKey, JSON.stringify(this.errors));
-    } catch (error) {
-      console.error('Failed to save error analytics:', error);
-    }
-  }
-  
-  /**
-   * Determine error impact level
-   */
-  private determineImpact(error: unknown): 'High' | 'Medium' | 'Low' {
-    if (error instanceof EnhancedError) {
-      // High impact errors
-      if (
-        error.category === 'server_error' ||
-        error.category === 'auth_error' ||
-        error.metadata?.impact === 'high'
-      ) {
-        return 'High';
-      }
-      
-      // Medium impact errors
-      if (
-        error.category === 'client_error' ||
-        error.category === 'network' ||
-        error.category === 'timeout' ||
-        error.metadata?.impact === 'medium'
-      ) {
-        return 'Medium';
-      }
-      
-      // Low impact errors by default
-      return 'Low';
+  public shutdown(): void {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = null;
     }
     
-    // Default to medium for unknown errors
-    return 'Medium';
-  }
-  
-  /**
-   * Find similar error by message and category
-   */
-  private findSimilarError(message: string, category: ErrorCategory): ErrorAnalyticsEntry | undefined {
-    // Find error with similar message and same category
-    return this.errors.find(error => 
-      error.category === category && 
-      this.isSimilarMessage(error.message, message)
-    );
-  }
-  
-  /**
-   * Check if two error messages are similar
-   */
-  private isSimilarMessage(message1: string, message2: string): boolean {
-    // Simple similarity check based on first few words
-    const words1 = message1.split(' ', 5).join(' ');
-    const words2 = message2.split(' ', 5).join(' ');
+    // Flush any remaining errors
+    if (this.buffer.length > 0) {
+      this.flush();
+    }
     
-    return words1 === words2;
+    this.initialized = false;
   }
   
   /**
-   * Generate error ID
+   * Report an error
+   * 
+   * @param error - The error to report
+   * @param metadata - Additional context
    */
-  private generateErrorId(): string {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-  
-  /**
-   * Record error in analytics
-   */
-  public recordError(error: unknown, context: Record<string, unknown> = {}): void {
-    try {
-      if (!this.initialized) {
-        this.loadErrors();
-        this.initialized = true;
+  public reportError(error: Error, metadata: Record<string, any> = {}): void {
+    if (!this.initialized) {
+      console.warn('Error Analytics Service not initialized');
+      return;
+    }
+    
+    // Create error report
+    const report: ErrorReport = {
+      timestamp: new Date().toISOString(),
+      error: error.name,
+      message: error.message,
+      stack: error.stack,
+      metadata: {
+        ...metadata,
+        environment: this.config.environment,
+        version: this.config.version
       }
-      
-      // Convert to EnhancedError if needed
-      const enhancedError = error instanceof EnhancedError 
-        ? error 
-        : ErrorFactory.create(error);
-      
-      // Get basic error information
-      const message = enhancedError.message;
-      const category = enhancedError.category as ErrorCategory;
-      const stack = enhancedError.stack;
-      const source = context.source as string || 'unknown';
-      const userId = context.userId as string;
-      const url = window.location.href;
-      const userAgent = navigator.userAgent;
-      const metadata = {
-        ...enhancedError.metadata,
-        ...context
+    };
+    
+    // Add to buffer
+    this.buffer.push(report);
+    
+    // Flush if buffer reaches batch size
+    if (this.buffer.length >= (this.config.batchSize || 10)) {
+      this.flush();
+    }
+  }
+  
+  /**
+   * Flush the error buffer
+   */
+  private flush(): void {
+    if (this.buffer.length === 0) return;
+    
+    // In a real implementation, send to a backend endpoint
+    // For now, just log to console
+    console.log(`Flushing ${this.buffer.length} errors to analytics`);
+    
+    // In development, we don't actually send anything
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('Error analytics (development mode):', this.buffer);
+      this.buffer = [];
+      return;
+    }
+    
+    // In production, we would send to a real endpoint
+    // fetch(this.config.endpoint, {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({
+    //     applicationId: this.config.applicationId,
+    //     errors: this.buffer
+    //   })
+    // })
+    //   .then(() => {
+    //     this.buffer = [];
+    //   })
+    //   .catch(err => {
+    //     console.error('Failed to send error analytics:', err);
+    //   });
+    
+    // For now, just clear the buffer
+    this.buffer = [];
+  }
+  
+  /**
+   * Start the flush timer
+   */
+  private startFlushTimer(): void {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+    }
+    
+    this.flushTimer = setInterval(() => {
+      this.flush();
+    }, this.config.flushInterval || 30000);
+  }
+  
+  /**
+   * Get error analytics data
+   * 
+   * @param options - Query options
+   * @returns Analytics data
+   */
+  public async getErrorAnalytics(options: {
+    timeRange?: TimeRange;
+    category?: string;
+    impact?: string;
+  } = {}): Promise<ErrorAnalyticsData> {
+    // In a real implementation, this would make an API call
+    // For demonstration, return mock data
+    return this.generateMockErrorAnalytics(options);
+  }
+  
+  /**
+   * Get error occurrences
+   * 
+   * @param errorId - Error ID to get occurrences for
+   * @param options - Query options
+   * @returns Error occurrences
+   */
+  public async getErrorOccurrences(
+    errorId: string,
+    options: { limit?: number } = {}
+  ): Promise<{ occurrences: any[] }> {
+    // Mock data
+    return {
+      occurrences: Array.from({ length: options.limit || 5 }, (_, i) => ({
+        id: `${errorId}-occ-${i}`,
+        timestamp: new Date(Date.now() - i * 3600000).toISOString(),
+        userId: i % 2 === 0 ? `user-${i}` : null,
+        details: `Occurrence details for ${errorId}`
+      }))
+    };
+  }
+  
+  /**
+   * Generate mock analytics data for development
+   * 
+   * @param options - Query options
+   * @returns Mock analytics data
+   */
+  public generateMockErrorAnalytics(options: {
+    timeRange?: TimeRange;
+    category?: string;
+    impact?: string;
+  } = {}): ErrorAnalyticsData {
+    // Mock category data
+    const byCategory: ErrorCountByCategory[] = [
+      { name: 'network', count: 25, color: '#FF6B6B' },
+      { name: 'client_error', count: 18, color: '#FFD166' },
+      { name: 'server_error', count: 12, color: '#F72585' },
+      { name: 'timeout', count: 8, color: '#FF9E7A' },
+      { name: 'validation_error', count: 6, color: '#7209B7' },
+      { name: 'auth_error', count: 4, color: '#4CC9F0' },
+      { name: 'llm_api_error', count: 3, color: '#7678ED' },
+      { name: 'unknown', count: 2, color: '#B8B8B8' }
+    ];
+    
+    // Create mock time data based on time range
+    const timePoints = getTimePointsFromRange(options.timeRange || '24h');
+    const byTime: ErrorCountByTime[] = timePoints.map(time => {
+      // Generate random data with some patterns
+      const baseValue = Math.floor(Math.random() * 5);
+      return {
+        time,
+        network: Math.max(0, baseValue + Math.floor(Math.random() * 8)),
+        client_error: Math.max(0, baseValue + Math.floor(Math.random() * 6)),
+        server_error: Math.max(0, baseValue + Math.floor(Math.random() * 4) - 1),
+        timeout: Math.max(0, baseValue + Math.floor(Math.random() * 3) - 1),
+        validation_error: Math.max(0, baseValue + Math.floor(Math.random() * 2) - 1),
+        auth_error: Math.max(0, Math.floor(Math.random() * 2)),
+        llm_api_error: Math.max(0, Math.floor(Math.random() * 2) - 1),
+        unknown: Math.max(0, Math.floor(Math.random() * 2) - 1)
       };
-      
-      // Check if this is a repeated error
-      const similarError = this.findSimilarError(message, category);
-      
-      if (similarError) {
-        // Update existing error
-        similarError.frequency = (similarError.frequency || 1) + 1;
-        similarError.timestamp = new Date().toISOString();
-        similarError.isRepeated = true;
-        
-        // Update impact if higher
-        if (this.determineImpact(enhancedError) === 'High' && similarError.impact !== 'High') {
-          similarError.impact = 'High';
-        } else if (this.determineImpact(enhancedError) === 'Medium' && similarError.impact === 'Low') {
-          similarError.impact = 'Medium';
-        }
-      } else {
-        // Create new error entry
-        const errorEntry: ErrorAnalyticsEntry = {
-          id: this.generateErrorId(),
-          timestamp: new Date().toISOString(),
-          message,
-          category,
-          source,
-          stack,
-          userId,
-          sessionId: this.sessionId,
-          url,
-          userAgent,
-          metadata,
-          isRepeated: false,
-          impact: this.determineImpact(enhancedError)
-        };
-        
-        // Add to errors collection
-        this.errors.push(errorEntry);
+    });
+    
+    // Mock error details
+    const allErrors: ErrorDetails[] = [
+      {
+        id: 'err-001',
+        type: 'NetworkError',
+        message: 'Failed to fetch from API: Network error',
+        category: 'network',
+        impact: 'High',
+        count: 15,
+        userCount: 43,
+        firstSeen: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(),
+        lastSeen: new Date(Date.now() - 2 * 3600 * 1000).toISOString()
+      },
+      {
+        id: 'err-002',
+        type: 'ApiError',
+        message: 'API returned 500 Internal Server Error',
+        category: 'server_error',
+        impact: 'High',
+        count: 12,
+        userCount: 28,
+        firstSeen: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
+        lastSeen: new Date(Date.now() - 6 * 3600 * 1000).toISOString()
+      },
+      {
+        id: 'err-003',
+        type: 'ValidationError',
+        message: 'Invalid input: name field is required',
+        category: 'validation_error',
+        impact: 'Low',
+        count: 6,
+        userCount: 5,
+        firstSeen: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
+        lastSeen: new Date(Date.now() - 12 * 3600 * 1000).toISOString()
+      },
+      {
+        id: 'err-004',
+        type: 'TimeoutError',
+        message: 'Request timed out after 30000ms',
+        category: 'timeout',
+        impact: 'Medium',
+        count: 8,
+        userCount: 15,
+        firstSeen: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+        lastSeen: new Date(Date.now() - 8 * 3600 * 1000).toISOString()
+      },
+      {
+        id: 'err-005',
+        type: 'AuthError',
+        message: 'Authentication failed: invalid token',
+        category: 'auth_error',
+        impact: 'Medium',
+        count: 4,
+        userCount: 3,
+        firstSeen: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
+        lastSeen: new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+      },
+      {
+        id: 'err-006',
+        type: 'ClientError',
+        message: 'Invalid query parameter: limit must be a number',
+        category: 'client_error',
+        impact: 'Low',
+        count: 18,
+        userCount: 10,
+        firstSeen: new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString(),
+        lastSeen: new Date(Date.now() - 4 * 3600 * 1000).toISOString()
+      },
+      {
+        id: 'err-007',
+        type: 'LLMApiError',
+        message: 'Failed to connect to LLM service: connection refused',
+        category: 'llm_api_error',
+        impact: 'High',
+        count: 3,
+        userCount: 2,
+        firstSeen: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
+        lastSeen: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
+      },
+      {
+        id: 'err-008',
+        type: 'UnknownError',
+        message: 'An unknown error occurred',
+        category: 'unknown',
+        impact: 'Low',
+        count: 2,
+        userCount: 2,
+        firstSeen: new Date(Date.now() - 20 * 24 * 3600 * 1000).toISOString(),
+        lastSeen: new Date(Date.now() - 18 * 24 * 3600 * 1000).toISOString()
       }
-      
-      // Save errors
-      this.saveErrors();
-      
-      // Also log to Sentry with analytics context
-      logErrorToService(error, {
-        ...context,
-        errorAnalyticsTracked: true,
-        sessionId: this.sessionId
-      });
-    } catch (analyticsError) {
-      // Don't let analytics tracking cause more problems
-      console.error('Error in error analytics:', analyticsError);
+    ];
+    
+    // Filter errors based on category and impact if provided
+    let filteredErrors = [...allErrors];
+    if (options.category) {
+      filteredErrors = filteredErrors.filter(error => error.category === options.category);
     }
-  }
-  
-  /**
-   * Get all recorded errors
-   */
-  public getErrors(): ErrorAnalyticsEntry[] {
-    if (!this.initialized) {
-      this.loadErrors();
-      this.initialized = true;
+    if (options.impact) {
+      filteredErrors = filteredErrors.filter(error => error.impact === options.impact);
     }
     
-    return this.errors;
-  }
-  
-  /**
-   * Get error count by category
-   */
-  public getErrorCountByCategory(): Record<ErrorCategory, number> {
-    if (!this.initialized) {
-      this.loadErrors();
-      this.initialized = true;
-    }
+    // Sort by count (descending)
+    const topErrors = filteredErrors.sort((a, b) => b.count - a.count);
     
-    const counts: Partial<Record<ErrorCategory, number>> = {};
-    
-    for (const error of this.errors) {
-      counts[error.category] = (counts[error.category] || 0) + 1;
-    }
-    
-    return counts as Record<ErrorCategory, number>;
-  }
-  
-  /**
-   * Get error count by impact
-   */
-  public getErrorCountByImpact(): Record<'High' | 'Medium' | 'Low', number> {
-    if (!this.initialized) {
-      this.loadErrors();
-      this.initialized = true;
-    }
-    
-    const counts: Record<'High' | 'Medium' | 'Low', number> = {
-      'High': 0,
-      'Medium': 0,
-      'Low': 0
+    // Generate summary
+    const summary = {
+      totalErrors: byCategory.reduce((sum, category) => sum + category.count, 0),
+      uniqueErrors: allErrors.length,
+      affectedUsers: allErrors.reduce((sum, error) => sum + error.userCount, 0),
+      highImpactErrors: allErrors.filter(error => error.impact === 'High').length,
+      mostCommonCategory: byCategory.sort((a, b) => b.count - a.count)[0].name,
+      trendingErrors: [
+        {
+          id: 'err-001',
+          type: 'NetworkError',
+          count: 15,
+          trend: 25 // percentage increase
+        },
+        {
+          id: 'err-004',
+          type: 'TimeoutError',
+          count: 8,
+          trend: 15 // percentage increase
+        }
+      ]
     };
     
-    for (const error of this.errors) {
-      counts[error.impact]++;
-    }
-    
-    return counts;
-  }
-  
-  /**
-   * Clear all error analytics data
-   */
-  public clearErrors(): void {
-    this.errors = [];
-    localStorage.removeItem(this.storageKey);
-  }
-}
-
-// Create and export singleton instance
-export const errorAnalytics = new ErrorAnalyticsService();
-
-// Extend window with error analytics
-declare global {
-  interface Window {
-    DexterAnalytics?: {
-      recordError: (error: unknown, context?: Record<string, unknown>) => void;
-      getErrors: () => ErrorAnalyticsEntry[];
-      clearErrors: () => void;
+    return {
+      summary,
+      byCategory,
+      byTime,
+      topErrors
     };
   }
 }
 
-// Add to window for debugging
-if (typeof window !== 'undefined') {
-  window.DexterAnalytics = {
-    recordError: errorAnalytics.recordError.bind(errorAnalytics),
-    getErrors: errorAnalytics.getErrors.bind(errorAnalytics),
-    clearErrors: errorAnalytics.clearErrors.bind(errorAnalytics),
-  };
+/**
+ * Helper to generate time points based on time range
+ */
+function getTimePointsFromRange(timeRange: TimeRange): number[] {
+  switch (timeRange) {
+    case '1h':
+      return Array.from({ length: 12 }, (_, i) => i); // 5-minute intervals
+    case '6h':
+      return Array.from({ length: 24 }, (_, i) => i); // 15-minute intervals
+    case '24h':
+      return Array.from({ length: 24 }, (_, i) => i); // 1-hour intervals
+    case '7d':
+      return Array.from({ length: 28 }, (_, i) => i); // 6-hour intervals
+    case '30d':
+      return Array.from({ length: 30 }, (_, i) => i); // 1-day intervals
+    default:
+      return Array.from({ length: 24 }, (_, i) => i); // Default to 24 hours
+  }
 }
 
-export default errorAnalytics;
+// Export a singleton instance
+export default new ErrorAnalyticsService();

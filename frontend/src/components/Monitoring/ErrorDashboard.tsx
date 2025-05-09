@@ -11,14 +11,12 @@ import {
   Badge, 
   Stack, 
   Card, 
-  Grid, 
   SimpleGrid, 
   useMantineTheme,
   Loader,
   Button,
   ActionIcon,
   Tooltip,
-  Box,
   Tabs,
   Alert,
   Divider,
@@ -40,28 +38,25 @@ import {
   Cell 
 } from 'recharts';
 import { 
-  IconRefresh, 
   IconAlertCircle, 
   IconChartBar, 
   IconUsers, 
   IconAlertTriangle,
   IconInfoCircle,
-  IconChevronDown,
-  IconChevronUp,
   IconFilter,
-  IconSearch,
   IconExternalLink
 } from '@tabler/icons-react';
 
 import { withErrorBoundary } from '../../utils/errorHandling';
 import RefreshableContainer from '../ErrorHandling/RefreshableContainer';
-import errorAnalyticsApi, { 
+import errorAnalyticsApi from '../../api/errorAnalyticsApi';
+import type { 
   ErrorAnalyticsData,
   ErrorCountByCategory,
   ErrorCountByTime,
   ErrorDetails,
   TimeRange,
-  ErrorAnalyticsParams 
+  ErrorAnalyticsParams
 } from '../../api/errorAnalyticsApi';
 
 /**
@@ -92,8 +87,8 @@ const CategoryBarChart: React.FC<{ data: ErrorCountByCategory[] }> = ({ data }) 
         <YAxis />
         <RechartsTooltip />
         <Bar dataKey="count" fill="#8884d8">
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
+          {data.map((_, index) => (
+            <Cell key={`cell-${index}`} fill={data[index].color} />
           ))}
         </Bar>
       </BarChart>
@@ -108,7 +103,6 @@ const TimeLineChart: React.FC<{
   data: ErrorCountByTime[],
   timeRange: TimeRange 
 }> = ({ data, timeRange }) => {
-  const theme = useMantineTheme();
   
   // Format time labels based on time range
   const formatTimeLabel = (time: number): string => {
@@ -192,49 +186,46 @@ const ImpactPieChart: React.FC<{ data: ErrorDetails[] }> = ({ data }) => {
  */
 const SummaryCards: React.FC<{ summary: ErrorAnalyticsData['summary'] }> = ({ summary }) => {
   return (
-    <SimpleGrid cols={4} spacing="lg" breakpoints={[
-      { maxWidth: 'md', cols: 2 },
-      { maxWidth: 'xs', cols: 1 }
-    ]}>
+    <SimpleGrid cols={4} gap="lg" className="custom-grid">
       <Card shadow="sm" padding="md" radius="md" withBorder>
-        <Group position="apart">
+        <Group justify="apart">
           <Text size="sm" color="dimmed">Total Errors</Text>
           <IconChartBar size={20} color="blue" />
         </Group>
-        <Text size="xl" weight={700} my="sm">{summary.totalErrors}</Text>
+        <Text size="xl" fw={700} my="sm">{summary.totalErrors}</Text>
         <Text size="xs" color="dimmed">
           {summary.uniqueErrors} unique error types
         </Text>
       </Card>
       
       <Card shadow="sm" padding="md" radius="md" withBorder>
-        <Group position="apart">
+        <Group justify="apart">
           <Text size="sm" color="dimmed">Affected Users</Text>
           <IconUsers size={20} color="green" />
         </Group>
-        <Text size="xl" weight={700} my="sm">{summary.affectedUsers}</Text>
+        <Text size="xl" fw={700} my="sm">{summary.affectedUsers}</Text>
         <Text size="xs" color="dimmed">
           Most common: {summary.mostCommonCategory}
         </Text>
       </Card>
       
       <Card shadow="sm" padding="md" radius="md" withBorder>
-        <Group position="apart">
+        <Group justify="apart">
           <Text size="sm" color="dimmed">High Impact</Text>
           <IconAlertTriangle size={20} color="red" />
         </Group>
-        <Text size="xl" weight={700} my="sm">{summary.highImpactErrors}</Text>
+        <Text size="xl" fw={700} my="sm">{summary.highImpactErrors}</Text>
         <Text size="xs" color="dimmed">
           Critical errors to address
         </Text>
       </Card>
       
       <Card shadow="sm" padding="md" radius="md" withBorder>
-        <Group position="apart">
+        <Group justify="apart">
           <Text size="sm" color="dimmed">Trending</Text>
           <IconAlertCircle size={20} color="orange" />
         </Group>
-        <Text size="xl" weight={700} my="sm">{summary.trendingErrors.length}</Text>
+        <Text size="xl" fw={700} my="sm">{summary.trendingErrors.length}</Text>
         <Text size="xs" color="dimmed">
           {summary.trendingErrors[0]?.type || 'No trending errors'}
         </Text>
@@ -251,12 +242,12 @@ const ErrorList: React.FC<{
   onViewDetails: (error: ErrorDetails) => void
 }> = ({ errors, onViewDetails }) => {
   return (
-    <Stack spacing="md">
+    <Stack gap="md">
       {errors.map((error) => (
         <Card key={error.id} p="sm" withBorder>
-          <Group position="apart">
+          <Group justify="apart">
             <div>
-              <Group spacing="xs">
+              <Group gap="xs">
                 <Text fw={500}>{error.type}</Text>
                 <Badge size="sm" color={error.category ? undefined : 'gray'}>{error.category}</Badge>
               </Group>
@@ -272,7 +263,7 @@ const ErrorList: React.FC<{
               </Tooltip>
             </Group>
           </Group>
-          <Group position="apart" mt="sm">
+          <Group justify="apart" mt="sm">
             <Text size="xs" color="dimmed">First seen: {formatDate(error.firstSeen)}</Text>
             <Text size="xs" color="dimmed">Last seen: {formatDate(error.lastSeen)}</Text>
             <Text size="xs" color="dimmed">Users: {error.userCount}</Text>
@@ -314,13 +305,13 @@ const ErrorDetailsView: React.FC<{
   
   return (
     <Paper p="md" shadow="md" radius="md" withBorder>
-      <Group position="apart" mb="md">
+      <Group justify="apart" mb="md">
         <Title order={3}>{error.type}</Title>
         <Button variant="subtle" onClick={onClose}>Close</Button>
       </Group>
       
-      <Group position="apart" mb="lg">
-        <Group spacing="xs">
+      <Group justify="apart" mb="lg">
+        <Group gap="xs">
           <Badge color={IMPACT_COLORS[error.impact]}>{error.impact} Impact</Badge>
           <Badge color={error.category ? undefined : 'gray'}>{error.category}</Badge>
           <Badge>{error.count} Occurrences</Badge>
@@ -341,7 +332,7 @@ const ErrorDetailsView: React.FC<{
         
         <Tabs.Panel value="occurrences" pt="md">
           {loading ? (
-            <Group position="center" py="lg">
+            <Group justify="center" py="lg">
               <Loader />
             </Group>
           ) : occurrences.length > 0 ? (
@@ -371,23 +362,23 @@ const ErrorDetailsView: React.FC<{
         </Tabs.Panel>
         
         <Tabs.Panel value="stats" pt="md">
-          <Stack spacing="md">
-            <Group position="apart">
+          <Stack gap="md">
+            <Group justify="apart">
               <Text>First seen:</Text>
               <Text fw={500}>{formatDate(error.firstSeen)}</Text>
             </Group>
             <Divider />
-            <Group position="apart">
+            <Group justify="apart">
               <Text>Last seen:</Text>
               <Text fw={500}>{formatDate(error.lastSeen)}</Text>
             </Group>
             <Divider />
-            <Group position="apart">
+            <Group justify="apart">
               <Text>Total occurrences:</Text>
               <Text fw={500}>{error.count}</Text>
             </Group>
             <Divider />
-            <Group position="apart">
+            <Group justify="apart">
               <Text>Affected users:</Text>
               <Text fw={500}>{error.userCount}</Text>
             </Group>
@@ -420,32 +411,29 @@ const ErrorDashboard: React.FC = () => {
   const [selectedError, setSelectedError] = useState<ErrorDetails | null>(null);
   
   // Fetch error analytics data with React Query
-  const { data, isLoading, error, refetch } = useQuery(
-    ['errorAnalytics', timeRange, categoryFilter, impactFilter],
-    () => errorAnalyticsApi.getErrorAnalytics({
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['errorAnalytics', timeRange, categoryFilter, impactFilter],
+    queryFn: async () => errorAnalyticsApi.getErrorAnalytics({
       timeRange,
       category: categoryFilter || undefined,
       impact: impactFilter || undefined
     }),
-    {
-      // For development, use mock data
-      enabled: process.env.NODE_ENV === 'production',
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: (failureCount, error) => {
-        return failureCount < 3;
-      }
+    enabled: process.env.NODE_ENV === 'production',
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: (failureCount) => {
+      return failureCount < 3;
     }
-  );
+  });
   
   // For development, use mock data
   const errorData = data || errorAnalyticsApi.generateMockErrorAnalytics({ timeRange });
   
   // Filter errors based on category and impact
-  const filteredErrors = errorData.topErrors.filter(error => {
+  const filteredErrors = errorData.topErrors?.filter((error: ErrorDetails) => {
     if (categoryFilter && error.category !== categoryFilter) return false;
     if (impactFilter && error.impact !== impactFilter) return false;
     return true;
-  });
+  }) || [];
   
   // Handle error details view
   const handleViewErrorDetails = (error: ErrorDetails) => {
@@ -458,10 +446,10 @@ const ErrorDashboard: React.FC = () => {
   };
   
   return (
-    <Stack spacing="lg">
+    <Stack gap="lg">
       <Title order={2}>Error Monitoring Dashboard</Title>
       
-      <Group position="apart">
+      <Group justify="apart">
         <Text>View error trends and patterns to identify issues</Text>
         <Group spacing="md">
           <Select
@@ -480,7 +468,7 @@ const ErrorDashboard: React.FC = () => {
           <Select
             label="Category"
             value={categoryFilter}
-            onChange={setCategoryFilter}
+            onChange={(value: string | null) => setCategoryFilter(value || '')}
             data={[
               { value: '', label: 'All Categories' },
               ...errorData.byCategory.map(category => ({
@@ -494,7 +482,7 @@ const ErrorDashboard: React.FC = () => {
           <Select
             label="Impact"
             value={impactFilter}
-            onChange={setImpactFilter}
+            onChange={(value: string | null) => setImpactFilter(value || '')}
             data={[
               { value: '', label: 'All Impacts' },
               { value: 'High', label: 'High' },
@@ -508,7 +496,7 @@ const ErrorDashboard: React.FC = () => {
       </Group>
       
       {/* Summary cards */}
-      <SummaryCards summary={errorData.summary} />
+      <SummaryCards summary={errorData.summary || {}} />
       
       <SimpleGrid cols={3} breakpoints={[{ maxWidth: 'md', cols: 1 }]}>
         <RefreshableContainer 
@@ -516,7 +504,7 @@ const ErrorDashboard: React.FC = () => {
           onRefresh={handleRefresh}
           showRefreshButton
         >
-          <CategoryBarChart data={errorData.byCategory} />
+          <CategoryBarChart data={errorData.byCategory || []} />
         </RefreshableContainer>
         
         <RefreshableContainer 
@@ -524,7 +512,7 @@ const ErrorDashboard: React.FC = () => {
           onRefresh={handleRefresh}
           showRefreshButton
         >
-          <TimeLineChart data={errorData.byTime} timeRange={timeRange} />
+          <TimeLineChart data={errorData.byTime || []} timeRange={timeRange} />
         </RefreshableContainer>
         
         <RefreshableContainer 
@@ -532,7 +520,7 @@ const ErrorDashboard: React.FC = () => {
           onRefresh={handleRefresh}
           showRefreshButton
         >
-          <ImpactPieChart data={errorData.topErrors} />
+          <ImpactPieChart data={errorData.topErrors || []} />
         </RefreshableContainer>
       </SimpleGrid>
       

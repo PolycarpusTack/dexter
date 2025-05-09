@@ -1,131 +1,145 @@
-// File: frontend/src/store/appStore.ts
-// Unified store implementation that combines both previous versions
+// File: src/store/appStore.ts
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 /**
- * Interface for the application store state
+ * Interface for app store state
  */
 interface AppState {
-  // Configuration
-  organizationSlug: string;
-  projectSlug: string;
-  
-  // Selection state
-  selectedIssueId: string | null;
-  selectedEventId: string | null;
-  
-  // Filter state
-  statusFilter: string;
-  searchQuery: string;
-  
-  // AI model settings
-  activeAIModel: string;
-  
-  // Events map for "latest event" information
-  latestEventsByIssue: Record<string, string>;
-  
-  // Actions
-  setOrgProject: (organizationSlug: string, projectSlug: string) => void;
-  setSelectedIssue: (issueId: string | null, eventId?: string | null) => void;
-  setStatusFilter: (statusFilter: string) => void;
-  setSearchQuery: (searchQuery: string) => void;
-  setActiveAIModel: (modelName: string) => void;
-  storeLatestEventId: (issueId: string, eventId: string) => void;
-  resetFilters: () => void;
-  clearSelection: () => void;
+  /** Active AI model for explanations */
+  activeAIModel: string | null;
+  /** Theme mode */
+  darkMode: boolean;
+  /** Selected organization ID */
+  organizationId: string | null;
+  /** Selected project ID */
+  projectId: string | null;
+  /** User ID */
+  userId: string | null;
+  /** API token */
+  apiToken: string | null;
+  /** Display preferences */
+  displayPreferences: {
+    /** Show expanded stack traces */
+    expandedStackTraces: boolean;
+    /** Show context data */
+    showContext: boolean;
+    /** Show raw event data */
+    showRawData: boolean;
+    /** Default masking of sensitive data */
+    defaultMasking: boolean;
+  };
+  /** User keyboard preferences */
+  keyboard: {
+    /** Use keyboard shortcuts */
+    enabled: boolean;
+    /** Custom keyboard shortcuts */
+    customShortcuts: Record<string, string>;
+  };
+  /** Set active AI model */
+  setActiveAIModel: (model: string) => void;
+  /** Toggle theme mode */
+  toggleDarkMode: () => void;
+  /** Set dark mode */
+  setDarkMode: (dark: boolean) => void;
+  /** Set organization ID */
+  setOrganizationId: (id: string | null) => void;
+  /** Set project ID */
+  setProjectId: (id: string | null) => void;
+  /** Set user ID */
+  setUserId: (id: string | null) => void;
+  /** Set API token */
+  setApiToken: (token: string | null) => void;
+  /** Update display preference */
+  updateDisplayPreference: <K extends keyof AppState['displayPreferences']>(
+    key: K,
+    value: AppState['displayPreferences'][K]
+  ) => void;
+  /** Update keyboard preference */
+  updateKeyboardPreference: <K extends keyof AppState['keyboard']>(
+    key: K,
+    value: AppState['keyboard'][K]
+  ) => void;
+  /** Set custom keyboard shortcut */
+  setCustomShortcut: (action: string, shortcut: string) => void;
+  /** Reset all settings to defaults */
+  resetSettings: () => void;
 }
 
+// Default settings
+const DEFAULT_SETTINGS = {
+  activeAIModel: 'mistral:latest',
+  darkMode: false,
+  organizationId: null,
+  projectId: null,
+  userId: null,
+  apiToken: null,
+  displayPreferences: {
+    expandedStackTraces: false,
+    showContext: true,
+    showRawData: false,
+    defaultMasking: true
+  },
+  keyboard: {
+    enabled: true,
+    customShortcuts: {}
+  }
+};
+
 /**
- * Global application state store
+ * Zustand store for app state with persistence
  */
-const useAppStore = create<AppState>((set) => ({
-  // Configuration
-  organizationSlug: localStorage.getItem('organizationSlug') || '',
-  projectSlug: localStorage.getItem('projectSlug') || '',
-  
-  // Selection state
-  selectedIssueId: null,
-  selectedEventId: null,
-  
-  // Filter state
-  statusFilter: 'unresolved', // Default filter
-  searchQuery: '',
-  
-  // AI model settings
-  activeAIModel: localStorage.getItem('activeAIModel') || '',
-  
-  // Events to support "latest event" fetching when needed
-  latestEventsByIssue: {}, // Map of issueId -> eventId for the latest event per issue
-  
-  // Set Sentry org/project
-  setOrgProject: (organizationSlug, projectSlug) => {
-    if (organizationSlug) localStorage.setItem('organizationSlug', organizationSlug);
-    if (projectSlug) localStorage.setItem('projectSlug', projectSlug);
-    
-    set({ 
-      organizationSlug, 
-      projectSlug,
-      // Clear selections when changing project
-      selectedIssueId: null,
-      selectedEventId: null,
-    });
-  },
-  
-  // Set selected issue and optionally its event
-  setSelectedIssue: (issueId, eventId = null) => {
-    set((state) => {
-      // If no eventId provided, try to get it from our stored latest events
-      const resolvedEventId = eventId || (issueId ? state.latestEventsByIssue[issueId] : null);
+const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      ...DEFAULT_SETTINGS,
       
-      console.log('Setting selected issue:', issueId, 'with event ID:', resolvedEventId);
+      setActiveAIModel: (model: string) => set({ activeAIModel: model }),
       
-      return {
-        selectedIssueId: issueId,
-        selectedEventId: resolvedEventId,
-      };
-    });
-  },
-  
-  // Set status filter
-  setStatusFilter: (statusFilter) => set({ 
-    statusFilter,
-    selectedIssueId: null, // Reset selection when filters change
-    selectedEventId: null,
-  }),
-  
-  // Set search query
-  setSearchQuery: (searchQuery) => set({ searchQuery }),
-  
-  // Set active AI model
-  setActiveAIModel: (modelName) => {
-    if (modelName) localStorage.setItem('activeAIModel', modelName);
-    set({ activeAIModel: modelName });
-  },
-  
-  // Store latest event ID for an issue (called when receiving issue data)
-  storeLatestEventId: (issueId, eventId) => {
-    set((state) => ({
-      latestEventsByIssue: {
-        ...state.latestEventsByIssue,
-        [issueId]: eventId,
-      }
-    }));
-  },
-  
-  // Reset all filters
-  resetFilters: () => set({ 
-    statusFilter: 'unresolved',
-    searchQuery: '',
-    selectedIssueId: null,
-    selectedEventId: null,
-  }),
-  
-  // Clear selection
-  clearSelection: () => set({
-    selectedIssueId: null,
-    selectedEventId: null,
-  }),
-}));
+      toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
+      
+      setDarkMode: (dark: boolean) => set({ darkMode: dark }),
+      
+      setOrganizationId: (id: string | null) => set({ organizationId: id }),
+      
+      setProjectId: (id: string | null) => set({ projectId: id }),
+      
+      setUserId: (id: string | null) => set({ userId: id }),
+      
+      setApiToken: (token: string | null) => set({ apiToken: token }),
+      
+      updateDisplayPreference: (key, value) => set((state) => ({
+        displayPreferences: {
+          ...state.displayPreferences,
+          [key]: value
+        }
+      })),
+      
+      updateKeyboardPreference: (key, value) => set((state) => ({
+        keyboard: {
+          ...state.keyboard,
+          [key]: value
+        }
+      })),
+      
+      setCustomShortcut: (action, shortcut) => set((state) => ({
+        keyboard: {
+          ...state.keyboard,
+          customShortcuts: {
+            ...state.keyboard.customShortcuts,
+            [action]: shortcut
+          }
+        }
+      })),
+      
+      resetSettings: () => set(DEFAULT_SETTINGS)
+    }),
+    {
+      name: 'dexter-settings',
+      storage: createJSONStorage(() => localStorage)
+    }
+  )
+);
 
 export default useAppStore;
