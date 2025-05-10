@@ -19,6 +19,8 @@ from .routers import issues, events, ai, config, analyzers
 from .routers import enhanced_analyzers
 # Import API v1 routers
 from .routers.api.v1 import issues as v1_issues
+from .routers.api.v1 import events as v1_events
+from .routers.api.v1 import analytics as v1_analytics
 from .config import settings
 
 # Import error handling
@@ -106,6 +108,8 @@ app.include_router(analyzers.router, prefix=API_PREFIX, tags=["Analyzers"])
 app.include_router(enhanced_analyzers.router, prefix=API_PREFIX, tags=["Enhanced Analyzers"])
 # Add API v1 compatible routes
 app.include_router(v1_issues.router, prefix=API_PREFIX, tags=["Issues V1"])
+app.include_router(v1_events.router, prefix=API_PREFIX, tags=["Events V1"])
+app.include_router(v1_analytics.router, prefix=API_PREFIX, tags=["Analytics V1"])
 logger.info("API Routers included.")
 
 # --- Root & Health Endpoints ---

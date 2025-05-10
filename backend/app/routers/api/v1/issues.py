@@ -5,9 +5,9 @@ from typing import Optional, Dict, Any, List
 import logging
 import httpx
 
-from ....services.sentry_client import SentryApiClient
-from ....services.config_service import ConfigService, get_config_service
-from ....utils.error_handling import SentryAPIError
+from app.services.sentry_client import SentryApiClient
+from app.services.config_service import ConfigService, get_config_service
+from app.utils.error_handling import SentryAPIError
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

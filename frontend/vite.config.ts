@@ -18,8 +18,9 @@ export default defineConfig({
   },
   server: {
     port: 5175,
-    strictPort: true,
-    open: true
+    strictPort: false, // Allow fallback to other ports
+    open: true,
+    host: true // Listen on all addresses
   },
   build: {
     outDir: 'dist',

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     ollama_model: str = Field("mistral:latest", env="OLLAMA_MODEL")
     ollama_timeout: int = Field(1200, env="OLLAMA_TIMEOUT")  # Timeout in seconds (20 minutes)
     log_level: str = Field("INFO", env="LOG_LEVEL")
+    organization_slug: str = Field("", env="SENTRY_ORGANIZATION_SLUG")
+    project_slug: str = Field("", env="SENTRY_PROJECT_SLUG")
 
     @property
     def sentry_org_web_url_base(self) -> str:

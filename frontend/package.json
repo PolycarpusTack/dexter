@@ -1,4 +1,8 @@
 {
+  "name": "dexter-frontend",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
   "dependencies": {
     "@mantine/charts": "^7.17.7",
     "@mantine/core": "^7.17.7",

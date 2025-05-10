@@ -45,6 +45,12 @@ class SentryApiClient:
         if self.auth_token == "YOUR_SENTRY_API_TOKEN" or not self.auth_token:
             logger.warning("Using default token or empty token - API calls will fail!")
     
+    @classmethod
+    async def get_instance(cls):
+        """Get a Sentry API client instance for dependency injection"""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            return cls(client=client)
+    
     async def get_event_details(self, organization_slug: str, project_slug: str, event_id: str) -> Dict[str, Any]:
         """Get detailed information for a specific event.
         
@@ -440,6 +446,111 @@ class SentryApiClient:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Unexpected error: {str(e)}"
             )
+    
+    async def get_issue_stats(
+        self,
+        organization_slug: str,
+        issue_id: str,
+        stat: str = "24h",
+        interval: Optional[str] = None,
+        environment: Optional[str] = None
+    ) -> List[List[Any]]:
+        """Get stats for a specific issue.
+        
+        Args:
+            organization_slug: The slug of the organization  
+            issue_id: The ID of the issue
+            stat: The stat type (e.g., "24h", "14d", "30d")
+            interval: The interval for stats (e.g., "1h", "1d")
+            environment: Optional environment to filter by
+            
+        Returns:
+            A list of [timestamp, count] pairs
+        """
+        logger.info(f"Fetching stats for issue: {issue_id}, stat: {stat}, interval: {interval}")
+        
+        # Use mock data if enabled
+        if getattr(settings, "USE_MOCK_DATA", "false").lower() == "true":
+            logger.info("Using mock data for issue stats")
+            return self._mock_issue_stats(issue_id, stat, interval)
+        
+        # Build query parameters
+        params = {"stat": stat}
+        if interval:
+            params["interval"] = interval
+        if environment:
+            params["environment"] = environment
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/issues/{issue_id}/stats/"
+            logger.info(f"Making GET request to {url} with params {params}")
+            
+            response = await self.client.get(url, headers=self.headers, params=params)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error fetching issue stats: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except httpx.RequestError as e:
+            logger.error(f"Request error fetching issue stats: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Error connecting to Sentry API: {str(e)}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error fetching issue stats: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def _make_request(self, method: str, url: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+        """Make a raw HTTP request to the Sentry API.
+        
+        Args:
+            method: HTTP method (GET, POST, PUT, DELETE)
+            url: Full URL to request
+            params: Optional query parameters
+            
+        Returns:
+            The response data as a dictionary
+        """
+        logger.info(f"Making {method} request to {url}")
+        
+        # Use mock data if enabled
+        if getattr(settings, "USE_MOCK_DATA", "false").lower() == "true":
+            logger.info("Using mock data for raw request")
+            return self._mock_raw_request(method, url, params)
+        
+        try:
+            request_method = getattr(self.client, method.lower())
+            response = await request_method(url, headers=self.headers, params=params)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error in raw request: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except httpx.RequestError as e:
+            logger.error(f"Request error in raw request: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Error connecting to Sentry API: {str(e)}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error in raw request: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
 
     # --- Mock data methods ---
     
@@ -771,6 +882,63 @@ class SentryApiClient:
                     }
                 }
             ]
+        }
+    
+    def _mock_issue_stats(self, issue_id: str, stat: str, interval: Optional[str] = None) -> List[List[Any]]:
+        """Generate mock issue stats.
+        
+        Args:
+            issue_id: The ID of the issue
+            stat: The stat type (e.g., "24h", "14d", "30d")
+            interval: The interval for stats (e.g., "1h", "1d")
+            
+        Returns:
+            Mock issue stats as a list of [timestamp, count] pairs
+        """
+        # Generate some mock data points
+        import time
+        current_time = int(time.time())
+        
+        if stat == "24h":
+            # Generate hourly data for the last 24 hours
+            data_points = []
+            for i in range(24, 0, -1):
+                timestamp = current_time - (i * 3600)  # 3600 seconds = 1 hour
+                count = 5 + (i % 7)  # Mock count with some variation
+                data_points.append([timestamp, count])
+        elif stat == "7d":
+            # Generate daily data for the last 7 days
+            data_points = []
+            for i in range(7, 0, -1):
+                timestamp = current_time - (i * 86400)  # 86400 seconds = 1 day
+                count = 10 + (i % 15)  # Mock count with some variation
+                data_points.append([timestamp, count])
+        else:  # Default to 30d
+            # Generate daily data for the last 30 days
+            data_points = []
+            for i in range(30, 0, -1):
+                timestamp = current_time - (i * 86400)  # 86400 seconds = 1 day
+                count = 20 + (i % 25)  # Mock count with some variation
+                data_points.append([timestamp, count])
+        
+        return data_points
+    
+    def _mock_raw_request(self, method: str, url: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+        """Generate mock raw request response.
+        
+        Args:
+            method: HTTP method
+            url: Full URL 
+            params: Optional query parameters
+            
+        Returns:
+            Mock response data
+        """
+        # Simple mock response for general requests
+        return {
+            "data": [],
+            "links": {},
+            "meta": {}
         }
 
 # Dependency for FastAPI
