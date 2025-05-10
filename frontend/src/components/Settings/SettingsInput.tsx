@@ -14,7 +14,6 @@ import {
   Collapse,
   Badge,
   useMantineTheme,
-  MantineTheme,
   Tabs,
   Tooltip,
   Title
@@ -73,12 +72,14 @@ function SettingsInput(): JSX.Element {
     };
   }, []);
   
+  const theme = useMantineTheme();
+  
   // Get state from global store
   const { organizationSlug, projectSlug, setOrgProject } = useAppStore(
     (state) => ({
-      organizationSlug: state.organizationId,
-      projectSlug: state.projectId,
-      setOrgProject: state.setProjectId,
+      organizationSlug: state.organizationSlug,
+      projectSlug: state.projectSlug,
+      setOrgProject: state.setOrgProject,
     })
   );
   
@@ -162,17 +163,15 @@ function SettingsInput(): JSX.Element {
       radius="md" 
       className="settings-input"
       mb="xs"
-      styles={(theme: MantineTheme) => ({
-        root: {
-          backgroundColor: organizationSlug && projectSlug 
-            ? theme.colors.green[0] 
-            : theme.colors.yellow[0],
-          opacity: 0.8,
-          borderColor: organizationSlug && projectSlug 
-            ? theme.colors.green[3]
-            : theme.colors.yellow[3],
-        }
-      })}
+      style={{
+        backgroundColor: organizationSlug && projectSlug 
+          ? theme.colors.green[0] 
+          : theme.colors.yellow[0],
+        opacity: 0.8,
+        borderColor: organizationSlug && projectSlug 
+          ? theme.colors.green[3]
+          : theme.colors.yellow[3],
+      }}
     >
       {/* Header */}
       <Group justify="apart" mb="xs">
@@ -210,19 +209,17 @@ function SettingsInput(): JSX.Element {
       {/* Current config summary (when collapsed) */}
       {!opened && organizationSlug && projectSlug && (
         <Group gap="xs">
-          <ThemeIcon
-            size="xs"
-            radius="xl"
-            color="blue"
-            variant="light"
-          >
-            <IconBrandSentry size={10} />
-          </ThemeIcon>
-          <Text size="sm">
-            <Text span fw={500}>{organizationSlug}</Text>
-            {' / '}
-            <Text span fw={500}>{projectSlug}</Text>
-          </Text>
+          <Group gap="xs">
+            <AccessibleIcon
+              icon={<IconBrandSentry size={10} />}
+              label="Connected to Sentry"
+            />
+            <Text size="sm">
+              <Text span fw={500}>{organizationSlug}</Text>
+              {' / '}
+              <Text span fw={500}>{projectSlug}</Text>
+            </Text>
+          </Group>
         </Group>
       )}
       

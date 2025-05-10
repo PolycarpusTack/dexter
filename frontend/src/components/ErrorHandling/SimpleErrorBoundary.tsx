@@ -62,10 +62,14 @@ const SimpleErrorBoundary: React.FC<SimpleErrorBoundaryProps> = (props) => {
   // Use the enhanced ErrorBoundary with the appropriate fallback
   return (
     <ErrorBoundary
-      FallbackComponent={FallbackComponent}
+      fallback={(error, resetError) => (
+        <FallbackComponent 
+          error={error} 
+          resetErrorBoundary={resetError}
+        />
+      )}
       onError={props.onError}
       name="SimpleErrorBoundary"
-      level="component"
     >
       {props.children}
     </ErrorBoundary>

@@ -25,6 +25,69 @@ export default defineConfig({
     outDir: 'dist',
     // Only generate source maps in development mode
     sourcemap: process.env.NODE_ENV !== 'production',
+    // Chunk size optimization
+    chunkSizeWarningLimit: 1000, // Increase warning threshold to 1MB
+    rollupOptions: {
+      output: {
+        // Manual chunks for better code splitting
+        manualChunks: (id) => {
+          // Vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-vendor';
+            }
+            if (id.includes('@mantine')) {
+              return 'mantine-vendor';
+            }
+            if (id.includes('@tanstack')) {
+              return 'query-vendor';
+            }
+            if (id.includes('d3')) {
+              return 'd3-vendor';
+            }
+            if (id.includes('@tabler/icons-react')) {
+              return 'icons-vendor';
+            }
+            if (id.includes('axios')) {
+              return 'api-vendor';
+            }
+            return 'vendor'; // all other vendor packages
+          }
+          
+          // Component chunks
+          if (id.includes('/components/DeadlockDisplay/')) {
+            return 'deadlock-viz';
+          }
+          if (id.includes('/components/EventTable/')) {
+            return 'event-table';
+          }
+          if (id.includes('/components/EventDetail/')) {
+            return 'event-detail';
+          }
+          if (id.includes('/components/ExplainError/')) {
+            return 'explain-error';
+          }
+        },
+        assetFileNames: (assetInfo) => {
+          // Organize assets into folders
+          let extType = assetInfo?.name?.split('.').at(-1) || '';
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(extType)) {
+            extType = 'img';
+          }
+          return `assets/${extType}/[name]-[hash][extname]`;
+        },
+        chunkFileNames: 'assets/js/[name]-[hash].js',
+        entryFileNames: 'assets/js/[name]-[hash].js',
+      },
+    },
+    // Enable minification & tree shaking
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: process.env.NODE_ENV === 'production',
+        drop_debugger: true,
+      },
+    },
   },
   optimizeDeps: {
     esbuildOptions: {

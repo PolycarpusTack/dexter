@@ -53,7 +53,7 @@ class AppErrorBoundary extends Component<AppErrorBoundaryProps, ErrorBoundarySta
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log error details
     console.error('Application Error:', error);
     console.error('Component Stack:', errorInfo.componentStack);
@@ -74,7 +74,7 @@ class AppErrorBoundary extends Component<AppErrorBoundaryProps, ErrorBoundarySta
     window.location.reload();
   };
 
-  render(): ReactNode {
+  override render(): ReactNode {
     if (this.state.hasError) {
       return <AppErrorFallback error={this.state.error!} onReset={this.handleReset} onReload={this.handleReload} />;
     }
@@ -93,28 +93,39 @@ interface AppErrorFallbackProps {
  * Application-level error fallback component
  */
 const AppErrorFallback: React.FC<AppErrorFallbackProps> = ({ error, onReset, onReload }) => {
+  const theme = useMantineTheme();
+  
   return (
-    <Container size="md" py="xl">
+    <Container size="md" py="xl" style={{ backgroundColor: theme.colors.gray[0] }}>
       <Paper withBorder p="xl" radius="md" shadow="md">
-        <Stack spacing="xl" align="center">
-          <ThemeIcon size="xl" radius="xl" color="red">
-            <IconBug size={32} />
-          </ThemeIcon>
+        <Stack gap="xl" align="center">
+          <Center>
+            <Box>
+              <ThemeIcon size="xl" radius="xl" color="red">
+                <IconBug size={32} />
+              </ThemeIcon>
+            </Box>
+          </Center>
           
-          <Title order={2} align="center">Something went wrong</Title>
+          <Title order={2} ta="center">Something went wrong</Title>
           
-          <Text align="center" color="dimmed" size="lg">
+          <Text ta="center" color="dimmed" size="lg">
             We're sorry, but the application has encountered an error.
             You can try resetting the application or reload the page.
           </Text>
           
           <Alert color="red" icon={<IconAlertCircle size={16} />} title="Error details">
             <Text size="sm">{error.message || 'An unknown error occurred'}</Text>
+            {error.stack && (
+              <Code block mt="xs" p="xs" style={{ fontSize: '0.8rem', maxHeight: '200px', overflow: 'auto' }}>
+                {error.stack}
+              </Code>
+            )}
           </Alert>
           
           <Divider w="100%" />
           
-          <Group position="center" spacing="md">
+          <Group justify="center" gap="md">
             <Button 
               leftSection={<IconRefresh size={16} />}
               onClick={onReset}
@@ -132,9 +143,32 @@ const AppErrorFallback: React.FC<AppErrorFallbackProps> = ({ error, onReset, onR
             </Button>
           </Group>
           
-          <Text size="xs" color="dimmed">
-            If this problem persists, please contact support or report the issue.
-          </Text>
+          <Group gap="xs" justify="center">
+            <Text size="xs" color="dimmed">
+              If this problem persists, please contact support or
+            </Text>
+            <Button 
+              size="xs" 
+              variant="subtle" 
+              component="a"
+              href="https://github.com/your-org/dexter/issues"
+              target="_blank"
+              leftSection={<IconBrandGithub size={14} />}
+            >
+              report the issue
+            </Button>
+          </Group>
+          
+          <Alert 
+            icon={<IconInfoCircle size={16} />} 
+            color="blue" 
+            mt="md"
+            title="Development Mode"
+          >
+            <Text size="sm">
+              You're running in development mode. Check the console for more detailed error information.
+            </Text>
+          </Alert>
         </Stack>
       </Paper>
     </Container>

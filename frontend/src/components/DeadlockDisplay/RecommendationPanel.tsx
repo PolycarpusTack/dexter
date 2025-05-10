@@ -69,7 +69,7 @@ const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
   
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 50 }}>
+      <Box style={{ display: 'flex', justifyContent: 'center', paddingTop: 50, paddingBottom: 50 }}>
         <Loader />
       </Box>
     );
@@ -77,7 +77,7 @@ const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
   
   if (!data) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 50 }}>
+      <Box style={{ display: 'flex', justifyContent: 'center', paddingTop: 50, paddingBottom: 50 }}>
         <Group>
           <IconDatabaseOff size={20} />
           <Text c="dimmed">No deadlock data available</Text>
@@ -120,19 +120,26 @@ const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
     [];
   
   return (
-    <Stack spacing="md">
+    <Stack gap="md">
       {/* Recommendation overview */}
       <Paper p="md" withBorder radius="md">
-        <Group position="apart" mb="md">
+        <Group justify="apart" mb="md">
           <Group>
             <ThemeIcon size="lg" radius="md" color={severityInfo.color}>
               <IconAlertTriangle size={18} />
             </ThemeIcon>
             <Text fw={600}>Deadlock Analysis</Text>
           </Group>
-          <Badge color={severityInfo.color} size="lg">
-            {severityInfo.label} Risk
-          </Badge>
+          <Group>
+            <Badge color={severityInfo.color} size="lg">
+              {severityInfo.label} Risk
+            </Badge>
+            <Tooltip label="Analysis completed">
+              <Badge color="green" variant="outline" size="lg" leftSection={<IconCheck size={12} />}>
+                Analyzed
+              </Badge>
+            </Tooltip>
+          </Group>
         </Group>
         
         {pattern && (
@@ -140,14 +147,15 @@ const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
             icon={<IconLock size={16} />} 
             color="blue" 
             mb="md"
-            title="Deadlock Pattern Identified"
+            title={isMasked ? "Deadlock Pattern Identified (Masked)" : "Deadlock Pattern Identified"}
           >
-            <Text size="sm">{pattern}</Text>
+            <Text size="sm">{isMasked ? "Pattern details masked" : pattern}</Text>
           </Alert>
         )}
         
         <Text size="sm" mb="md">
           This deadlock involves {involvedProcesses.length} process{involvedProcesses.length !== 1 ? 'es' : ''} and {involvedTables.length} table{involvedTables.length !== 1 ? 's' : ''}.
+          {isMasked && <Text size="xs" c="dimmed" mt="xs">Note: Sensitive information is masked for security reasons.</Text>}
         </Text>
         
         {/* Involved processes summary */}
@@ -163,17 +171,22 @@ const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
         {/* Involved tables summary */}
         <Box mb="md">
           <Text fw={600} size="sm" mb="xs">Tables Involved:</Text>
-          <List size="sm" spacing="xs">
+          <List size="sm">
             {involvedTables.map((table, idx) => (
               <List.Item key={idx}>{table}</List.Item>
             ))}
           </List>
         </Box>
         
+        <Divider my="sm" />
+        
         {/* Deadlock cycles if available */}
         {cycles.length > 0 && (
           <Box mb="md">
-            <Text fw={600} size="sm" mb="xs">Deadlock Cycle{cycles.length > 1 ? 's' : ''}:</Text>
+            <Group gap="xs" mb="xs">
+              <IconClock size={16} color={theme.colors.orange[6]} />
+              <Text fw={600} size="sm">Deadlock Cycle{cycles.length > 1 ? 's' : ''}:</Text>
+            </Group>
             <Accordion>
               {cycles.map((cycle, idx) => (
                 <Accordion.Item key={idx} value={`cycle-${idx}`}>
@@ -203,9 +216,14 @@ const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
       {/* Recommendations detail */}
       <Paper p="md" withBorder radius="md">
         <Title order={4} mb="md">
-          <Group spacing="xs">
+          <Group gap="xs">
             <IconBulb size={20} />
             <Text>Recommended Solution</Text>
+            <Tooltip label="AI-generated recommendation" withArrow>
+              <Button size="xs" leftSection={<IconInfoCircle size={12} />} variant="subtle">
+                AI Assisted
+              </Button>
+            </Tooltip>
           </Group>
         </Title>
         
@@ -227,7 +245,7 @@ const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
       {/* General guidelines */}
       <Paper p="md" withBorder radius="md">
         <Title order={4} mb="md">
-          <Group spacing="xs">
+          <Group gap="xs">
             <IconTools size={20} />
             <Text>General Deadlock Prevention Guidelines</Text>
           </Group>
@@ -256,7 +274,7 @@ const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
           </Tabs.List>
           
           <Tabs.Panel value="patterns">
-            <Stack spacing="md">
+            <Stack gap="md">
               <Alert 
                 icon={<IconInfoCircle size={16} />} 
                 color="blue" 
@@ -268,7 +286,7 @@ const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
               
               <Card shadow="sm" p="lg" radius="md" withBorder mb="sm">
                 <Card.Section bg={theme.colors.red[0]} p="sm">
-                  <Group position="apart">
+                  <Group justify="apart">
                     <Text fw={600}>Cycle of Waiting</Text>
                     <Badge color="red">Most Common</Badge>
                   </Group>
@@ -311,7 +329,7 @@ const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
           </Tabs.Panel>
           
           <Tabs.Panel value="code">
-            <Stack spacing="md">
+            <Stack gap="md">
               <Alert 
                 icon={<IconInfoCircle size={16} />} 
                 color="blue" 
@@ -401,7 +419,7 @@ COMMIT;`}
           </Tabs.Panel>
           
           <Tabs.Panel value="docs">
-            <Stack spacing="md">
+            <Stack gap="md">
               <Alert 
                 icon={<IconInfoCircle size={16} />} 
                 color="blue" 
@@ -415,17 +433,17 @@ COMMIT;`}
                 <Text fw={600}>PostgreSQL Official Documentation</Text>
                 <List size="sm" spacing="xs" mt="xs">
                   <List.Item>
-                    <Group spacing="xs">
+                    <Group gap="xs">
                       <IconBook size={14} />
                       <Text>
                         <a href="https://www.postgresql.org/docs/current/explicit-locking.html" target="_blank" rel="noopener noreferrer">
-                          Explicit Locking
+                          Explicit Locking <IconArrowRight size={12} color={theme.colors.gray[5]} style={{ verticalAlign: 'middle' }} />
                         </a>
                       </Text>
                     </Group>
                   </List.Item>
                   <List.Item>
-                    <Group spacing="xs">
+                    <Group gap="xs">
                       <IconBook size={14} />
                       <Text>
                         <a href="https://www.postgresql.org/docs/current/transaction-iso.html" target="_blank" rel="noopener noreferrer">
@@ -435,7 +453,7 @@ COMMIT;`}
                     </Group>
                   </List.Item>
                   <List.Item>
-                    <Group spacing="xs">
+                    <Group gap="xs">
                       <IconBook size={14} />
                       <Text>
                         <a href="https://www.postgresql.org/docs/current/view-pg-locks.html" target="_blank" rel="noopener noreferrer">
@@ -451,7 +469,7 @@ COMMIT;`}
                 <Text fw={600}>External Resources</Text>
                 <List size="sm" spacing="xs" mt="xs">
                   <List.Item>
-                    <Group spacing="xs">
+                    <Group gap="xs">
                       <IconBook size={14} />
                       <Text>
                         <a href="https://wiki.postgresql.org/wiki/Lock_Monitoring" target="_blank" rel="noopener noreferrer">
@@ -461,7 +479,7 @@ COMMIT;`}
                     </Group>
                   </List.Item>
                   <List.Item>
-                    <Group spacing="xs">
+                    <Group gap="xs">
                       <IconBook size={14} />
                       <Text>
                         <a href="https://www.2ndquadrant.com/en/blog/postgresql-deadlocks-part-1/" target="_blank" rel="noopener noreferrer">
@@ -477,7 +495,7 @@ COMMIT;`}
                 <Text fw={600}>Debugging Tools</Text>
                 <List size="sm" spacing="xs" mt="xs">
                   <List.Item>
-                    <Group spacing="xs">
+                    <Group gap="xs">
                       <IconTools size={14} />
                       <Text>
                         <a href="https://github.com/pganalyze/pg_query" target="_blank" rel="noopener noreferrer">
@@ -487,7 +505,7 @@ COMMIT;`}
                     </Group>
                   </List.Item>
                   <List.Item>
-                    <Group spacing="xs">
+                    <Group gap="xs">
                       <IconTools size={14} />
                       <Text>
                         <a href="https://github.com/adjust/pglockanalyze" target="_blank" rel="noopener noreferrer">

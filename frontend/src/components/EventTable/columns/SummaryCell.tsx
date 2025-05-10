@@ -1,6 +1,6 @@
 // File: src/components/EventTable/columns/SummaryCell.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { 
   Text, 
   Group, 
@@ -18,11 +18,13 @@ import { useMutation } from '@tanstack/react-query';
 import { explainError } from '../../../api/aiApi';
 import { showErrorNotification } from '../../../utils/errorHandling';
 import { SentryEvent } from '../../../types/deadlock';
+import { EventType } from '../../../types/eventTypes';
 import { extractErrorType, extractErrorMessage } from '../../../utils/eventUtils';
+import { convertEventTypeToSentryEvent, ensureEventTagArray } from '../../../utils/typeGuards';
 import TagCloud from '../TagCloud';
 
 interface SummaryCellProps {
-  event: SentryEvent;
+  event: SentryEvent | EventType;
   expanded?: boolean;
   onExpand?: (eventId: string) => void;
   showTags?: boolean;
@@ -42,9 +44,17 @@ const SummaryCell: React.FC<SummaryCellProps> = ({
   const [localExpanded, { toggle: toggleExpanded }] = useDisclosure(expanded);
   const [aiSummaryVisible, { toggle: toggleAiSummary }] = useDisclosure(false);
   
+  // Check if event is already a SentryEvent or needs conversion
+  const isSentryEvent = (e: SentryEvent | EventType): e is SentryEvent => {
+    return 'project' in e && typeof (e as any).project === 'object';
+  };
+  
+  // Convert event to SentryEvent format if needed for API functions
+  const sentryEvent = isSentryEvent(event) ? event : convertEventTypeToSentryEvent(event as EventType);
+  
   // Extract error details
-  const errorType = extractErrorType(event);
-  const errorMessage = extractErrorMessage(event);
+  const errorType = extractErrorType(sentryEvent);
+  const errorMessage = extractErrorMessage(sentryEvent);
   
   // When external expanded state changes, update local state
   useEffect(() => {
@@ -89,15 +99,28 @@ const SummaryCell: React.FC<SummaryCellProps> = ({
   
   return (
     <Box>
-      <Group position="apart" noWrap>
-        <Stack spacing={2} style={{ flex: 1, minWidth: 0 }}>
+      <Group justify="apart" wrap="nowrap">
+        <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
           {/* Error type */}
-          <Text fw={500} truncate>
-            {errorType}
-          </Text>
+          <Group gap="xs" wrap="nowrap">
+            <Tooltip label={errorType} position="top" disabled={errorType.length < 30}>
+              <Text fw={500} truncate>
+                {errorType}
+              </Text>
+            </Tooltip>
+            {event.level && (
+              <Badge size="sm" color={
+                event.level === 'error' ? 'red' : 
+                event.level === 'warning' ? 'yellow' : 
+                event.level === 'info' ? 'blue' : 'gray'
+              }>
+                {event.level}
+              </Badge>
+            )}
+          </Group>
           
           {/* Error message - collapsed or expanded */}
-          <Collapse in={localExpanded} sx={{ width: '100%' }}>
+          <Collapse in={localExpanded} style={{ width: '100%' }}>
             <Text size="sm" my={4}>
               {errorMessage}
             </Text>
@@ -117,14 +140,14 @@ const SummaryCell: React.FC<SummaryCellProps> = ({
           {/* Show tags if enabled */}
           {showTags && event.tags && event.tags.length > 0 && (
             <Box mt={4}>
-              <TagCloud tags={event.tags} limit={localExpanded ? 0 : 3} />
+              <TagCloud tags={ensureEventTagArray(event.tags)} limit={localExpanded ? 0 : 3} />
             </Box>
           )}
           
           {/* AI summary section */}
           {localExpanded && (
             <Box mt={8}>
-              <Group position="apart">
+              <Group justify="apart">
                 <Button 
                   size="xs" 
                   variant="light" 
@@ -148,7 +171,7 @@ const SummaryCell: React.FC<SummaryCellProps> = ({
                       {aiSummaryMutation.data.explanation || 'No summary available'}
                     </Text>
                   ) : (
-                    <Text size="sm" color="dimmed" italic>
+                    <Text size="sm" color="dimmed" fs="italic">
                       Click 'Get AI Summary' to generate an explanation
                     </Text>
                   )}

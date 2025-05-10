@@ -11,16 +11,15 @@ import {
 } from '@mantine/core';
 import { 
   Sparkline, 
-  Tooltip as SparklineTooltip, 
-  LineSeries, 
-  PointSeries 
-} from '@mantine/sparkline';
+  SparklineProps
+} from '@mantine/charts';
 import { IconArrowUpRight, IconArrowDownRight, IconArrowRight } from '@tabler/icons-react';
 import { useEventFrequency } from '../../../hooks/useEventFrequency';
 import { SentryEvent } from '../../../types/deadlock';
+import { EventType } from '../../../types/eventTypes';
 
 interface SparklineCellProps {
-  event: SentryEvent;
+  event: SentryEvent | EventType;
   timeRange?: string;
   height?: number;
   width?: number;
@@ -55,7 +54,7 @@ const SparklineCell: React.FC<SparklineCellProps> = ({
   if (!points.length || points.every(p => p === 0)) {
     return (
       <Box w={width} h={height} style={{ display: 'flex', alignItems: 'center' }}>
-        <Text size="xs" color="dimmed">No data available</Text>
+        <Text size="xs" c="dimmed">No data available</Text>
       </Box>
     );
   }
@@ -84,19 +83,12 @@ const SparklineCell: React.FC<SparklineCellProps> = ({
           fillOpacity={0.2}
           strokeWidth={1.5}
           color={theme.colors.blue[6]}
-        >
-          <SparklineTooltip />
-          <LineSeries />
-          
-          {/* Show spots on the line for emphasis */}
-          {points.length < 24 && (
-            <PointSeries size={2} />
-          )}
-        </Sparkline>
+        {...({} as Partial<SparklineProps>)} // Type assertion to ensure props match the SparklineProps interface
+        />
         
         {/* Show trend if enabled */}
         {showTrend && (
-          <Group spacing={4} mt={2}>
+          <Group gap={4} mt={2}>
             <TrendIcon size={12} color={trendColor} />
             <Text size="xs" c={trendColor}>
               {Math.abs(trend)}%

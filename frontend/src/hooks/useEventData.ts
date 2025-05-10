@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchEventDetails } from '../api/eventsApi';
 import { extractErrorType, extractErrorMessage, isDatabaseError } from '../utils/eventUtils';
 import { extractTags, getPrioritizedTags } from '../utils/tagUtils';
-import { SentryEvent } from '../types/deadlock';
 
 /**
  * Hook for fetching and processing Sentry event data

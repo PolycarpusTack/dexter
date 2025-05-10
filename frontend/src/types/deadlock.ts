@@ -79,6 +79,7 @@ export interface DeadlockAnalysisResponse {
 export interface EventTag {
   key: string;
   value: string;
+  [key: string]: any; // Allow additional properties for compatibility
 }
 
 export interface EventException {

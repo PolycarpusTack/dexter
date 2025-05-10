@@ -52,6 +52,7 @@ const RefreshableContainer: React.FC<RefreshableContainerProps> = ({
       const intervalId = setInterval(handleRefresh, refreshInterval);
       return () => clearInterval(intervalId);
     }
+    return undefined;
   }, [refreshInterval, handleRefresh, onRefresh]);
   
   // Format time since last refresh
@@ -70,14 +71,14 @@ const RefreshableContainer: React.FC<RefreshableContainerProps> = ({
     <Paper withBorder radius="md" p="md">
       {/* Header with title and refresh button */}
       {(title || showRefreshButton || actions) && (
-        <Group position="apart" mb="md">
+        <Group justify="apart" mb="md">
           {title && <Text fw={500}>{title}</Text>}
           
-          <Group spacing="xs">
+          <Group gap="xs">
             {actions}
             
             {onRefresh && showRefreshButton && (
-              <Group spacing={4}>
+              <Group gap={4}>
                 {!isRefreshing && (
                   <Text size="xs" color="dimmed">
                     Last updated: {formatTimeSince()}
@@ -87,12 +88,12 @@ const RefreshableContainer: React.FC<RefreshableContainerProps> = ({
                 <Tooltip label="Refresh data">
                   <ActionIcon
                     onClick={handleRefresh}
-                    loading={isRefreshing}
+                    disabled={isRefreshing}
                     size="sm"
                     color="blue"
                     variant="subtle"
                   >
-                    <IconRefresh size={16} />
+                    {isRefreshing ? <Loader size={16} color={theme.colors.blue[6]} /> : <IconRefresh size={16} />}
                   </ActionIcon>
                 </Tooltip>
               </Group>
@@ -102,7 +103,28 @@ const RefreshableContainer: React.FC<RefreshableContainerProps> = ({
       )}
       
       {/* Content */}
-      <Box>
+      <Box style={{ position: 'relative' }}>
+        {isRefreshing && refreshInterval === 0 && (
+          <Box 
+            style={{ 
+              position: 'absolute', 
+              top: 0, 
+              left: 0, 
+              right: 0, 
+              height: '2px',
+              zIndex: 1
+            }}
+          >
+            <Box 
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                background: `linear-gradient(90deg, transparent, ${theme.colors.blue[6]}, transparent)`,
+                animation: 'refreshProgress 1.5s ease-in-out infinite'
+              }}
+            />
+          </Box>
+        )}
         {children}
       </Box>
     </Paper>

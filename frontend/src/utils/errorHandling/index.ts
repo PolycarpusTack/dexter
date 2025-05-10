@@ -28,6 +28,7 @@ export type ErrorCategory =
   | 'not_found'
   | 'timeout'
   | 'parsing'
+  | 'llm_api_error'
   | 'unknown';
 
 /**
@@ -54,6 +55,10 @@ export interface ErrorHandlerOptions {
   logError?: boolean;
   /** Whether to send to error tracking */
   sendToErrorTracking?: boolean;
+  /** Custom error handler callback */
+  onError?: (error: Error, context?: any) => void;
+  /** Whether to log to Sentry */
+  logToSentry?: boolean;
 }
 
 /**
@@ -211,7 +216,8 @@ export {
   EnhancedError
 };
 
+// Also export notification types
 export type { NotificationOptions };
-export type { ErrorCategory };
-export type { ErrorContext };
-export type { ErrorHandlerOptions };
+
+// Types are defined directly, not imported/exported
+

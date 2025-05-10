@@ -14,6 +14,7 @@ export type ErrorCategory =
   | 'not_found'
   | 'timeout'
   | 'parsing'
+  | 'llm_api_error'
   | 'unknown';
 
 /**
@@ -164,5 +165,5 @@ export interface WithErrorBoundaryOptions {
  */
 export interface WithDataFetchingOptions {
   loadingComponent?: ReactNode;
-  errorComponent?: ReactNode | ((error: Error, retry: () => void) => ReactNode);
+  errorComponent?: ReactNode | ((props: { error: Error; resetErrorBoundary: () => void }) => ReactNode);
 }

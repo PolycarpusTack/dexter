@@ -6,7 +6,6 @@ import {
   Badge, 
   Text, 
   Tooltip, 
-  Paper, 
   Stack, 
   HoverCard,
   Box,
@@ -41,8 +40,17 @@ const TagCloud: React.FC<TagCloudProps> = ({
     return null;
   }
   
-  // Get prioritized tags
+  // Get prioritized tags - check if PREDEFINED_TAG_GROUPS has items
+  const priorityGroupKeys = PREDEFINED_TAG_GROUPS.length > 0 
+    ? PREDEFINED_TAG_GROUPS.map(group => group.key)
+    : [];
+  // Pass the priority keys to the tag prioritization function
   const prioritizedTags = getPrioritizedTags(tags);
+  
+  // Debug log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.debug('Priority keys for tag cloud:', priorityGroupKeys);
+  }
   
   // Split into visible and hidden tags
   const visibleTags = limit > 0 ? prioritizedTags.slice(0, limit) : prioritizedTags;
@@ -57,17 +65,18 @@ const TagCloud: React.FC<TagCloudProps> = ({
   };
   
   return (
-    <Group spacing="xs" position="left" align="center">
+    <Group gap="xs" justify="left" align="center">
       {/* Display visible tags */}
       {visibleTags.map((tag, index) => (
-        <TagBadge 
-          key={`${tag.key}-${index}`}
-          tag={tag}
-          size={size}
-          onClick={handleTagClick}
-          showTooltip={showTooltips}
-          variant={variant}
-        />
+        <Box key={`${tag.key}-${index}`}>
+          <TagBadge 
+            tag={tag}
+            size={size}
+            onClick={handleTagClick}
+            showTooltip={showTooltips}
+            variant={variant}
+          />
+        </Box>
       ))}
       
       {/* Display overflow indicator with hover card */}
@@ -77,17 +86,20 @@ const TagCloud: React.FC<TagCloudProps> = ({
             <Badge
               size={size}
               variant="outline"
-              sx={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer' }}
             >
               +{hiddenTags.length} more
             </Badge>
           </HoverCard.Target>
           
           <HoverCard.Dropdown>
-            <Stack spacing="xs">
-              <Text size="sm" fw={500}>All Tags</Text>
+            <Stack gap="xs">
+              <Group gap="xs" align="center">
+                <IconInfoCircle size={14} color="gray" />
+                <Text size="sm" fw={500}>All Tags</Text>
+              </Group>
               <Divider />
-              <Group spacing="xs" style={{ flexWrap: 'wrap' }}>
+              <Group gap="xs" style={{ flexWrap: 'wrap' }}>
                 {prioritizedTags.map((tag, index) => (
                   <TagBadge 
                     key={`hover-${tag.key}-${index}`}
@@ -155,7 +167,7 @@ const TagBadge: React.FC<TagBadgeProps> = ({
       size={size}
       variant={variant}
       onClick={handleClick}
-      sx={{ cursor: onClick ? 'pointer' : 'default' }}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
       leftSection={tag.key === 'level' ? undefined : <IconTag size={8} />}
     >
       {tag.value}
@@ -173,7 +185,6 @@ const TagBadge: React.FC<TagBadgeProps> = ({
       label={`${tagInfo.label}: ${tag.value}`}
       position="top"
       withArrow
-      size="xs"
     >
       {badge}
     </Tooltip>

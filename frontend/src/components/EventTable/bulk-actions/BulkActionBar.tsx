@@ -22,10 +22,11 @@ import {
 } from '@tabler/icons-react';
 import { showSuccessNotification, showErrorNotification } from '../../../utils/errorHandling';
 import { SentryEvent } from '../../../types/deadlock';
+import { EventType } from '../../../types/eventTypes';
 
 interface BulkActionBarProps {
-  selectedEvents: string[];
-  eventData?: Record<string, SentryEvent>;
+  selectedEvents: string[] | EventType[];
+  eventData?: Record<string, SentryEvent | EventType>;
   onSelectStatus?: (status: string) => void;
   onAssign?: (userId: string) => void;
   onAddTags?: (tags: string[]) => void;
@@ -53,15 +54,26 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
   
   // Get total impact from selected events
   const calculateTotalImpact = (): number => {
+    // If selectedEvents is an array of EventType objects
+    if (selectedEvents.length > 0 && typeof selectedEvents[0] === 'object') {
+      const events = selectedEvents as EventType[];
+      const userCount = events.reduce((total, event) => {
+        // Add count property or default to 1
+        return total + (event.count || 1);
+      }, 0);
+      return userCount;
+    }
+    
+    // If selectedEvents is an array of IDs and we have eventData
     if (!eventData) return 0;
     
     // Count unique users from selected events
     const userIds = new Set<string>();
     
-    selectedEvents.forEach(eventId => {
+    (selectedEvents as string[]).forEach(eventId => {
       const event = eventData[eventId];
-      if (event && event.user?.id) {
-        userIds.add(event.user.id);
+      if (event && (event as any).user?.id) {
+        userIds.add((event as any).user.id);
       }
     });
     
@@ -107,22 +119,22 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
   return (
     <Transition mounted={visible && selectedEvents.length > 0} transition="slide-up">
       {(styles) => (
-        <Paper 
-          style={styles} 
-          p="sm" 
-          shadow="md" 
-          mb="md"
-          sx={(theme) => ({
-            position: 'sticky',
-            bottom: theme.spacing.md,
-            zIndex: 10
-          })}
-        >
-          <Group position="apart">
+        <Box style={styles}>
+          <Paper 
+            p="sm" 
+            shadow="md" 
+            mb="md"
+            style={{
+              position: 'sticky',
+              bottom: '16px',
+              zIndex: 10
+            }}
+          >
+          <Group justify="space-between">
             <Group>
               <Badge size="lg">{selectedEvents.length} selected</Badge>
               <Text size="sm">
-                Impact: {calculateTotalImpact()} users
+                Impact: {calculateTotalImpact()} {typeof selectedEvents[0] === 'object' ? 'events' : 'users'}
               </Text>
             </Group>
             
@@ -145,34 +157,35 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 loading={isUpdating}
                 disabled={!status}
                 size="xs"
+                leftSection={status ? <IconCheck size={12} /> : null}
               >
                 Apply
               </Button>
               
               <Menu shadow="md" width={200}>
                 <Menu.Target>
-                  <Button variant="light" size="xs">
+                  <Button variant="light" size="xs" rightSection={<IconDotsVertical size={12} />}>
                     More Actions
                   </Button>
                 </Menu.Target>
                 
                 <Menu.Dropdown>
                   <Menu.Item 
-                    icon={<IconTag size={14} />}
+                    leftSection={<IconTag size={14} />}
                     onClick={() => onAddTags && onAddTags([])}
                   >
                     Add tags
                   </Menu.Item>
                   
                   <Menu.Item 
-                    icon={<IconUser size={14} />}
+                    leftSection={<IconUser size={14} />}
                     onClick={() => onAssign && onAssign('')}
                   >
                     Assign to...
                   </Menu.Item>
                   
                   <Menu.Item 
-                    icon={<IconBrandGithub size={14} />}
+                    leftSection={<IconBrandGithub size={14} />}
                     onClick={() => onCreateIssue && onCreateIssue()}
                   >
                     Create GitHub issue
@@ -181,7 +194,7 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
                   <Menu.Divider />
                   
                   <Menu.Item 
-                    icon={<IconX size={14} />}
+                    leftSection={<IconX size={14} />}
                     onClick={() => onClearSelection && onClearSelection()}
                     color="red"
                   >
@@ -191,7 +204,8 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
               </Menu>
             </Group>
           </Group>
-        </Paper>
+          </Paper>
+        </Box>
       )}
     </Transition>
   );

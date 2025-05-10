@@ -1,6 +1,6 @@
 // File: frontend/src/components/UI/ProgressIndicator.tsx
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Progress, Text, Paper, Group, Box } from '@mantine/core';
 
 interface ProgressIndicatorProps {
@@ -16,7 +16,7 @@ interface ProgressIndicatorProps {
  */
 function ProgressIndicator({ 
   isLoading, 
-  operation = 'loading', 
+  operation = 'loading', // This is used in the progress description
   expectedDuration = 120,  // Expected duration in seconds (default 2 minutes)
   model = null,  // Optional model name to adjust expectations
 }: ProgressIndicatorProps): JSX.Element | null {
@@ -98,12 +98,13 @@ function ProgressIndicator({
     return `${minutes}m ${seconds}s`;
   };
   
-  // Status message varies by progress level
+  // Status message varies by progress level and operation
   const getStatusMessage = (): string => {
-    if (progress < 30) return "Starting up...";
-    if (progress < 60) return "Processing...";
-    if (progress < 90) return "Generating text...";
-    return "Almost done...";
+    const prefix = operation ? `${operation} ` : '';
+    if (progress < 30) return `${prefix} Starting up...`;
+    if (progress < 60) return `${prefix} Processing...`;
+    if (progress < 90) return `${prefix} Generating text...`;
+    return `${prefix} Almost done...`;
   };
   
   return (
@@ -113,11 +114,11 @@ function ProgressIndicator({
           value={progress}
           size="sm"
           radius="xl"
-          animate={isLoading}
+          animated={isLoading}
           color={progress >= 95 ? "green" : "blue"}
         />
       </Box>
-      <Group position="apart">
+      <Group justify="apart">
         <Text size="xs" color="dimmed">
           {getStatusMessage()}
         </Text>

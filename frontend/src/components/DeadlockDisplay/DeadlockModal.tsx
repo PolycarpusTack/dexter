@@ -340,9 +340,14 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
       >
         {activeTab === 'graph' && (
           <ErrorBoundary
-            fallback={<GraphErrorFallback />}
-            onReset={() => {
-              // Reset error state and try again
+            fallback={(error, resetError) => (
+              <GraphErrorFallback 
+                error={error} 
+                resetErrorBoundary={resetError} 
+              />
+            )}
+            onError={() => {
+              // When error occurs, trigger refetch
               refetch();
               logEvent('reset_error', { component: 'graph', eventId });
             }}
@@ -356,8 +361,13 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
         
         {activeTab === 'tables' && (
           <ErrorBoundary
-            fallback={<TableErrorFallback />}
-            onReset={() => {
+            fallback={(error, resetError) => (
+              <TableErrorFallback 
+                error={error} 
+                resetErrorBoundary={resetError} 
+              />
+            )}
+            onError={() => {
               refetch();
               logEvent('reset_error', { component: 'tables', eventId });
             }}
@@ -373,8 +383,13 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
         
         {activeTab === 'recommendation' && (
           <ErrorBoundary
-            fallback={<RecommendationErrorFallback />}
-            onReset={() => {
+            fallback={(error, resetError) => (
+              <RecommendationErrorFallback 
+                error={error} 
+                resetErrorBoundary={resetError} 
+              />
+            )}
+            onError={() => {
               refetch();
               logEvent('reset_error', { component: 'recommendation', eventId });
             }}

@@ -1,6 +1,6 @@
 // File: frontend/src/components/EventTable/EventTable.tsx
 
-import React, { forwardRef, ForwardedRef } from 'react';
+import { forwardRef, ForwardedRef } from 'react';
 import EnhancedEventTable from './EnhancedEventTable';
 import { EventTableProps } from './types';
 

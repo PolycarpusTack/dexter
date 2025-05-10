@@ -24,7 +24,7 @@ export function useKeyboardNavigation<T extends HTMLElement>() {
     (
       direction: 'up' | 'down',
       itemCount: number,
-      setActiveIndex: (index: number) => void
+      setActiveIndex: (index: number | ((prev: number) => number)) => void
     ): boolean => {
       // Ensure focus is on the container
       if (document.activeElement !== focusableRef.current) {
@@ -34,7 +34,7 @@ export function useKeyboardNavigation<T extends HTMLElement>() {
       }
       
       // Update active index based on direction
-      setActiveIndex((prevIndex) => {
+      setActiveIndex((prevIndex: number) => {
         if (prevIndex === -1) {
           // If no item is active, select first or last based on direction
           return direction === 'up' ? itemCount - 1 : 0;
@@ -79,7 +79,9 @@ export function useKeyboardNavigation<T extends HTMLElement>() {
       const items = focusableRef.current.querySelectorAll<HTMLElement>(itemSelector);
       if (index >= 0 && index < items.length) {
         const item = items[index];
-        scrollIntoView(item);
+        if (item) {
+          scrollIntoView(item);
+        }
       }
     },
     [scrollIntoView]

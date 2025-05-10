@@ -22,6 +22,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
     "@types/d3": "^7.4.3",
     "@types/node": "^20.11.30",
     "@types/react": "^18.2.66",
@@ -30,19 +31,30 @@
     "@typescript-eslint/parser": "^7.3.1",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.19",
+    "cross-env": "^7.0.3",
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.0",
     "postcss": "^8.4.38",
+    "rimraf": "^6.0.1",
+    "rollup-plugin-visualizer": "^5.14.0",
+    "source-map-explorer": "^2.5.3",
+    "terser": "^5.39.0",
     "typescript": "^5.4.3",
     "vite": "^5.4.19"
   },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:prod": "node scripts/optimize-production.js",
+    "build:analyze": "node scripts/analyze-bundle.js",
     "preview": "vite preview",
     "start": "vite",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "optimize": "npm run clean && npm run build:prod",
+    "size": "npm run build:analyze"
   },
   "resolutions": {
     "@mantine/hooks": "7.10.1",

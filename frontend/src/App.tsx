@@ -1,6 +1,6 @@
 // File: frontend/src/App.tsx
 
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { 
   AppShell, 
   Burger, 
@@ -13,6 +13,7 @@ import {
   ThemeIcon,
   Tooltip,
   useMantineTheme,
+  LoadingOverlay,
 } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { 
@@ -24,10 +25,11 @@ import {
   IconInfoCircle,
   IconExternalLink
 } from '@tabler/icons-react';
+// Lazy load heavy components
 // @ts-ignore
-// @ts-ignore
-import DashboardPage from './pages/DashboardPage';
-import SettingsInput from './components/Settings/SettingsInput';
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const SettingsInput = lazy(() => import('./components/Settings/SettingsInput').then(module => ({ default: module.default })));
+
 import { AppErrorBoundary, ErrorBoundary } from './components/ErrorHandling';
 import ErrorFallback from './components/ErrorHandling/ErrorFallback';
 import AccessibleIcon from './components/UI/AccessibleIcon';
@@ -196,8 +198,14 @@ function App(): JSX.Element {
 
         <AppShell.Navbar p="md">
           <AppShell.Section id="settings-section">
-            <ErrorBoundary fallback={<ErrorFallback />}>
-              <SettingsInput />
+            <ErrorBoundary 
+              fallback={(error, resetError) => (
+                <ErrorFallback error={error} resetError={resetError} />
+              )}
+            >
+              <Suspense fallback={<LoadingOverlay visible={true} />}>
+                <SettingsInput />
+              </Suspense>
             </ErrorBoundary>
           </AppShell.Section>
           
@@ -240,8 +248,21 @@ function App(): JSX.Element {
         </AppShell.Navbar>
 
         <AppShell.Main>
-          <ErrorBoundary fallback={<ErrorFallback />}>
-            <DashboardPage />
+          <ErrorBoundary 
+            fallback={(error, resetError) => (
+              <ErrorFallback error={error} resetError={resetError} />
+            )}
+          >
+            <Suspense 
+              fallback={
+                <LoadingOverlay 
+                  visible={true} 
+                  overlayProps={{ radius: "sm", blur: 2 }} 
+                />
+              }
+            >
+              <DashboardPage />
+            </Suspense>
           </ErrorBoundary>
         </AppShell.Main>
       </AppShell>

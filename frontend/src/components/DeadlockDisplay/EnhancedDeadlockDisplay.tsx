@@ -158,7 +158,7 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
     isError,
     error,
     refetch
-  } = useQuery({
+  } = useQuery<DeadlockData>({
     queryKey: ['deadlockAnalysis', uniqueId, useEnhancedAnalysis], // Include enhancement flag in the key
     queryFn: () => analyzeDeadlock(eventId as string, { 
       useEnhancedAnalysis,
@@ -385,7 +385,10 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
                 </Group>
                 <RecommendationPanel 
                   data={{
-                    ...deadlockData?.analysis?.visualization_data,
+                    processes: deadlockData?.analysis?.visualization_data?.processes || [],
+                    relations: deadlockData?.analysis?.visualization_data?.relations || [],
+                    deadlockChain: deadlockData?.analysis?.visualization_data?.deadlockChain || [],
+                    pattern: deadlockData?.analysis?.visualization_data?.pattern,
                     recommendedFix: deadlockData?.analysis?.recommended_fix
                   }} 
                   isLoading={isLoading} 

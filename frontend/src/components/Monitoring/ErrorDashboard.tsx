@@ -12,16 +12,17 @@ import {
   Stack, 
   Card, 
   SimpleGrid, 
-  useMantineTheme,
-  Loader,
+  Box,
   Button,
+  Alert,
+  Loader,
   ActionIcon,
   Tooltip,
   Tabs,
-  Alert,
+  useMantineTheme,
   Divider,
-  Table,
-  ScrollArea
+  ScrollArea,
+  Table
 } from '@mantine/core';
 import { 
   BarChart, 
@@ -57,7 +58,7 @@ import type {
   ErrorDetails,
   TimeRange,
   ErrorAnalyticsParams
-} from '../../api/errorAnalyticsApi';
+} from '../../types/index';
 
 /**
  * Impact badge colors
@@ -88,7 +89,7 @@ const CategoryBarChart: React.FC<{ data: ErrorCountByCategory[] }> = ({ data }) 
         <RechartsTooltip />
         <Bar dataKey="count" fill="#8884d8">
           {data.map((_, index) => (
-            <Cell key={`cell-${index}`} fill={data[index].color} />
+            <Cell key={`cell-${index}`} fill={data[index]?.color || '#8884d8'} />
           ))}
         </Bar>
       </BarChart>
@@ -172,7 +173,7 @@ const ImpactPieChart: React.FC<{ data: ErrorDetails[] }> = ({ data }) => {
           label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
         >
           {impactData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke={entry.value > 0 ? '#fff' : 'none'} strokeWidth={entry.value > 0 ? 2 : 0} />
           ))}
         </Pie>
         <RechartsTooltip />
@@ -186,9 +187,9 @@ const ImpactPieChart: React.FC<{ data: ErrorDetails[] }> = ({ data }) => {
  */
 const SummaryCards: React.FC<{ summary: ErrorAnalyticsData['summary'] }> = ({ summary }) => {
   return (
-    <SimpleGrid cols={4} gap="lg" className="custom-grid">
+    <SimpleGrid cols={4} className="custom-grid">
       <Card shadow="sm" padding="md" radius="md" withBorder>
-        <Group justify="apart">
+        <Group justify="space-between">
           <Text size="sm" color="dimmed">Total Errors</Text>
           <IconChartBar size={20} color="blue" />
         </Group>
@@ -199,7 +200,7 @@ const SummaryCards: React.FC<{ summary: ErrorAnalyticsData['summary'] }> = ({ su
       </Card>
       
       <Card shadow="sm" padding="md" radius="md" withBorder>
-        <Group justify="apart">
+        <Group justify="space-between">
           <Text size="sm" color="dimmed">Affected Users</Text>
           <IconUsers size={20} color="green" />
         </Group>
@@ -210,7 +211,7 @@ const SummaryCards: React.FC<{ summary: ErrorAnalyticsData['summary'] }> = ({ su
       </Card>
       
       <Card shadow="sm" padding="md" radius="md" withBorder>
-        <Group justify="apart">
+        <Group justify="space-between">
           <Text size="sm" color="dimmed">High Impact</Text>
           <IconAlertTriangle size={20} color="red" />
         </Group>
@@ -221,7 +222,7 @@ const SummaryCards: React.FC<{ summary: ErrorAnalyticsData['summary'] }> = ({ su
       </Card>
       
       <Card shadow="sm" padding="md" radius="md" withBorder>
-        <Group justify="apart">
+        <Group justify="space-between">
           <Text size="sm" color="dimmed">Trending</Text>
           <IconAlertCircle size={20} color="orange" />
         </Group>
@@ -245,7 +246,7 @@ const ErrorList: React.FC<{
     <Stack gap="md">
       {errors.map((error) => (
         <Card key={error.id} p="sm" withBorder>
-          <Group justify="apart">
+          <Group justify="space-between">
             <div>
               <Group gap="xs">
                 <Text fw={500}>{error.type}</Text>
@@ -253,7 +254,7 @@ const ErrorList: React.FC<{
               </Group>
               <Text size="sm" color="dimmed" lineClamp={1}>{error.message}</Text>
             </div>
-            <Group spacing="xs">
+            <Group gap="xs">
               <Badge color={IMPACT_COLORS[error.impact]}>{error.impact} Impact</Badge>
               <Badge color="gray">{error.count} Occurrences</Badge>
               <Tooltip label="View Details">
@@ -363,22 +364,22 @@ const ErrorDetailsView: React.FC<{
         
         <Tabs.Panel value="stats" pt="md">
           <Stack gap="md">
-            <Group justify="apart">
+            <Group justify="space-between">
               <Text>First seen:</Text>
               <Text fw={500}>{formatDate(error.firstSeen)}</Text>
             </Group>
             <Divider />
-            <Group justify="apart">
+            <Group justify="space-between">
               <Text>Last seen:</Text>
               <Text fw={500}>{formatDate(error.lastSeen)}</Text>
             </Group>
             <Divider />
-            <Group justify="apart">
+            <Group justify="space-between">
               <Text>Total occurrences:</Text>
               <Text fw={500}>{error.count}</Text>
             </Group>
             <Divider />
-            <Group justify="apart">
+            <Group justify="space-between">
               <Text>Affected users:</Text>
               <Text fw={500}>{error.userCount}</Text>
             </Group>
@@ -402,22 +403,25 @@ const ErrorDetailsView: React.FC<{
 };
 
 /**
- * ErrorDashboard component
+ * ErrorDashboard component with theme
  */
 const ErrorDashboard: React.FC = () => {
+  const theme = useMantineTheme();
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [impactFilter, setImpactFilter] = useState<string>('');
   const [selectedError, setSelectedError] = useState<ErrorDetails | null>(null);
   
-  // Fetch error analytics data with React Query
+  // Fetch error analytics data with React Query - define params
+  const params: ErrorAnalyticsParams = {
+    timeRange,
+    category: categoryFilter || undefined,
+    impact: impactFilter || undefined
+  };
+  
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['errorAnalytics', timeRange, categoryFilter, impactFilter],
-    queryFn: async () => errorAnalyticsApi.getErrorAnalytics({
-      timeRange,
-      category: categoryFilter || undefined,
-      impact: impactFilter || undefined
-    }),
+    queryFn: async () => errorAnalyticsApi.getErrorAnalytics(params),
     enabled: process.env.NODE_ENV === 'production',
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: (failureCount) => {
@@ -451,7 +455,7 @@ const ErrorDashboard: React.FC = () => {
       
       <Group justify="apart">
         <Text>View error trends and patterns to identify issues</Text>
-        <Group spacing="md">
+        <Group gap="md">
           <Select
             label="Time Range"
             value={timeRange}
@@ -495,10 +499,23 @@ const ErrorDashboard: React.FC = () => {
         </Group>
       </Group>
       
+      {/* Status Check */}
+      {isLoading && (
+        <Box style={{ display: 'flex', justifyContent: 'center', padding: theme.spacing.xl }}>
+          <Loader size="lg" />
+        </Box>
+      )}
+      
+      {error && (
+        <Alert color="red" title="Failed to load analytics" mb="md">
+          {error.message || 'Something went wrong loading error analytics'}
+        </Alert>
+      )}
+      
       {/* Summary cards */}
       <SummaryCards summary={errorData.summary || {}} />
       
-      <SimpleGrid cols={3} breakpoints={[{ maxWidth: 'md', cols: 1 }]}>
+      <SimpleGrid cols={3}>
         <RefreshableContainer 
           title="Errors by Category"
           onRefresh={handleRefresh}

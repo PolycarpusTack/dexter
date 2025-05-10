@@ -11,7 +11,7 @@ import { WithErrorBoundaryOptions } from '../../types/errorHandling';
  * @param options - Error boundary options
  * @returns Component wrapped with error boundary
  */
-export function withErrorBoundary<P>(
+export function withErrorBoundary<P extends JSX.IntrinsicAttributes>(
   Component: ComponentType<P>,
   options: WithErrorBoundaryOptions = {}
 ): React.FC<P> {

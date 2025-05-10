@@ -34,7 +34,7 @@ function InfoTooltip({
       arrowSize={8}
       transitionProps={{ duration: 200 }}
       multiline
-      width={220}
+      styles={{ tooltip: { width: 220 } }}
       {...tooltipProps}
     >
       <div>

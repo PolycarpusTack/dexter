@@ -63,15 +63,7 @@ interface EventDetails {
   [key: string]: any; // For any additional fields
 }
 
-interface ExplainResponse {
-  explanation?: string;
-  model_used?: string;
-  model?: string;
-  error?: string;
-  processing_time?: number;
-  truncated?: boolean;
-  format?: string;
-}
+type ExplainResponseType = ExplainErrorResponse;
 
 interface ExplainErrorProps {
   eventDetails: EventDetails;
@@ -96,9 +88,33 @@ const ExplainError: React.FC<ExplainErrorProps> = ({ eventDetails }) => {
   const errorMessage = extractErrorMessage(eventDetails);
   const isFallbackData = eventDetails?._fallback === true;
   
+  // Type 'ExplainResponseType' is the expected response from the AI service
+  const expectedResponseType: ExplainResponseType = {
+    explanation: '',
+    model: '',
+    processing_time: 0,
+    truncated: false,
+    format: 'markdown'
+  };
+  
+  // Validate response matches expected type (for type checking)
+  const validateResponse = (response: ExplainErrorResponse): boolean => {
+    return (
+      'explanation' in response &&
+      'model' in response &&
+      Object.keys(expectedResponseType).every(key => key in response)
+    );
+  };
+  
   // Mutation for AI explanation
   const explainMutation = useMutation<ExplainErrorResponse, Error, ExplainErrorParams>({
     mutationFn: (params: ExplainErrorParams) => explainError(params),
+    onSuccess: (data) => {
+      // Validate the response structure matches expectations
+      if (!validateResponse(data)) {
+        console.warn('AI response structure differs from expected format:', data);
+      }
+    },
     onError: (error: Error) => {
       showErrorNotification({
         title: 'AI Explanation Failed',
@@ -163,7 +179,7 @@ const ExplainError: React.FC<ExplainErrorProps> = ({ eventDetails }) => {
   
   // Display model name (either from active model or from the response)
   // If we have a response, use that model name, otherwise use the active model
-  const displayModelName = explainMutation.data?.model_used || activeAIModel || 'Ollama';
+  const displayModelName = explainMutation.data?.model || activeAIModel || 'Ollama';
   
   return (
     <>
@@ -171,11 +187,9 @@ const ExplainError: React.FC<ExplainErrorProps> = ({ eventDetails }) => {
         withBorder 
         p="md" 
         radius="md"
-        styles={(theme) => ({
-          root: {
-            borderLeft: `3px solid ${theme.colors.grape[5]}`,
-            backgroundColor: theme.fn.rgba(theme.colors.grape[0], 0.4),
-          }
+        style={(theme) => ({
+          borderLeft: `3px solid ${theme.colors.grape[5]}`,
+          backgroundColor: `rgba(232, 222, 248, 0.4)`,
         })}
       >
         <Stack gap="xs">
@@ -200,7 +214,7 @@ const ExplainError: React.FC<ExplainErrorProps> = ({ eventDetails }) => {
                 variant="outline"
                 rightSection={
                   <Tooltip label="Change AI model settings">
-                    <Box component="span" styles={{ root: { cursor: 'pointer' } }} onClick={(e) => {
+                    <Box component="span" style={{ cursor: 'pointer' }} onClick={(e) => {
                       e.stopPropagation();
                       setModelSelectorOpen(true);
                     }}>
@@ -301,6 +315,7 @@ const ExplainError: React.FC<ExplainErrorProps> = ({ eventDetails }) => {
                   )}
                   
                   <Group>
+                    <Divider />
                     <Button 
                       size="xs" 
                       variant="light" 
@@ -329,11 +344,9 @@ const ExplainError: React.FC<ExplainErrorProps> = ({ eventDetails }) => {
                   withBorder
                   p="md" 
                   radius="md"
-                  styles={{
-                    root: {
-                      backgroundColor: theme.white,
-                      borderColor: theme.colors.gray[3],
-                    }
+                  style={{
+                    backgroundColor: theme.white,
+                    borderColor: theme.colors.gray[3],
                   }}
                 >
                   <Stack gap="md">
@@ -351,28 +364,23 @@ const ExplainError: React.FC<ExplainErrorProps> = ({ eventDetails }) => {
                       </Text>
                     </Group>
                     
-                    <Text size="sm" styles={{ root: { whiteSpace: 'pre-wrap' } }}>
+                    <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
                       {explainMutation.data?.explanation || 
                        "No explanation was provided by the AI. This might be due to insufficient information about the error."}
                     </Text>
                     
-                    {explainMutation.data?.error && (
-                      <Alert 
-                        color="yellow" 
-                        title="AI Service Warning" 
-                        icon={<IconServer size={16} />}
-                      >
-                        <Text size="sm">{explainMutation.data.error}</Text>
-                      </Alert>
-                    )}
+                    {/* Show warnings if any */}
                     
                     <Group justify="apart" mt="xs">
-                      <Text size="xs" c="dimmed">
-                        Powered by local Ollama LLM
-                      </Text>
-                      {explainMutation.data?.model_used && (
+                      <Group gap="xs" align="center">
+                        <IconServer size={12} color={theme.colors.gray[6]} />
+                        <Text size="xs" c="dimmed">
+                          Powered by local Ollama LLM
+                        </Text>
+                      </Group>
+                      {explainMutation.data?.model && (
                         <Badge size="xs" color="gray" variant="outline">
-                          {explainMutation.data.model_used}
+                          {explainMutation.data.model}
                         </Badge>
                       )}
                     </Group>
@@ -419,16 +427,14 @@ const Code: React.FC<CodeProps> = ({ children }) => {
   
   return (
     <Box
-      styles={{
-        root: {
-          fontFamily: 'monospace',
-          backgroundColor: theme.colors.gray[1],
-          padding: theme.spacing.xs,
-          borderRadius: theme.radius.sm,
-          fontSize: '0.85rem',
-          overflowX: 'auto',
-          maxWidth: '100%'
-        }
+      style={{
+        fontFamily: 'monospace',
+        backgroundColor: theme.colors.gray[1],
+        padding: theme.spacing.xs,
+        borderRadius: theme.radius.sm,
+        fontSize: '0.85rem',
+        overflowX: 'auto',
+        maxWidth: '100%'
       }}
     >
       {children}
@@ -441,14 +447,14 @@ function extractErrorType(eventDetails: EventDetails): string {
   if (!eventDetails) return 'Unknown';
   
   // Check in exception values
-  if (eventDetails.exception?.values?.length > 0) {
+  if (eventDetails?.exception?.values?.length && eventDetails.exception.values.length > 0) {
     return eventDetails.exception.values[0]?.type || 'Unknown';
   }
   
   // Check in entries
-  if (eventDetails.entries?.length > 0) {
+  if (eventDetails?.entries?.length && eventDetails.entries.length > 0) {
     for (const entry of eventDetails.entries) {
-      if (entry.type === 'exception' && entry.data?.values?.length > 0) {
+      if (entry.type === 'exception' && entry?.data?.values?.length && entry.data.values.length > 0) {
         return entry.data.values[0]?.type || 'Unknown';
       }
     }
@@ -473,14 +479,14 @@ function extractErrorMessage(eventDetails: EventDetails): string {
   }
   
   // Check in exception values
-  if (eventDetails.exception?.values?.length > 0) {
+  if (eventDetails?.exception?.values?.length && eventDetails.exception.values.length > 0) {
     return eventDetails.exception.values[0]?.value || '';
   }
   
   // Check in entries
-  if (eventDetails.entries?.length > 0) {
+  if (eventDetails?.entries?.length && eventDetails.entries.length > 0) {
     for (const entry of eventDetails.entries) {
-      if (entry.type === 'exception' && entry.data?.values?.length > 0) {
+      if (entry.type === 'exception' && entry?.data?.values?.length && entry.data.values.length > 0) {
         return entry.data.values[0]?.value || '';
       }
     }

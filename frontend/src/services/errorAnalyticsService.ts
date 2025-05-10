@@ -41,7 +41,7 @@ interface ErrorReport {
  * Error analytics service
  */
 class ErrorAnalyticsService {
-  private config: ErrorAnalyticsConfig;
+  private config: ErrorAnalyticsConfig = DEFAULT_CONFIG;
   private buffer: ErrorReport[] = [];
   private flushTimer: NodeJS.Timeout | null = null;
   private initialized = false;
@@ -351,7 +351,7 @@ class ErrorAnalyticsService {
       uniqueErrors: allErrors.length,
       affectedUsers: allErrors.reduce((sum, error) => sum + error.userCount, 0),
       highImpactErrors: allErrors.filter(error => error.impact === 'High').length,
-      mostCommonCategory: byCategory.sort((a, b) => b.count - a.count)[0].name,
+      mostCommonCategory: byCategory.length > 0 ? [...byCategory].sort((a, b) => b.count - a.count)[0]?.name || 'unknown' : 'unknown',
       trendingErrors: [
         {
           id: 'err-001',

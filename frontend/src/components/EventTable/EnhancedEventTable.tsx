@@ -18,7 +18,8 @@ import {
   Menu,
   Box,
   useMantineTheme,
-  Paper
+  Paper,
+  Checkbox
 } from '@mantine/core';
 import { 
   IconSearch, 
@@ -33,17 +34,18 @@ import {
   IconArrowsSort,
   IconSortAscending,
   IconSortDescending,
-  IconKeyboard
+  IconKeyboard,
+  IconShare,
+  IconEye
 } from '@tabler/icons-react';
-import { formatDistanceToNow } from 'date-fns';
 import { useDisclosure } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
 import useAppStore from '../../store/appStore';
-import { fetchIssuesList } from '../../api/issuesApi';
+import { fetchIssues } from '../../api/issuesApi';
 import ExportControl from '../Export/ExportControl';
 import EmptyState from '../UI/EmptyState';
 import LoadingSkeleton from '../UI/LoadingSkeleton';
-import { SparklineCell, ImpactCell, DeadlockColumn } from './columns';
+import BulkActionBar from './bulk-actions/BulkActionBar';
 import { ErrorBoundary } from '../ErrorHandling';
 import ErrorFallback from '../ErrorHandling/ErrorFallback';
 import EventRow from './EventRow';
@@ -80,10 +82,12 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [showKeyboardShortcuts, { open: openKeyboardShortcuts, close: closeKeyboardShortcuts }] = 
     useDisclosure(false);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [isAllSelected, setIsAllSelected] = useState<boolean>(false);
   
   // Get organization and project from global state
-  const organizationIdFromStore = useAppStore(state => state.organization?.id || state.organizationSlug);
-  const projectIdFromStore = useAppStore(state => state.project?.id || state.projectSlug);
+  const organizationIdFromStore = useAppStore(state => state.organizationId || state.organizationSlug);
+  const projectIdFromStore = useAppStore(state => state.projectId || state.projectSlug);
   
   // Use provided projectId prop or fall back to store value
   const effectiveProjectId = projectId || projectIdFromStore;
@@ -104,17 +108,41 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
     refetch 
   } = useQuery<EventsResponse, Error>({
     queryKey: ['issues', effectiveProjectId, page, search, levelFilter, sortBy, sortDirection, timeRange],
-    queryFn: () => fetchIssuesList({
-      organizationId: effectiveOrgId || 'default',
-      projectId: effectiveProjectId || 'default',
-      timeRange,
-      query: search,
-      level: levelFilter,
-      sort: sortBy,
-      sortDirection,
-      page,
-      perPage: maxItems
-    }),
+    queryFn: async () => {
+      const issuesResponse = await fetchIssues({
+        organization: effectiveOrgId || 'default',
+        projectId: effectiveProjectId || 'default',
+        timeRange,
+        query: search,
+        level: levelFilter,
+        sort: sortBy,
+        sortDirection,
+        page,
+        perPage: maxItems
+      });
+      
+      // Transform Issue[] to EventType[]
+      const events: EventType[] = issuesResponse.items.map(issue => ({
+        ...issue, // Spread first
+        id: issue.id,
+        title: issue.title,
+        message: issue.title || 'Unknown error', // Use title as message
+        level: issue.level || 'error', // Default to error if not present
+        timestamp: issue.lastSeen || issue.firstSeen || new Date().toISOString(),
+        count: issue.count || 1,
+        firstSeen: issue.firstSeen,
+        lastSeen: issue.lastSeen,
+        tags: issue.tags || [],
+        status: issue.status as 'unresolved' | 'resolved' | 'ignored' | undefined,
+        project: issue.project?.id || issue.project?.name
+      }));
+      
+      return {
+        items: events,
+        count: issuesResponse.count,
+        hasMore: !!issuesResponse.links?.next
+      };
+    },
     // Allow the query to run even if we don't have real org/project IDs
     // This will use mock data in development mode
     enabled: true,
@@ -138,6 +166,33 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
     setLevelFilter(value || '');
     setPage(1); // Reset to first page when filter changes
     logEvent('filter_level', { level: value });
+  };
+  
+  // Handle select all toggle
+  const handleSelectAllToggle = (): void => {
+    if (isAllSelected || selectedItems.length > 0) {
+      setSelectedItems([]);
+      setIsAllSelected(false);
+    } else {
+      const allItems = data?.items?.map(item => item.id) || [];
+      setSelectedItems(allItems);
+      setIsAllSelected(true);
+    }
+  };
+  
+  // Handle individual item selection toggle
+  const handleItemSelectToggle = (eventId: string): void => {
+    setSelectedItems(prev => {
+      if (prev.includes(eventId)) {
+        const newSelection = prev.filter(id => id !== eventId);
+        setIsAllSelected(false);
+        return newSelection;
+      } else {
+        const newSelection = [...prev, eventId];
+        setIsAllSelected(newSelection.length === data?.items?.length);
+        return newSelection;
+      }
+    });
   };
   
   // Handle sort change
@@ -225,6 +280,13 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
     handleEventClick
   );
   
+  // Show current selected event in development
+  useEffect(() => {
+    if (selectedEvent) {
+      console.debug('Currently selected event:', selectedEvent.id);
+    }
+  }, [selectedEvent]);
+  
   // Keyboard shortcut for refresh
   useEffect(() => {
     const handleKeyboardShortcuts = (e: KeyboardEvent) => {
@@ -255,17 +317,21 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
   
   return (
     <ErrorBoundary
-      FallbackComponent={ErrorFallback}
-      onReset={refetch}
+      fallback={(error, resetError) => (
+        <ErrorFallback error={error} resetError={resetError} />
+      )}
+      onError={() => {
+        refetch();
+      }}
     >
-      <Stack spacing="md">
+      <Stack gap="md">
         {/* Filters and controls */}
         {showFilters && (
-          <Group position="apart">
-            <Group spacing="sm">
+          <Group justify="apart">
+            <Group gap="sm">
               <TextInput
                 placeholder="Search events..."
-                icon={<IconSearch size={14} />}
+                leftSection={<IconSearch size={14} />}
                 value={search}
                 onChange={handleSearchChange}
                 style={{ width: 250 }}
@@ -276,13 +342,13 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
                 data={levelOptions}
                 value={levelFilter}
                 onChange={handleLevelFilterChange}
-                icon={<IconFilter size={14} />}
+                leftSection={<IconFilter size={14} />}
                 style={{ width: 150 }}
                 clearable
               />
             </Group>
             
-            <Group spacing="sm">
+            <Group gap="sm">
               <Tooltip label="Keyboard Shortcuts (?)">
                 <ActionIcon
                   color="blue"
@@ -317,13 +383,18 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
         
         {/* Keyboard navigation hint */}
         <Paper p="xs" withBorder bg="blue.0" style={{ border: `1px solid ${theme.colors.blue[3]}` }}>
-          <Group spacing="xs">
+          <Group gap="xs">
             <ThemeIcon size="sm" radius="xl" color="blue" variant="light">
               <IconKeyboard size={12} />
             </ThemeIcon>
             <Text size="xs">
               <Text span fw={500}>Keyboard Navigation:</Text> Use arrow keys to navigate, Enter to select. Press ? for more shortcuts.
             </Text>
+            {selectedEvent && (
+              <Badge size="xs" color="blue">
+                Selected: {selectedEvent.id}
+              </Badge>
+            )}
           </Group>
         </Paper>
         
@@ -341,34 +412,92 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
             <Table style={{ minWidth: 800 }}>
               <thead>
                 <tr>
-                  <th style={{ width: 40 }}></th>
+                  <th style={{ width: 40 }}>
+                    <Checkbox
+                      checked={isAllSelected}
+                      indeterminate={!isAllSelected && selectedItems.length > 0}
+                      onChange={handleSelectAllToggle}
+                    />
+                  </th>
                   <th style={{ minWidth: 300 }}>
-                    <Group spacing="xs" style={{ whiteSpace: 'nowrap' }} onClick={() => handleSortChange('title')}>
-                      <Text size="sm">Message</Text>
-                      {renderSortIcon('title')}
+                    <Group gap="xs" style={{ whiteSpace: 'nowrap' }}>
+                      <Flex direction="row" align="center" onClick={() => handleSortChange('title')} style={{ cursor: 'pointer' }}>
+                        <Text size="sm">Message</Text>
+                        {sortBy === 'title' && <IconChevronDown size={14} style={{ transform: sortDirection === 'asc' ? 'rotate(180deg)' : 'none' }} />}
+                      </Flex>
                     </Group>
                   </th>
-                  <th style={{ minWidth: 150 }}>Tags</th>
-                  <th style={{ width: 120 }}>
-                    <Group spacing="xs" style={{ whiteSpace: 'nowrap' }} onClick={() => handleSortChange('timestamp')}>
+                  <th style={{ minWidth: 100 }}>Frequency</th>
+                  <th style={{ minWidth: 100 }}>Impact</th>
+                  <th style={{ minWidth: 120 }}>
+                    <Group gap="xs" style={{ whiteSpace: 'nowrap' }} onClick={() => handleSortChange('timestamp')}>
                       <Text size="sm">When</Text>
                       {renderSortIcon('timestamp')}
                     </Group>
                   </th>
-                  <th style={{ width: 140 }}>Analysis</th>
-                  <th style={{ width: 60 }}></th>
+                  <th style={{ width: 100 }}>Deadlock</th>
+                  <th style={{ width: 60 }}>
+                    <Menu width={200} shadow="md">
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" size="sm">
+                          <IconDots size={16} color={theme.colors.gray[5]} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Label>Bulk Actions</Menu.Label>
+                        <Menu.Item
+                          leftSection={<IconCheckbox size={14} />}
+                          disabled={selectedItems.length === 0}
+                          onClick={() => handleSelectAllToggle()}
+                        >
+                          {isAllSelected ? 'Deselect All' : 'Select All'}
+                        </Menu.Item>
+                        <Menu.Divider />
+                        <Menu.Item
+                          leftSection={<IconEye size={14} />}
+                          disabled={selectedItems.length === 0}
+                          onClick={() => console.log('View selected')}
+                        >
+                          View Selected
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconBookmark size={14} />}
+                          disabled={selectedItems.length === 0}
+                          onClick={() => console.log('Bookmark selected')}
+                        >
+                          Bookmark
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconShare size={14} />}
+                          disabled={selectedItems.length === 0}
+                          onClick={() => console.log('Share selected')}
+                        >
+                          Share
+                        </Menu.Item>
+                        <Menu.Divider />
+                        <Menu.Item
+                          color="red"
+                          leftSection={<IconTrash size={14} />}
+                          disabled={selectedItems.length === 0}
+                          onClick={() => console.log('Delete selected')}
+                        >
+                          Delete
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <LoadingSkeleton rows={5} height={50} />
                     </td>
                   </tr>
                 ) : data?.items?.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <EmptyState 
                         title="No events found"
                         message="Try adjusting your search or filter criteria"
@@ -377,7 +506,7 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
                     </td>
                   </tr>
                 ) : (
-                  data?.items?.map((event, index) => (
+                  data?.items?.map((event: EventType, index: number) => (
                     <EventRow
                       key={event.id}
                       event={event}
@@ -386,6 +515,8 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
                       isSelected={index === selectedIndex}
                       aria-selected={index === selectedIndex}
                       onMouseEnter={() => setSelectedIndex(index)}
+                      isRowSelected={selectedItems.includes(event.id)}
+                      onSelectToggle={handleItemSelectToggle}
                     />
                   ))
                 )}
@@ -394,9 +525,19 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
           </ScrollArea>
         </Box>
         
+        {/* Bulk action bar */}
+        <BulkActionBar
+          selectedEvents={data?.items?.filter(event => selectedItems.includes(event.id)) || []}
+          onClearSelection={() => {
+            setSelectedItems([]);
+            setIsAllSelected(false);
+          }}
+          visible={selectedItems.length > 0}
+        />
+        
         {/* Pagination */}
         {data && totalPages > 1 && (
-          <Group position="right">
+          <Group justify="right">
             <Pagination
               total={totalPages}
               value={page}

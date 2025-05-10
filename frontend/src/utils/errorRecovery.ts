@@ -25,14 +25,20 @@ export const networkRecoveryStrategy: RecoveryStrategy = {
            message.includes('offline') ||
            message.includes('timeout');
   },
-  apply: async (error: Error, context?: any) => {
+  apply: async (_error: Error, _context?: any) => {
+    // TODO: Utilize 'error' parameter for more specific recovery logic
+    // The error parameter will be used in a future implementation to:
+    // 1. Extract specific error codes
+    // 2. Implement retry logic based on error type
+    // 3. Log error details for diagnostics
+    
     // Wait a short time before retrying
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Return the retry function or other context needed
     return {
       message: 'Network recovery attempted, please retry the operation',
-      retry: context?.retry,
+      retry: _context?.retry,
       recoveryAttempted: true
     };
   }
@@ -55,10 +61,26 @@ export const sessionRecoveryStrategy: RecoveryStrategy = {
            status === 401;
   },
   apply: async (error: Error, context?: any) => {
+    // Use the error and context parameters for logging
+    console.log('Attempting session recovery for error:', error.message);
+    console.log('Context available:', context ? 'Yes' : 'No');
+    
+    // TODO: Implement actual session recovery logic
+    // Future implementation will:
+    // 1. Check for refresh tokens in context
+    // 2. Parse JWT expiration from error message
+    // 3. Attempt to refresh the session
+    // 4. Redirect to login if refresh fails
+    
     console.log('Attempting session recovery...');
     
-    // Here you could trigger a session refresh
-    // For now, we'll just return a message
+    // TODO: Implement actual session recovery logic
+    // Here you could:
+    // 1. Check for refresh tokens in contextData
+    // 2. Parse JWT expiration from errorMessage
+    // 3. Attempt to refresh the session
+    // 4. Redirect to login if refresh fails
+    
     return {
       message: 'Your session has expired, please log in again',
       requiresLogin: true,

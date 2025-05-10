@@ -166,7 +166,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
   });
   
   // Get estimated model size for information display
-  const getEstimatedModelSize = (modelName: string): string | null => {
+  const getEstimatedModelSize = (modelName: string): string => {
     // Rough estimates based on model type
     if (modelName.includes('mistral')) return '4-7 GB';
     if (modelName.includes('llama3')) return '4-8 GB';
@@ -174,7 +174,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
     if (modelName.includes('gemma')) return '4-8 GB'; 
     if (modelName.includes('mixtral')) return '10-15 GB';
     if (modelName.includes('codellama')) return '7-10 GB';
-    return null; // Unknown size
+    return 'Unknown size'; // Unknown size
   };
   
   // Select model mutation
@@ -249,12 +249,13 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
     const GB = 1024 * 1024 * 1024;
     const MB = 1024 * 1024;
     if (bytes >= GB) return `${(bytes / GB).toFixed(1)} GB`;
-    return `${(bytes / MB).toFixed(1)} MB`;
+    if (bytes >= MB) return `${(bytes / MB).toFixed(1)} MB`;
+    return 'Unknown';
   };
   
   // Get model processing time estimate (rough guidelines)
   const getModelProcessingTime = (model?: ModelData): string => {
-    if (!model?.name) return 'Unknown';
+    if (!model?.name) return 'N/A';
     
     // These are rough estimates - actual times will vary by hardware
     const estimates: Record<string, string> = {
@@ -272,8 +273,9 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
     };
     
     // Check for exact match
-    if (estimates[model.name]) {
-      return estimates[model.name];
+    const exactMatch = estimates[model.name];
+    if (exactMatch) {
+      return exactMatch;
     }
     
     // Check for partial match
@@ -284,7 +286,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
     }
     
     // Default estimate
-    return estimates[model.name] || 'Unknown';
+    return 'N/A';
   };
   
   const ollamaStatus = getOllamaStatus();
@@ -327,11 +329,12 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
         p="sm" 
         withBorder 
         onClick={() => setIsExpanded(true)}
-        styles={{
-          root: {
-            cursor: 'pointer',
-            '&:hover': { backgroundColor: theme.colors.gray[0] }
-          }
+        style={{ cursor: 'pointer' }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = theme.colors.gray[0];
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = '';
         }}
       >
         <Group justify="apart">
@@ -353,7 +356,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
               color={ollamaStatus.color}
               variant="outline"
               leftSection={
-                <Box styles={{ root: { display: 'flex', alignItems: 'center' } }}>
+                <Box style={{ display: 'flex', alignItems: 'center' }}>
                   {ollamaStatus.icon}
                 </Box>
               }
@@ -366,7 +369,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
               color={currentModelStatus.color}
               variant="outline"
               leftSection={
-                <Box styles={{ root: { display: 'flex', alignItems: 'center' } }}>
+                <Box style={{ display: 'flex', alignItems: 'center' }}>
                   {currentModelStatus.icon}
                 </Box>
               }
@@ -418,7 +421,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
               color={ollamaStatus.color}
               variant="light"
               leftSection={
-                <Box styles={{ root: { display: 'flex', alignItems: 'center' } }}>
+                <Box style={{ display: 'flex', alignItems: 'center' }}>
                   {ollamaStatus.icon}
                 </Box>
               }
@@ -431,7 +434,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
               color={currentModelStatus.color}
               variant="light"
               leftSection={
-                <Box styles={{ root: { display: 'flex', alignItems: 'center' } }}>
+                <Box style={{ display: 'flex', alignItems: 'center' }}>
                   {currentModelStatus.icon}
                 </Box>
               }
@@ -469,7 +472,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
               onChange={handleModelSelect}
               searchable
               disabled={modelOptions.length === 0 || selectModelMutation.isPending}
-              styles={{ root: { maxWidth: '400px' } }}
+              style={{ maxWidth: '400px' }}
             />
             
             <Alert color="blue" variant="light">

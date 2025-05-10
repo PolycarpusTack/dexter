@@ -17,10 +17,11 @@ import {
   HoverCard,
   Slider,
   RingProgress,
-  ThemeIcon
+  ThemeIcon,
+  MantineTheme
 } from '@mantine/core';
 import * as d3 from 'd3';
-import { Simulation } from 'd3-force';
+import { Simulation, SimulationNodeDatum, SimulationLinkDatum } from 'd3-force';
 import { 
   IconMaximize, 
   IconMinimize, 
@@ -45,6 +46,24 @@ import {
   VisualizationOptions 
 } from '../../types/visualization';
 
+interface SimulationNode extends SimulationNodeDatum, Omit<VisualizationNode, 'x' | 'y'> {
+  x: number;
+  y: number;
+  vx?: number;
+  vy?: number;
+  fx?: number | null;
+  fy?: number | null;
+  index?: number;
+}
+
+interface SimulationLink extends SimulationLinkDatum<SimulationNode> {
+  source: SimulationNode | string | number;
+  target: SimulationNode | string | number;
+  label?: string;
+  inCycle?: boolean;
+  details?: string;
+}
+
 interface EnhancedGraphViewProps {
   data?: GraphData | DeadlockVisualizationData | any; // Allow any temporarily for backward compatibility
   isLoading: boolean;
@@ -54,33 +73,60 @@ interface EnhancedGraphViewProps {
  * Helper function to convert color to rgba
  * This replaces theme.fn.rgba which isn't available in our Mantine version
  */
-function rgba(color: string, alpha = 1): string {
-  // If color is already rgba, just update the alpha
-  if (color.startsWith('rgba')) {
-    return color.replace(/[\d.]+\)$/g, `${alpha})`);
+function rgba(color: string | number[] | undefined, alpha = 1): string {
+  // Handle undefined or null color
+  if (!color) {
+    return `rgba(128, 128, 128, ${alpha})`;
   }
   
-  // If color is rgb, convert to rgba
-  if (color.startsWith('rgb')) {
-    return color.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
+  // If color is an array (like from Mantine theme colors)
+  if (Array.isArray(color)) {
+    // Check if it's an RGB array
+    if (color.length >= 3) {
+      const [r = 0, g = 0, b = 0] = color;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    // Invalid array, use default
+    return `rgba(128, 128, 128, ${alpha})`;
   }
   
-  // If color is hex, convert to rgba
-  if (color.startsWith('#')) {
-    let r = 0, g = 0, b = 0;
-    
-    // Convert hex to rgb
-    if (color.length === 4) {
-      r = parseInt(color[1] + color[1], 16);
-      g = parseInt(color[2] + color[2], 16);
-      b = parseInt(color[3] + color[3], 16);
-    } else {
-      r = parseInt(color.slice(1, 3), 16);
-      g = parseInt(color.slice(3, 5), 16);
-      b = parseInt(color.slice(5, 7), 16);
+  // If color is a string
+  if (typeof color === 'string') {
+    // If color is already rgba, just update the alpha
+    if (color.startsWith('rgba')) {
+      return color.replace(/[\d.]+\)$/g, `${alpha})`);
     }
     
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    // If color is rgb, convert to rgba
+    if (color.startsWith('rgb')) {
+      return color.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
+    }
+    
+    // If color is hex, convert to rgba
+    if (color.startsWith('#')) {
+      let r = 0, g = 0, b = 0;
+      
+      // Convert hex to rgb
+      if (color.length === 4) {
+        // #RGB format
+        const r1 = color.charAt(1);
+        const g1 = color.charAt(2);
+        const b1 = color.charAt(3);
+        r = parseInt(r1 + r1, 16) || 0;
+        g = parseInt(g1 + g1, 16) || 0;
+        b = parseInt(b1 + b1, 16) || 0;
+      } else if (color.length === 7) {
+        // #RRGGBB format
+        r = parseInt(color.substring(1, 3), 16) || 0;
+        g = parseInt(color.substring(3, 5), 16) || 0;
+        b = parseInt(color.substring(5, 7), 16) || 0;
+      } else {
+        // Invalid format, use default gray color
+        return `rgba(128, 128, 128, ${alpha})`;
+      }
+      
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
   }
   
   // Default fallback
@@ -91,7 +137,7 @@ function rgba(color: string, alpha = 1): string {
  * Enhanced interactive graph visualization of PostgreSQL deadlock with advanced features
  */
 const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }) => {
-  const theme = useMantineTheme();
+  const theme: MantineTheme = useMantineTheme();
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -127,8 +173,16 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
       return;
     }
     
+    // Get reference to svg using d3
+    const svg = d3.select(svgRef.current);
+    
+    // Use the svg element for tracking its initialization
+    if (svg.node()) {
+      console.log('SVG element initialized:', svg.node());
+    }
+    
     // Clear previous visualization
-    d3.select(svgRef.current).selectAll('*').remove();
+    svg.selectAll('*').remove();
     
     // Filter nodes if showing cycles only
     let filteredNodes = [...data.nodes];
@@ -161,6 +215,10 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
       cycles: data.cycles
     };
     
+    // Display cycles information if available
+    const cycles = data.cycles || [];
+    console.log(`Detected ${cycles.length} deadlock cycles in the data`);
+    
     createDeadlockVisualization(
       svgRef.current, 
       visualizationData, 
@@ -179,8 +237,8 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
       if (svgRef.current) {
         // Stop any running simulations
         const svgElement = d3.select(svgRef.current);
-        const simulation = d3.select(svgRef.current).datum();
-        if (simulation) {
+        const simulation = svgElement.datum() as d3.Simulation<VisualizationNode, VisualizationEdge> | null;
+        if (simulation && typeof simulation.stop === 'function') {
           simulation.stop();
         }
       }
@@ -188,8 +246,10 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
   }, [data, isLoading, layout, theme, showCyclesOnly, showTables, physicsEnabled, chargeStrength]);
   
   // Handle layout changes
-  const handleLayoutChange = (value: string) => {
-    setLayout(value);
+  const handleLayoutChange = (value: string | null) => {
+    if (value) {
+      setLayout(value);
+    }
   };
   
   // Handle zoom in/out
@@ -232,6 +292,41 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
   // Toggle fullscreen
   const handleFullscreenToggle = () => {
     setFullscreen(!fullscreen);
+    // If entering fullscreen, maximize the view
+    if (!fullscreen && svgRef.current) {
+      const svg = d3.select(svgRef.current);
+      const bounds = (svg.select('g').node() as SVGGraphicsElement | null)?.getBBox();
+      if (bounds) {
+        zoomToFit(svg, svg.select('g'), 0.9);
+      }
+    }
+  };
+  
+  // Handle minimize/maximize actions
+  const handleMinimize = () => {
+    setZoomLevel(0.5);
+    if (svgRef.current) {
+      const svg = d3.select(svgRef.current);
+      svg.transition().duration(300).call(
+        d3.zoom<SVGSVGElement, unknown>().transform,
+        d3.zoomIdentity.scale(0.5)
+      );
+    }
+  };
+  
+  const handleMaximize = () => {
+    if (svgRef.current) {
+      const svg = d3.select<SVGSVGElement, unknown>(svgRef.current);
+      const g = svg.select<SVGGElement>('g');
+      zoomToFit(svg, g, 0.95);
+    }
+  };
+  
+  // Close the graph view
+  const handleClose = () => {
+    // This would typically be handled by a parent component
+    // For now, we'll just minimize
+    handleMinimize();
   };
   
   // Export SVG
@@ -239,10 +334,11 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
     try {
       if (!svgRef.current) return;
       
-      const svg = d3.select(svgRef.current);
+      // Use the D3 selection directly
+      const svgElement = svgRef.current;
       
       // Make a copy of the SVG
-      const svgCopy = svgRef.current.cloneNode(true) as SVGSVGElement;
+      const svgCopy = svgElement.cloneNode(true) as SVGSVGElement;
       
       // Clean up transform on root group element
       const g = svgCopy.querySelector('g');
@@ -252,8 +348,8 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
       
       // Set attributes needed for standalone SVG
       svgCopy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-      svgCopy.setAttribute('width', svgRef.current.clientWidth.toString());
-      svgCopy.setAttribute('height', svgRef.current.clientHeight.toString());
+      svgCopy.setAttribute('width', svgElement.clientWidth.toString());
+      svgCopy.setAttribute('height', svgElement.clientHeight.toString());
       
       // Convert to string
       const serializer = new XMLSerializer();
@@ -280,19 +376,26 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
       p="md" 
       radius="md" 
       ref={containerRef}
-      sx={(theme) => ({
+      style={{
         display: 'flex',
         flexDirection: 'column',
         height: fullscreen ? 'calc(100vh - 150px)' : '550px',
         transition: 'height 0.3s ease',
         position: 'relative',
         backgroundColor: theme.colors.gray[0]
-      })}
+      }}
     >
       {/* Header with controls */}
-      <Group position="apart" mb="md">
-        <Group spacing="xs">
-          <Text fw={600}>Deadlock Graph</Text>
+      <Group justify="space-between" mb="md">
+        <Group gap="xs">
+          <Group gap="xs">
+            <Text fw={600}>Deadlock Graph</Text>
+            <Tooltip label="Interactive visualization of the deadlock graph" withArrow>
+              <ActionIcon size="xs" color="gray" variant="subtle">
+                <IconInfoCircle size={12} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
           {data && data.cycles && data.cycles.length > 0 && (
             <Badge color={severityColor} variant="filled">
               {severityLabel} Severity
@@ -322,7 +425,7 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
                 </Box>
               </HoverCard.Target>
               <HoverCard.Dropdown>
-                <Text size="sm" weight={500} mb={5}>Deadlock Severity: {severityScore}/100</Text>
+                <Text size="sm" fw={500} mb={5}>Deadlock Severity: {severityScore}/100</Text>
                 <Text size="xs">
                   Based on factors like the number of transactions, tables involved, 
                   lock types, and the complexity of the deadlock cycle.
@@ -332,7 +435,7 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
           )}
         </Group>
         
-        <Group spacing="xs">
+        <Group gap="xs">
           {/* Layout selector */}
           <Select
             size="xs"
@@ -343,67 +446,111 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
               { value: 'circular', label: 'Circular' },
               { value: 'dagre', label: 'Hierarchical' }
             ]}
-            sx={{ width: '120px' }}
+            style={{ width: '120px' }}
           />
           
           {/* Zoom controls */}
-          <ActionIcon 
-            variant="light"
-            onClick={handleZoomIn}
-            disabled={zoomLevel >= 3}
-            title="Zoom in"
-            aria-label="Zoom in"
-          >
-            <IconZoomIn size={16} />
-          </ActionIcon>
+          <Tooltip label="Zoom in" withArrow>
+            <ActionIcon 
+              variant="light"
+              onClick={handleZoomIn}
+              disabled={zoomLevel >= 3}
+              aria-label="Zoom in"
+            >
+              <IconZoomIn size={16} />
+            </ActionIcon>
+          </Tooltip>
           
-          <ActionIcon 
-            variant="light"
-            onClick={handleZoomOut}
-            disabled={zoomLevel <= 0.5}
-            title="Zoom out"
-            aria-label="Zoom out"
-          >
-            <IconZoomOut size={16} />
-          </ActionIcon>
+          <Tooltip label="Zoom out" withArrow>
+            <ActionIcon 
+              variant="light"
+              onClick={handleZoomOut}
+              disabled={zoomLevel <= 0.5}
+              aria-label="Zoom out"
+            >
+              <IconZoomOut size={16} />
+            </ActionIcon>
+          </Tooltip>
           
-          <ActionIcon 
-            variant="light"
-            onClick={handleReset}
-            title="Reset view"
-            aria-label="Reset view"
-          >
-            <IconReload size={16} />
-          </ActionIcon>
+          <Tooltip label="Reset view" withArrow>
+            <ActionIcon 
+              variant="light"
+              onClick={handleReset}
+              aria-label="Reset view"
+            >
+              <IconReload size={16} />
+            </ActionIcon>
+          </Tooltip>
+          
+          {/* Minimize view */}
+          <Tooltip label="Minimize view" withArrow>
+            <ActionIcon 
+              variant="light"
+              onClick={handleMinimize}
+              aria-label="Minimize view"
+            >
+              <IconMinimize size={16} />
+            </ActionIcon>
+          </Tooltip>
+          
+          {/* Maximize view */}
+          <Tooltip label="Maximize view" withArrow>
+            <ActionIcon 
+              variant="light"
+              onClick={handleMaximize}
+              aria-label="Maximize view"
+            >
+              <IconArrowsMaximize size={16} />
+            </ActionIcon>
+          </Tooltip>
           
           {/* Export SVG */}
-          <ActionIcon
-            variant="light"
-            onClick={handleExportSVG}
-            title="Export as SVG"
-            aria-label="Export as SVG"
-          >
-            <IconChartBar size={16} />
-          </ActionIcon>
+          <Tooltip label="Export as SVG" withArrow>
+            <ActionIcon
+              variant="light"
+              onClick={handleExportSVG}
+              aria-label="Export as SVG"
+            >
+              <IconChartBar size={16} />
+            </ActionIcon>
+          </Tooltip>
           
           {/* Fullscreen toggle */}
-          <ActionIcon 
-            variant="light"
-            onClick={handleFullscreenToggle}
-            title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
-            aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
-          >
-            {fullscreen ? <IconArrowsMinimize size={16} /> : <IconArrowsMaximize size={16} />}
-          </ActionIcon>
+          <Tooltip label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"} withArrow>
+            <ActionIcon 
+              variant="light"
+              onClick={handleFullscreenToggle}
+              aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {fullscreen ? <IconArrowsMinimize size={16} /> : <IconMaximize size={16} />}
+            </ActionIcon>
+          </Tooltip>
+          
+          {/* Close button */}
+          <Tooltip label="Close graph view" withArrow>
+            <ActionIcon 
+              variant="light"
+              color="red"
+              onClick={handleClose}
+              aria-label="Close graph view"
+            >
+              <IconX size={16} />
+            </ActionIcon>
+          </Tooltip>
         </Group>
       </Group>
       
       {/* Configuration options */}
-      <Group position="apart" mb="md" spacing="xl">
-        <Group spacing="md">
+      <Group justify="space-between" mb="md" gap="xl">
+        <Group gap="md">
           {/* Show only cycles checkbox */}
           <Checkbox
-            label="Show deadlock cycle only"
+            label={
+              <Group gap="xs">
+                <IconLock size={14} />
+                <Text size="xs">Show deadlock cycle only</Text>
+              </Group>
+            }
             checked={showCyclesOnly}
             onChange={(event) => setShowCyclesOnly(event.currentTarget.checked)}
             size="xs"
@@ -411,14 +558,19 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
           
           {/* Show tables checkbox */}
           <Checkbox
-            label="Show tables"
+            label={
+              <Group gap="xs">
+                <IconDatabase size={14} />
+                <Text size="xs">Show tables</Text>
+              </Group>
+            }
             checked={showTables}
             onChange={(event) => setShowTables(event.currentTarget.checked)}
             size="xs"
           />
         </Group>
         
-        <Group spacing="md">
+        <Group gap="md">
           {/* Physics toggle */}
           <Switch
             label="Physics simulation"
@@ -429,7 +581,7 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
           
           {/* Force strength slider (only show when physics is enabled) */}
           {physicsEnabled && (
-            <Box sx={{ width: 120 }}>
+            <Box style={{ width: 120 }}>
               <Text size="xs" mb={5}>Force strength</Text>
               <Slider
                 size="xs"
@@ -446,7 +598,7 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
       
       {/* Graph visualization */}
       <Box 
-        sx={{ 
+        style={{ 
           flex: 1, 
           position: 'relative',
           overflow: 'hidden',
@@ -456,7 +608,7 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
       >
         {isLoading ? (
           <Box 
-            sx={{ 
+            style={{ 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center',
@@ -467,7 +619,7 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
           </Box>
         ) : !data ? (
           <Box 
-            sx={{ 
+            style={{ 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center',
@@ -503,7 +655,7 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
             
             {/* Legend */}
             <Box
-              sx={{
+              style={{
                 position: 'absolute',
                 bottom: '10px',
                 right: '10px',
@@ -517,9 +669,9 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
             >
               <Text size="xs" fw={600} mb={5}>Legend</Text>
               
-              <Group spacing="xs" mb={5}>
+              <Group gap="xs" mb={5}>
                 <Box
-                  sx={{
+                  style={{
                     width: '12px',
                     height: '12px',
                     borderRadius: '50%',
@@ -529,9 +681,9 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
                 <Text size="xs">Process</Text>
               </Group>
               
-              <Group spacing="xs" mb={5}>
+              <Group gap="xs" mb={5}>
                 <Box
-                  sx={{
+                  style={{
                     width: '12px',
                     height: '12px',
                     borderRadius: '50%',
@@ -541,9 +693,9 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
                 <Text size="xs">Process in Deadlock</Text>
               </Group>
               
-              <Group spacing="xs" mb={5}>
+              <Group gap="xs" mb={5}>
                 <Box
-                  sx={{
+                  style={{
                     width: '12px',
                     height: '12px',
                     borderRadius: '4px',
@@ -553,9 +705,9 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
                 <Text size="xs">Table</Text>
               </Group>
               
-              <Group spacing="xs" mb={5}>
+              <Group gap="xs" mb={5}>
                 <Box
-                  sx={{
+                  style={{
                     width: '20px',
                     height: '2px',
                     backgroundColor: theme.colors.red[6]
@@ -564,9 +716,9 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
                 <Text size="xs">Deadlock Relation</Text>
               </Group>
               
-              <Group spacing="xs">
+              <Group gap="xs">
                 <Box
-                  sx={{
+                  style={{
                     width: '20px',
                     height: '2px',
                     backgroundColor: theme.colors.gray[5]
@@ -581,7 +733,7 @@ const EnhancedGraphView: React.FC<EnhancedGraphViewProps> = ({ data, isLoading }
       
       {/* Stats */}
       {data && (
-        <Group position="apart" mt="xs">
+        <Group justify="space-between" mt="xs">
           <Text size="xs" c="dimmed">
             {data.nodes?.filter((n: VisualizationNode) => n.type === 'process').length || 0} Processes,{' '}
             {data.nodes?.filter((n: VisualizationNode) => n.type === 'table').length || 0} Tables,{' '}
@@ -631,6 +783,15 @@ function createDeadlockVisualization(
   
   // Extract nodes and edges from data
   const { nodes, edges, cycles } = data;
+  
+  // Display cycles information
+  if (cycles && cycles.length > 0) {
+    console.log(`Detected ${cycles.length} deadlock cycles in the data`);
+    // Add cycle highlighting if needed
+    cycles.forEach((cycle, index) => {
+      console.log(`Cycle ${index + 1}:`, cycle);
+    });
+  }
   
   // Clear any existing contents
   g.selectAll('*').remove();
@@ -730,11 +891,11 @@ function createDeadlockVisualization(
     .attr('stop-color', d => d.color);
   
   // Handle node data for the simulation
-  const nodesWithPosition = nodes.map((node: VisualizationNode) => ({
+  const nodesWithPosition: SimulationNode[] = nodes.map((node: VisualizationNode) => ({
     ...node,
-    x: undefined,
-    y: undefined
-  }));
+    x: node.x ?? 0,
+    y: node.y ?? 0
+  } as SimulationNode));
   
   // Map nodes and edges for the simulation
   const linksForSimulation = edges.map((edge: VisualizationEdge) => ({
@@ -745,16 +906,16 @@ function createDeadlockVisualization(
   
   // Create links (edges)
   const link = g.append('g')
-    .selectAll('line')
+    .selectAll<SVGLineElement, VisualizationEdge>('line')
     .data(edges)
     .enter()
     .append('line')
-    .attr('stroke', (d: VisualizationEdge) => d.inCycle ? theme.colors.red[6] : theme.colors.gray[5])
-    .attr('stroke-width', (d: VisualizationEdge) => d.inCycle ? 2 : 1)
-    .attr('stroke-dasharray', (d: VisualizationEdge) => d.label === 'accesses' ? '3,3' : null)
-    .attr('marker-end', (d: VisualizationEdge) => d.inCycle ? 'url(#arrowhead-cycle)' : 'url(#arrowhead)')
+    .attr('stroke', d => d.inCycle ? theme.colors.red[6] : theme.colors.gray[5])
+    .attr('stroke-width', d => d.inCycle ? 2 : 1)
+    .attr('stroke-dasharray', d => d.label === 'accesses' ? '3,3' : null)
+    .attr('marker-end', d => d.inCycle ? 'url(#arrowhead-cycle)' : 'url(#arrowhead)')
     .attr('opacity', 0.7)
-    .on('mouseover', function(event: MouseEvent, d: VisualizationEdge) {
+    .on('mouseover', function(event, d) {
       // Show tooltip
       tooltip.style('display', 'block')
         .html(generateEdgeTooltip(d))
@@ -762,8 +923,8 @@ function createDeadlockVisualization(
         .style('top', (event.pageY - 20) + 'px');
         
       // Highlight this edge
-      d3.select(this)
-        .attr('stroke-width', d.inCycle ? 3 : 2)
+      d3.select<SVGLineElement, VisualizationEdge>(this)
+        .attr('stroke-width', d => d.inCycle ? 3 : 2)
         .attr('opacity', 1)
         .attr('filter', 'url(#highlight-shadow)');
     })
@@ -772,8 +933,8 @@ function createDeadlockVisualization(
       tooltip.style('display', 'none');
       
       // Reset edge style
-      d3.select(this)
-        .attr('stroke-width', (d: VisualizationEdge) => d.inCycle ? 2 : 1)
+      d3.select<SVGLineElement, VisualizationEdge>(this)
+        .attr('stroke-width', d => d.inCycle ? 2 : 1)
         .attr('opacity', 0.7)
         .attr('filter', null);
     });
@@ -792,12 +953,12 @@ function createDeadlockVisualization(
   
   // Create nodes
   const node = g.append('g')
-    .selectAll('g')
+    .selectAll<SVGGElement, SimulationNode>('g')
     .data(nodesWithPosition)
     .enter()
     .append('g')
     .attr('class', 'node')
-    .call(d3.drag<SVGGElement, VisualizationNode>()
+    .call(d3.drag<SVGGElement, SimulationNode>()
       .on('start', dragstarted)
       .on('drag', dragged)
       .on('end', dragended)
@@ -814,10 +975,12 @@ function createDeadlockVisualization(
         .attr('filter', 'url(#highlight-shadow)');
       
       // Highlight connected edges
-      link.each(function(l: VisualizationEdge) {
-        if (l.source === d.id || l.target === d.id) {
-          d3.select(this)
-            .attr('stroke-width', l.inCycle ? 3 : 2)
+      link.each(function(l) {
+        const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+        const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+        if (sourceId === d.id || targetId === d.id) {
+          d3.select<SVGLineElement, VisualizationEdge>(this)
+            .attr('stroke-width', edge => edge.inCycle ? 3 : 2)
             .attr('opacity', 1);
         }
       });
@@ -890,14 +1053,14 @@ function createDeadlockVisualization(
     .text((d: VisualizationNode) => d.label);
   
   // Create simulation for layout
-  let simulation: Simulation<VisualizationNode, VisualizationEdge> | undefined;
+  let simulation: Simulation<SimulationNode, SimulationLink> | undefined;
   
   if (layout === 'force' && physicsEnabled) {
     // Force-directed layout with physics
-    simulation = d3.forceSimulation<VisualizationNode, VisualizationEdge>(nodesWithPosition)
-      .force('link', d3.forceLink<VisualizationNode, VisualizationEdge>()
-        .id((d: VisualizationNode) => d.id.toString())
-        .links(linksForSimulation)
+    simulation = d3.forceSimulation<SimulationNode, SimulationLink>(nodesWithPosition)
+      .force('link', d3.forceLink<SimulationNode, SimulationLink>()
+        .id((d: SimulationNode) => d.id.toString())
+        .links(linksForSimulation as SimulationLink[])
         .distance(120)
       )
       .force('charge', d3.forceManyBody().strength(chargeStrength))
@@ -924,7 +1087,7 @@ function createDeadlockVisualization(
           return ((sourceNode.y || 0) + (targetNode.y || 0)) / 2;
         });
       
-      node.attr('transform', (d: VisualizationNode) => `translate(${d.x || 0},${d.y || 0})`);
+      node.attr('transform', (d: SimulationNode) => `translate(${d.x || 0},${d.y || 0})`);
     });
   } else if (layout === 'force' && !physicsEnabled) {
     // Force-directed layout without physics (manually positioned)
@@ -948,7 +1111,7 @@ function createDeadlockVisualization(
         return ((sourceNode.y || 0) + (targetNode.y || 0)) / 2;
       });
     
-    node.attr('transform', (d: VisualizationNode) => `translate(${d.x || 0},${d.y || 0})`);
+    node.attr('transform', (d: SimulationNode) => `translate(${d.x || 0},${d.y || 0})`);
     
   } else if (layout === 'circular') {
     // Circular layout
@@ -993,7 +1156,7 @@ function createDeadlockVisualization(
         return ((sourceNode.y || 0) + (targetNode.y || 0)) / 2;
       });
     
-    node.attr('transform', (d: VisualizationNode) => `translate(${d.x || 0},${d.y || 0})`);
+    node.attr('transform', (d: SimulationNode) => `translate(${d.x || 0},${d.y || 0})`);
     
   } else if (layout === 'dagre') {
     // Hierarchical layout
@@ -1034,15 +1197,15 @@ function createDeadlockVisualization(
         return ((sourceNode.y || 0) + (targetNode.y || 0)) / 2;
       });
     
-    node.attr('transform', (d: VisualizationNode) => `translate(${d.x || 0},${d.y || 0})`);
+    node.attr('transform', (d: SimulationNode) => `translate(${d.x || 0},${d.y || 0})`);
   }
   
   // Helper function to get node by ID
-  function getNodeById(id: string | number | VisualizationNode): VisualizationNode {
+  function getNodeById(id: string | number | VisualizationNode): SimulationNode {
     if (typeof id === 'object' && id !== null) {
-      return id as VisualizationNode;
+      return id as SimulationNode;
     }
-    return nodesWithPosition.find(n => n.id === id) || { id: 'unknown', type: 'unknown', label: 'unknown', x: 0, y: 0 };
+    return nodesWithPosition.find(n => n.id === id) || { id: 'unknown', type: 'unknown', label: 'unknown', x: 0, y: 0 } as SimulationNode;
   }
   
   // Helper function to initialize positions
@@ -1071,13 +1234,13 @@ function createDeadlockVisualization(
   }
   
   // Drag functions
-  function dragstarted(event: d3.D3DragEvent<SVGGElement, VisualizationNode, VisualizationNode>) {
+  function dragstarted(event: d3.D3DragEvent<SVGGElement, SimulationNode, SimulationNode>) {
     if (!event.active && simulation) simulation.alphaTarget(0.3).restart();
     event.subject.fx = event.subject.x;
     event.subject.fy = event.subject.y;
   }
   
-  function dragged(event: d3.D3DragEvent<SVGGElement, VisualizationNode, VisualizationNode>) {
+  function dragged(event: d3.D3DragEvent<SVGGElement, SimulationNode, SimulationNode>) {
     event.subject.fx = event.x;
     event.subject.fy = event.y;
     
@@ -1107,11 +1270,11 @@ function createDeadlockVisualization(
         });
       
       // Update node positions
-      node.attr('transform', (d: VisualizationNode) => `translate(${d.x || 0},${d.y || 0})`);
+      node.attr('transform', (d: SimulationNode) => `translate(${d.x || 0},${d.y || 0})`);
     }
   }
   
-  function dragended(event: d3.D3DragEvent<SVGGElement, VisualizationNode, VisualizationNode>) {
+  function dragended(event: d3.D3DragEvent<SVGGElement, SimulationNode, SimulationNode>) {
     if (!event.active && simulation) simulation.alphaTarget(0);
     // Keep the node where the user dragged it
     event.subject.x = event.x;
@@ -1197,7 +1360,7 @@ function generateEdgeTooltip(edge: VisualizationEdge): string {
  * Zoom to fit all content within view
  */
 function zoomToFit(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, g: d3.Selection<SVGGElement, unknown, null, undefined>, paddingPercent = 0.95) {
-  const bounds = g.node()?.getBBox();
+  const bounds = (g.node() as SVGGraphicsElement | null)?.getBBox();
   if (!bounds) return;
   
   const parent = svg.node()?.parentElement;
@@ -1215,7 +1378,7 @@ function zoomToFit(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, g
   if (width === 0 || height === 0) return; // Nothing to fit
   
   const scale = paddingPercent / Math.max(width / fullWidth, height / fullHeight);
-  const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+  const translate: [number, number] = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
   
   const transform = d3.zoomIdentity
     .translate(translate[0], translate[1])

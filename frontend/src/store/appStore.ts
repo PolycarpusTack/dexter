@@ -7,14 +7,24 @@ import { persist, createJSONStorage } from 'zustand/middleware';
  * Interface for app store state
  */
 interface AppState {
+  // Organization and project
+  organizationSlug: string | null;
+  projectSlug: string | null;
+  organizationId: string | null;
+  projectId: string | null;
+  
+  // Selection state
+  selectedIssueId: string | null;
+  selectedEventId: string | null;
+  
+  // Filter state
+  statusFilter: string;
+  searchQuery: string;
+  
   /** Active AI model for explanations */
   activeAIModel: string | null;
   /** Theme mode */
   darkMode: boolean;
-  /** Selected organization ID */
-  organizationId: string | null;
-  /** Selected project ID */
-  projectId: string | null;
   /** User ID */
   userId: string | null;
   /** API token */
@@ -37,6 +47,12 @@ interface AppState {
     /** Custom keyboard shortcuts */
     customShortcuts: Record<string, string>;
   };
+  
+  // Actions
+  /** Set organization and project */
+  setOrgProject: (organizationSlug: string, projectSlug: string) => void;
+  /** Set selected issue */
+  setSelectedIssue: (issueId: string | null, eventId?: string | null) => void;
   /** Set active AI model */
   setActiveAIModel: (model: string) => void;
   /** Toggle theme mode */
@@ -69,10 +85,16 @@ interface AppState {
 
 // Default settings
 const DEFAULT_SETTINGS = {
-  activeAIModel: 'mistral:latest',
-  darkMode: false,
+  organizationSlug: null,
+  projectSlug: null,
   organizationId: null,
   projectId: null,
+  selectedIssueId: null,
+  selectedEventId: null,
+  statusFilter: '',
+  searchQuery: '',
+  activeAIModel: 'mistral:latest',
+  darkMode: false,
   userId: null,
   apiToken: null,
   displayPreferences: {
@@ -94,6 +116,12 @@ const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       ...DEFAULT_SETTINGS,
+      
+      setOrgProject: (organizationSlug: string, projectSlug: string) => 
+        set({ organizationSlug, projectSlug }),
+      
+      setSelectedIssue: (issueId: string | null, eventId?: string | null) => 
+        set({ selectedIssueId: issueId, selectedEventId: eventId || null }),
       
       setActiveAIModel: (model: string) => set({ activeAIModel: model }),
       

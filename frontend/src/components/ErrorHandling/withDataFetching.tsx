@@ -1,14 +1,14 @@
 // File: src/components/ErrorHandling/withDataFetching.tsx
 
-import React, { useState, useEffect, ComponentType } from 'react';
-import { Group, Loader, Text, Button } from '@mantine/core';
+import { useState, useEffect, ComponentType } from 'react';
+import { Group, Stack, Loader, Text, Button } from '@mantine/core';
 import { WithDataFetchingOptions } from '../../types/errorHandling';
 
 /**
  * Default loading component
  */
 const DefaultLoadingComponent = () => (
-  <Group position="center" spacing="md" py="xl">
+  <Group justify="center" gap="md" py="xl">
     <Loader size="md" />
     <Text>Loading data...</Text>
   </Group>
@@ -17,11 +17,11 @@ const DefaultLoadingComponent = () => (
 /**
  * Default error component
  */
-const DefaultErrorComponent = ({ error, retry }: { error: Error, retry: () => void }) => (
-  <Group position="center" direction="column" spacing="md" py="xl">
+const DefaultErrorComponent = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => (
+  <Stack align="center" gap="md" py="xl">
     <Text color="red">Error loading data: {error.message}</Text>
-    <Button onClick={retry}>Retry</Button>
-  </Group>
+    <Button onClick={resetErrorBoundary}>Retry</Button>
+  </Stack>
 );
 
 /**
@@ -82,7 +82,7 @@ export function withDataFetching<T, P extends { data?: T }>(
       // Show error state
       if (error) {
         if (typeof errorComponent === 'function') {
-          return <>{errorComponent(error, handleRetry)}</>;
+          return <>{errorComponent({ error, resetErrorBoundary: handleRetry })}</>;
         }
         return <>{errorComponent}</>;
       }

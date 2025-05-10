@@ -1,6 +1,5 @@
 // File: frontend/src/components/UI/LoadingSkeleton.tsx
 
-import React from 'react';
 import { Skeleton, Stack, Group, Box, BoxProps } from '@mantine/core';
 
 type SkeletonType = 'table' | 'detail' | 'card' | 'list';

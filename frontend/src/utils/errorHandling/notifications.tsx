@@ -160,8 +160,11 @@ export function showLoadingNotification(options: NotificationOptions): {
     message = 'Processing...',
     color = 'blue',
     loading = true,
-    disableAutoClose = true
+    disableAutoClose = true // This is used to ensure loading notifications persist
   } = options;
+  
+  // We use the disableAutoClose value by always setting autoClose: false for loading notifications
+  const autoCloseValue = disableAutoClose ? false : 5000;
   
   showNotification({
     id,
@@ -169,7 +172,7 @@ export function showLoadingNotification(options: NotificationOptions): {
     message,
     color,
     loading,
-    autoClose: false
+    autoClose: autoCloseValue // Use the calculated value
   });
   
   // Return functions to update or complete the notification
@@ -217,8 +220,6 @@ export function showLoadingNotification(options: NotificationOptions): {
 export function dismissNotification(id: string): void {
   hideNotification(id);
 }
-
-export type { NotificationOptions };
 
 export default {
   showSuccessNotification,

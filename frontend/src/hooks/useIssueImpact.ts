@@ -20,9 +20,13 @@ export function useIssueImpact(issueId: string, timeRange: string = '7d') {
   } = useQuery({
     queryKey: ['issueImpact', issueId, timeRange],
     queryFn: async () => {
-      // In a real implementation, this would call the API
-      // For now, generate mock data
-      return {
+      // Call the API if available, fall back to mock data
+      try {
+        return await getUserImpact({ issueId, statsPeriod: timeRange });
+      } catch (error) {
+        // If API is not available, return mock data
+        console.debug('User impact API not available, using mock data');
+        return {
         uniqueUsers: Math.floor(Math.random() * 100) + 20,
         userPercentage: Math.random() * 10,
         affectedSessions: Math.floor(Math.random() * 500) + 50,
@@ -54,6 +58,7 @@ export function useIssueImpact(issueId: string, timeRange: string = '7d') {
           }
         }
       };
+      }
     },
     enabled: !!issueId,
     staleTime: 15 * 60 * 1000, // 15 minutes

@@ -4,7 +4,7 @@ import { SentryEvent, EventTag, EventException, EventEntry, EventContext } from 
 import { VisualizationNode, VisualizationEdge, GraphData, VisualizationOptions } from './visualization';
 
 // Re-export all types
-export {
+export type {
   SentryEvent,
   EventTag,
   EventException,

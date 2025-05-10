@@ -26,7 +26,7 @@ if (import.meta.env.DEV && import.meta.env.VITE_SUPPRESS_SOURCEMAP_WARNINGS === 
   };
 }
 
-// Create a QueryClient with global error handling
+// Create a QueryClient with proper error handling
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -34,22 +34,21 @@ const queryClient = new QueryClient({
       retry: 1, // Retry failed requests just once
       refetchOnWindowFocus: true, // Auto-refresh when tab gets focus
       staleTime: 1000 * 60 * 5, // Data is fresh for 5 minutes
-      cacheTime: 1000 * 60 * 30, // Cache for 30 minutes
-      // Global error handler
-      onError: (error: Error) => {
-        console.error('React Query Error:', error);
-        // Error notifications are handled at the component level
-        // using the error handling utilities
-      },
+      gcTime: 1000 * 60 * 30, // Garbage collection after 30 minutes
     },
     mutations: {
-      // Global error handling for mutations
-      onError: (error: Error) => {
-        console.error('Mutation Error:', error);
-        // Error notifications are handled at the component level
-      },
+      // Global defaults for mutations
+      retry: 0,
     },
   },
+});
+
+// Set up global error handling separately if needed
+queryClient.getQueryCache().subscribe((event) => {
+  if (event.type === 'observerResultsUpdated' && event.query.state.status === 'error') {
+    console.error('React Query Error:', event.query.state.error);
+    // Error notifications are handled at the component level
+  }
 });
 
 // Get the root element and check if it exists
@@ -65,7 +64,6 @@ ReactDOM.createRoot(rootElement).render(
       theme={dexterTheme} 
       defaultColorScheme="light"
       withCssVariables={false} // Disable CSS variables to avoid the forEach error
-      withNormalizeCSS // Add normalize CSS for browser consistency
     >
       <Notifications position="top-right" zIndex={1000} />
       <QueryClientProvider client={queryClient}>

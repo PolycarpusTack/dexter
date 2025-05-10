@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ActionIcon, Box, TextInput, Tooltip } from '@mantine/core';
 import { IconSearch, IconSettings, IconX } from '@tabler/icons-react';
 
@@ -40,7 +40,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
     <Box style={{ position: 'relative' }}>
       <TextInput
         id="event-search"
-        icon={loading ? <div className="spinner-border spinner-border-sm" /> : <IconSearch size={16} />}
+        leftSection={loading ? <div className="spinner-border spinner-border-sm" /> : <IconSearch size={16} />}
         value={value}
         onChange={(e) => onChange(e.currentTarget.value)}
         onKeyDown={handleKeyDown}

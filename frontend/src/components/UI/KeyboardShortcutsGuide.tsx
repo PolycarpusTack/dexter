@@ -1,6 +1,5 @@
 // File: frontend/src/components/UI/KeyboardShortcutsGuide.tsx
 
-import React from 'react';
 import { 
   Paper, 
   Table, 
@@ -11,8 +10,7 @@ import {
   Button,
   Kbd, 
   Stack,
-  Divider,
-  useMantineTheme
+  Divider
 } from '@mantine/core';
 import { 
   IconKeyboard, 
@@ -49,7 +47,6 @@ function KeyboardShortcutsGuide({
   onClose,
   isMac = false
 }: KeyboardShortcutsGuideProps): JSX.Element {
-  const theme = useMantineTheme();
   
   // Detect MacOS for showing appropriate key symbols
   const modKey = isMac ? '⌘' : 'Ctrl';
@@ -151,7 +148,7 @@ function KeyboardShortcutsGuide({
       }
       size="lg"
     >
-      <Stack spacing="md">
+      <Stack gap="md">
         <Text size="sm" c="dimmed">
           Dexter supports keyboard shortcuts to help you navigate and perform actions quickly.
         </Text>
@@ -164,12 +161,12 @@ function KeyboardShortcutsGuide({
                 {section.shortcuts.map((shortcut, j) => (
                   <tr key={`${i}-${j}`}>
                     <td style={{ width: '40%' }}>
-                      <Group spacing={4}>
+                      <Group gap={4}>
                         {shortcut.keys.map(renderKey)}
                       </Group>
                     </td>
                     <td>
-                      <Group spacing="xs">
+                      <Group gap="xs">
                         {shortcut.icon && (
                           <ThemeIcon
                             variant="light"
@@ -192,7 +189,7 @@ function KeyboardShortcutsGuide({
         
         <Divider />
         
-        <Group position="right">
+        <Group justify="flex-end">
           <Button onClick={onClose}>Close</Button>
         </Group>
       </Stack>

@@ -1,6 +1,6 @@
 // File: src/components/ErrorHandling/ErrorBoundary.tsx
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { ErrorBoundaryProps, ErrorBoundaryState } from '../../types/errorHandling';
 import ErrorFallback from './ErrorFallback';
 
@@ -26,7 +26,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log the error to console (we could also log to an error tracking service)
     console.error(`Error caught by ${this.props.name || 'ErrorBoundary'}:`, error);
     console.error('Component stack:', errorInfo.componentStack);
@@ -44,7 +44,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     });
   };
 
-  render(): ReactNode {
+  override render(): ReactNode {
     const { hasError, error } = this.state;
     const { children, fallback, showDetails = true } = this.props;
     

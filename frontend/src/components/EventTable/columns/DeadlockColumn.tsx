@@ -19,10 +19,10 @@ import {
   IconAlertTriangle 
 } from '@tabler/icons-react';
 import { hasDeadlock } from '../../../api/deadlockApi';
-import { SentryEvent } from '../../../types/deadlock';
+import { EventType } from '../../../types/eventTypes';
 
 interface DeadlockColumnProps {
-  event: SentryEvent;
+  event: EventType;
   onViewDeadlock?: (eventId: string) => void;
   showIndicator?: boolean;
   showButton?: boolean;
@@ -42,10 +42,22 @@ const DeadlockColumn: React.FC<DeadlockColumnProps> = ({
   // Check if this is a deadlock event
   const isDeadlockEvent = hasDeadlock(event);
   
+  // Get severity from event data (aiSummary may be an object with deadlockAnalysis)
+  let severity = 0;
+  if (event.aiSummary && typeof event.aiSummary === 'object' && event.aiSummary !== null && 'deadlockAnalysis' in event.aiSummary) {
+    const deadlockAnalysis = (event.aiSummary as any).deadlockAnalysis;
+    if (deadlockAnalysis && typeof deadlockAnalysis === 'object' && 'severity' in deadlockAnalysis) {
+      severity = deadlockAnalysis.severity || 0;
+    }
+  }
+  const severityColor = severity > 70 ? 'red' : severity > 40 ? 'orange' : 'yellow';
+  
   // If not a deadlock, just show a dash or nothing
   if (!isDeadlockEvent) {
     return showIndicator ? (
-      <Text color="dimmed">—</Text>
+      <Box>
+        <Text color="dimmed" inline>—</Text>
+      </Box>
     ) : null;
   }
   
@@ -57,7 +69,7 @@ const DeadlockColumn: React.FC<DeadlockColumnProps> = ({
   };
   
   return (
-    <Group spacing={8} noWrap>
+    <Group gap={8} wrap="nowrap">
       {/* Deadlock indicator badge */}
       {showIndicator && (
         <Tooltip
@@ -66,11 +78,13 @@ const DeadlockColumn: React.FC<DeadlockColumnProps> = ({
           withArrow
         >
           <Badge 
-            color="red" 
+            color={severityColor} 
             variant="filled" 
             leftSection={
-              <Box style={{ display: 'flex' }}>
-                <IconLock size={10} />
+              <Box style={{ display: 'flex', alignItems: 'center' }}>
+                <ThemeIcon size="xs" color={severityColor} variant="transparent" style={{ backgroundColor: 'transparent' }}>
+                  {severity > 70 ? <IconAlertTriangle size={10} style={{ color: theme.colors[severityColor][9] }} /> : <IconLock size={10} style={{ color: theme.colors[severityColor][9] }} />}
+                </ThemeIcon>
               </Box>
             }
             size="sm"

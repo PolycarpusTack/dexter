@@ -10,7 +10,8 @@ import {
   ActionIcon, 
   Menu,
   Box,
-  useMantineTheme
+  useMantineTheme,
+  Checkbox
 } from '@mantine/core';
 import { 
   IconAlertCircle, 
@@ -22,6 +23,9 @@ import {
 } from '@tabler/icons-react';
 import { formatDistanceToNow } from 'date-fns';
 import { DeadlockColumn } from './columns';
+import SparklineCell from './columns/SparklineCell';
+import ImpactCell from './columns/ImpactCell';
+import SummaryCell from './columns/SummaryCell';
 import { useAuditLog } from '../../hooks/useAuditLog';
 import { EventRowProps } from './types';
 import { EventTag } from '../../types/eventTypes';
@@ -30,6 +34,8 @@ interface ExtendedEventRowProps extends EventRowProps {
   isSelected?: boolean;
   'aria-selected'?: boolean;
   onMouseEnter?: () => void;
+  isRowSelected?: boolean;
+  onSelectToggle?: (eventId: string) => void;
 }
 
 /**
@@ -44,6 +50,8 @@ const EventRow: React.FC<ExtendedEventRowProps> = ({
   onClick, 
   onAction, 
   isSelected = false,
+  isRowSelected = false,
+  onSelectToggle,
   ...otherProps
 }) => {
   const theme = useMantineTheme();
@@ -80,50 +88,81 @@ const EventRow: React.FC<ExtendedEventRowProps> = ({
       onClick={handleRowClick}
       style={{ 
         cursor: 'pointer',
-        backgroundColor: isSelected ? theme.colors.blue[0] : undefined,
+        backgroundColor: isSelected ? theme.colors.blue[0] : isRowSelected ? theme.colors.gray[0] : undefined,
         outline: isSelected ? `2px solid ${theme.colors.blue[4]}` : undefined
       }}
       data-event-id={event.id}
       {...otherProps}
     >
-      {/* Status/Level indicator */}
+      {/* Checkbox for selection */}
       <td>
-        <ThemeIcon color={levelColor} variant="light" size="sm" radius="xl">
-          <IconAlertCircle size={12} />
-        </ThemeIcon>
+        <Checkbox
+          checked={isRowSelected}
+          onChange={(e) => {
+            e.stopPropagation();
+            if (onSelectToggle) {
+              onSelectToggle(event.id);
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
       </td>
       
-      {/* Event message */}
+      {/* Event message with summary */}
       <td>
-        <Text size="sm" lineClamp={2}>
-          {event.message || event.title || 'Unknown error'}
-        </Text>
-      </td>
-      
-      {/* Tags */}
-      <td>
-        <Group spacing="xs">
-          {displayTags.map((tag, index) => {
-            const tagData = typeof tag === 'string' 
-              ? { key: tag, value: tag } 
-              : tag as EventTag;
-              
-            return (
-              <Badge 
-                key={`${tagData.key}-${index}`}
-                size="sm" 
-                variant="outline"
-              >
-                {tagData.key}: {tagData.value}
-              </Badge>
-            );
-          })}
-          {hasMoreTags && (
-            <Badge size="sm" variant="filled" color="gray">
-              +{tags.length - 3} more
-            </Badge>
+        <Box>
+          {/* Display event level with icon and color */}
+          <Group gap="xs">
+            <Tooltip label={`${level.toUpperCase()} level event`}>
+              <ThemeIcon color={levelColor} variant="light" size="sm" radius="xl">
+                <IconAlertCircle size={12} />
+              </ThemeIcon>
+            </Tooltip>
+            <SummaryCell 
+              event={event}
+              showTags={false}
+              maxLines={1}
+            />
+          </Group>
+          
+          {/* Display tags using badges */}
+          {displayTags.length > 0 && (
+            <Group gap="xs" mt={4}>
+              {displayTags.map((tag, index) => {
+                const tagData = typeof tag === 'string' 
+                  ? { key: tag, value: tag } 
+                  : tag as EventTag;
+                  
+                return (
+                  <Badge 
+                    key={`${tagData.key}-${index}`}
+                    size="xs" 
+                    variant="outline"
+                  >
+                    {tagData.key}: {tagData.value}
+                  </Badge>
+                );
+              })}
+              {hasMoreTags && (
+                <Tooltip label={`View all ${tags.length} tags`}>
+                  <Badge size="xs" variant="filled" color="gray">
+                    +{tags.length - 3} more
+                  </Badge>
+                </Tooltip>
+              )}
+            </Group>
           )}
-        </Group>
+        </Box>
+      </td>
+      
+      {/* Frequency sparkline */}
+      <td>
+        <SparklineCell event={event} />
+      </td>
+      
+      {/* Impact visualization */}
+      <td>
+        <ImpactCell event={event} />
       </td>
       
       {/* Timestamp */}
@@ -140,7 +179,7 @@ const EventRow: React.FC<ExtendedEventRowProps> = ({
       
       {/* Actions */}
       <td>
-        <Group spacing="xs" position="right" style={{ whiteSpace: 'nowrap' }}>
+        <Group gap="xs" justify="flex-end" style={{ whiteSpace: 'nowrap' }}>
           <Menu shadow="md" width={200} position="bottom-end">
             <Menu.Target>
               <ActionIcon size="sm" variant="subtle" onClick={(e) => e.stopPropagation()}>
@@ -150,7 +189,7 @@ const EventRow: React.FC<ExtendedEventRowProps> = ({
             
             <Menu.Dropdown onClick={(e) => e.stopPropagation()}>
               <Menu.Item 
-                icon={<IconEye size={14} />}
+                leftSection={<IconEye size={14} />}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   if (onAction) onAction('view', event);
@@ -161,7 +200,7 @@ const EventRow: React.FC<ExtendedEventRowProps> = ({
               </Menu.Item>
               
               <Menu.Item 
-                icon={<IconBookmark size={14} />}
+                leftSection={<IconBookmark size={14} />}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   if (onAction) onAction('bookmark', event);
@@ -172,7 +211,7 @@ const EventRow: React.FC<ExtendedEventRowProps> = ({
               </Menu.Item>
               
               <Menu.Item 
-                icon={<IconShare size={14} />}
+                leftSection={<IconShare size={14} />}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   if (onAction) onAction('share', event);
@@ -185,7 +224,7 @@ const EventRow: React.FC<ExtendedEventRowProps> = ({
               <Menu.Divider />
               
               <Menu.Item 
-                icon={<IconTrash size={14} />}
+                leftSection={<IconTrash size={14} />}
                 color="red"
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();

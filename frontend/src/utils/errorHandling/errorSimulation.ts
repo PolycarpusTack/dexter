@@ -176,8 +176,6 @@ export function isSimulatedError(error: any): boolean {
   return error && error._simulated === true;
 }
 
-export type { SimulatedErrorType, SimulatedErrorOptions };
-
 export default {
   createSimulatedError,
   throwSimulatedError,

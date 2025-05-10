@@ -28,6 +28,8 @@ export interface ExplainErrorParams {
   retry_count?: number;
   /** Optional model override */
   model?: string;
+  /** Whether to generate only a summary */
+  summarize_only?: boolean;
 }
 
 /**

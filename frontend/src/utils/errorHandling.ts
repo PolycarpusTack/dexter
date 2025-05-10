@@ -41,7 +41,7 @@ import {
   sessionRecoveryStrategy
 } from './errorRecovery';
 
-// Export everything
+// Export functions and values
 export {
   // Error types and factories
   ErrorFactory,
@@ -77,9 +77,11 @@ export {
   ErrorFallback,
   RefreshableContainer,
   withDataFetching,
-  withErrorBoundary,
-  
-  // Types
+  withErrorBoundary
+};
+
+// Export types
+export type {
   ErrorCategory,
   ErrorContext,
   ErrorHandlerOptions,

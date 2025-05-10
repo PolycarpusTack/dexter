@@ -1,6 +1,6 @@
 // File: frontend/src/components/Settings/AIModelSettings.tsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Paper,
   Group,
@@ -55,28 +55,44 @@ function AIModelSettings(): JSX.Element {
     refetchOnWindowFocus: false
   });
   
-  // Find the active model in the models list
+  // Find the active model in the models list and render a status tooltip
   const currentModelName = activeAIModel || modelsData?.current_model || 'Unknown';
   const activeModel = modelsData?.models?.find(m => m.name === currentModelName);
   const isModelAvailable = activeModel?.status === 'available';
   
+  const modelStatus = isModelAvailable ? (
+    <Tooltip label="Model is loaded and ready" withArrow>
+      <Badge size="xs" color="green" leftSection={<IconCheck size={10} />}>
+        Ready
+      </Badge>
+    </Tooltip>
+  ) : isLoading ? (
+    <Badge size="xs" color="gray" leftSection={<Button size="xs" loading={isLoading} variant="subtle" />}>
+      Checking...
+    </Badge>
+  ) : (
+    <Tooltip label="Model needs to be downloaded or loaded" withArrow>
+      <Badge size="xs" color="yellow">
+        Not ready
+      </Badge>
+    </Tooltip>
+  );
+  
   return (
     <>
       <Paper p="xs" withBorder radius="md">
-        <Group position="apart">
+        <Group justify="apart">
           <Group>
             <ThemeIcon color="grape" radius="xl" size="md">
               <IconBrain size={16} />
             </ThemeIcon>
             <div>
               <Text size="sm" fw={500}>Active AI Model</Text>
-              <Group spacing={4}>
+              <Group gap={4}>
                 <Text size="xs" color="dimmed">
                   {currentModelName}
                 </Text>
-                {isModelAvailable && (
-                  <Badge size="xs" color="green" variant="dot" />
-                )}
+                {modelStatus}
               </Group>
             </div>
           </Group>
@@ -91,13 +107,13 @@ function AIModelSettings(): JSX.Element {
             <Menu.Dropdown>
               <Menu.Label>AI Model</Menu.Label>
               <Menu.Item 
-                icon={<IconSettings size={14} />}
+                leftSection={<IconSettings size={14} />}
                 onClick={() => setModalOpen(true)}
               >
                 Change model
               </Menu.Item>
               <Menu.Item
-                icon={<IconRefresh size={14} />}
+                leftSection={<IconRefresh size={14} />}
                 onClick={() => refetch()}
               >
                 Check status
@@ -110,7 +126,12 @@ function AIModelSettings(): JSX.Element {
       <Modal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="AI Model Selection"
+        title={
+          <Group>
+            <Title order={4}>AI Model Selection</Title>
+            <Badge size="sm" color="grape">Current: {currentModelName}</Badge>
+          </Group>
+        }
         size="lg"
       >
         <ModelSelector onModelChange={() => setModalOpen(false)} />

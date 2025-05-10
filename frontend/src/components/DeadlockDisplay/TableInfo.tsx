@@ -63,10 +63,37 @@ interface Node {
   query?: string;
 }
 
+// Edge interface is declared here for future use when implementing
+// edge-related functionality in the table info display
 interface Edge {
   from: string | number;
   to: string | number;
   label?: string;
+  inCycle?: boolean;
+}
+
+// Helper function to analyze edges for better table relationship display
+function analyzeEdges(edges: Edge[]): { processToTable: Record<string, string[]>, tableToProcess: Record<string, string[]> } {
+  const processToTable: Record<string, string[]> = {};
+  const tableToProcess: Record<string, string[]> = {};
+  
+  edges.forEach((edge: Edge) => {
+    // Analyze relationships between processes and tables
+    if (edge.label === 'accesses' || edge.label === 'waits for') {
+      const fromId = String(edge.from);
+      const toId = String(edge.to);
+      
+      if (fromId.includes('process') && toId.includes('table')) {
+        if (!processToTable[fromId]) processToTable[fromId] = [];
+        processToTable[fromId].push(toId);
+      } else if (fromId.includes('table') && toId.includes('process')) {
+        if (!tableToProcess[fromId]) tableToProcess[fromId] = [];
+        tableToProcess[fromId].push(toId);
+      }
+    }
+  });
+  
+  return { processToTable, tableToProcess };
 }
 
 /**
@@ -82,7 +109,7 @@ const TableInfo: React.FC<TableInfoProps> = ({
   
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 50 }}>
+      <Box style={{ display: 'flex', justifyContent: 'center', paddingTop: 50, paddingBottom: 50 }}>
         <Loader />
       </Box>
     );
@@ -90,7 +117,7 @@ const TableInfo: React.FC<TableInfoProps> = ({
   
   if (!data || !data.nodes || !data.edges) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 50 }}>
+      <Box style={{ display: 'flex', justifyContent: 'center', paddingTop: 50, paddingBottom: 50 }}>
         <Group>
           <IconDatabaseOff size={20} />
           <Text c="dimmed">No deadlock data available</Text>
@@ -104,6 +131,11 @@ const TableInfo: React.FC<TableInfoProps> = ({
   
   // Extract processes from the visualization data
   const processes: Node[] = data.nodes.filter((node: Node) => node.type === 'process');
+  
+  // Analyze edges to understand relationships
+  const edges: Edge[] = data.edges || [];
+  const edgeAnalysis = analyzeEdges(edges);
+  console.log('Edge analysis:', edgeAnalysis);
   
   // Group locks by table
   const tableLocks: Record<string, TableLock> = {};
@@ -196,15 +228,18 @@ const TableInfo: React.FC<TableInfoProps> = ({
   });
   
   return (
-    <Stack spacing="md">
+    <Stack gap="md">
       {/* Deadlock details */}
       {data.locks_summary && (
         <Paper p="md" radius="md" withBorder>
-          <Text fw={600} mb="xs">Deadlock Summary</Text>
+          <Group gap="xs" mb="xs">
+            <IconExclamationCircle size={16} color={theme.colors.red[6]} />
+            <Text fw={600}>Deadlock Summary</Text>
+          </Group>
           <Text size="sm">{isMasked ? maskText(data.locks_summary) : data.locks_summary}</Text>
           
           {data.timestamp && (
-            <Group mt="sm" spacing="xs">
+            <Group mt="sm" gap="xs">
               <IconClock size={14} color={theme.colors.gray[6]} />
               <Text size="sm" c="dimmed">
                 Occurred {formatDistanceToNow(new Date(data.timestamp), { addSuffix: true })}
@@ -237,7 +272,7 @@ const TableInfo: React.FC<TableInfoProps> = ({
                   </Group>
                 </Accordion.Control>
                 <Accordion.Panel>
-                  <Stack spacing="xs">
+                  <Stack gap="xs">
                     {/* Held locks */}
                     <Text fw={600} size="sm">Held Locks</Text>
                     {table.held.length === 0 ? (
@@ -248,7 +283,7 @@ const TableInfo: React.FC<TableInfoProps> = ({
                           <Table.Thead>
                             <Table.Tr>
                               <Table.Th>Process</Table.Th>
-                              <Table.Th>Lock Type</Table.Th>
+                              <Table.Th><Group gap={4}><IconKey size={14} /><Text size="sm">Lock Type</Text></Group></Table.Th>
                               <Table.Th>Mode</Table.Th>
                               <Table.Th>Status</Table.Th>
                             </Table.Tr>
@@ -264,9 +299,9 @@ const TableInfo: React.FC<TableInfoProps> = ({
                               const type = typeMatch ? typeMatch[1] : 'relation';
                               
                               return (
-                                <Table.Tr key={lockIndex} style={lock.inCycle ? { backgroundColor: theme.fn.rgba(theme.colors.red[1], 0.3) } : {}}>
+                                <Table.Tr key={lockIndex} style={lock.inCycle ? { backgroundColor: `rgba(255, 240, 240, 0.3)` } : {}}>
                                   <Table.Td>
-                                    <Group spacing="xs">
+                                    <Group gap="xs">
                                       <IconLock size={14} color={lock.inCycle ? theme.colors.red[6] : theme.colors.blue[6]} />
                                       <Text size="sm">{isMasked ? maskText(lock.processLabel) : lock.processLabel}</Text>
                                       {lock.inCycle && (
@@ -278,8 +313,8 @@ const TableInfo: React.FC<TableInfoProps> = ({
                                     <Text size="sm">{type}</Text>
                                   </Table.Td>
                                   <Table.Td>
-                                    <Badge color={mode.includes('Exclusive') ? 'red' : 'blue'} size="sm">
-                                      {mode}
+                                    <Badge color={mode && mode.includes('Exclusive') ? 'red' : 'blue'} size="sm">
+                                      {mode || 'Unknown'}
                                     </Badge>
                                   </Table.Td>
                                   <Table.Td>
@@ -319,9 +354,9 @@ const TableInfo: React.FC<TableInfoProps> = ({
                               const type = typeMatch ? typeMatch[1] : 'relation';
                               
                               return (
-                                <Table.Tr key={lockIndex} style={lock.inCycle ? { backgroundColor: theme.fn.rgba(theme.colors.red[1], 0.3) } : {}}>
+                                <Table.Tr key={lockIndex} style={lock.inCycle ? { backgroundColor: `rgba(255, 240, 240, 0.3)` } : {}}>
                                   <Table.Td>
-                                    <Group spacing="xs">
+                                    <Group gap="xs">
                                       <IconLockOpen size={14} color={lock.inCycle ? theme.colors.red[6] : theme.colors.yellow[6]} />
                                       <Text size="sm">{isMasked ? maskText(lock.processLabel) : lock.processLabel}</Text>
                                       {lock.inCycle && (
@@ -333,8 +368,8 @@ const TableInfo: React.FC<TableInfoProps> = ({
                                     <Text size="sm">{type}</Text>
                                   </Table.Td>
                                   <Table.Td>
-                                    <Badge color={mode.includes('Exclusive') ? 'red' : 'blue'} size="sm">
-                                      {mode}
+                                    <Badge color={mode && mode.includes('Exclusive') ? 'red' : 'blue'} size="sm">
+                                      {mode || 'Unknown'}
                                     </Badge>
                                   </Table.Td>
                                   <Table.Td>
@@ -352,7 +387,7 @@ const TableInfo: React.FC<TableInfoProps> = ({
                     {data.tables && data.tables[table.name] && (
                       <>
                         <Text fw={600} size="sm" mt="md">Access Patterns</Text>
-                        <Box p="xs" bg={theme.colors.gray[0]} style={{ borderRadius: theme.radius.sm }}>
+                        <Box p="xs" style={{ backgroundColor: theme.colors.gray[0], borderRadius: theme.radius.sm }}>
                           <Code block>
                             {isMasked 
                               ? maskText(data.tables[table.name].accessPattern || 'No access pattern information available')
@@ -383,15 +418,15 @@ const TableInfo: React.FC<TableInfoProps> = ({
                 <Table.Th>Process</Table.Th>
                 <Table.Th>Application</Table.Th>
                 <Table.Th>User</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th>Query</Table.Th>
+                <Table.Th><Group gap={4}><IconRefresh size={14} /><Text size="sm">Status</Text></Group></Table.Th>
+                <Table.Th><Group gap={4}><IconArrowRight size={14} /><Text size="sm">Query</Text></Group></Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {processes.map((process, index) => (
-                <Table.Tr key={index} style={process.inCycle ? { backgroundColor: theme.fn.rgba(theme.colors.red[1], 0.3) } : {}}>
+                <Table.Tr key={index} style={process.inCycle ? { backgroundColor: `rgba(255, 240, 240, 0.3)` } : {}}>
                   <Table.Td>
-                    <Group spacing="xs">
+                    <Group gap="xs">
                       <Text size="sm" fw={process.inCycle ? 600 : 400}>{process.label}</Text>
                       {process.inCycle && (
                         <Badge size="xs" color="red">Deadlocked</Badge>
@@ -417,7 +452,7 @@ const TableInfo: React.FC<TableInfoProps> = ({
                     <Tooltip 
                       label={isMasked ? maskText(process.query) : process.query} 
                       multiline 
-                      width={400}
+                      styles={{ tooltip: { width: 400 } }}
                       p="md"
                       withArrow
                       position="left"

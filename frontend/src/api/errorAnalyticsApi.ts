@@ -166,6 +166,52 @@ export const getTopErrors = async (
 };
 
 /**
+ * Get error frequency data for a specific event
+ * 
+ * @param eventId - Event ID to get frequency for
+ * @param timeRange - Time range to analyze
+ * @returns Promise with frequency data
+ */
+export const getErrorFrequency = async (
+  eventId: string,
+  timeRange: string = '24h'
+): Promise<{
+  points: Array<{ timestamp: string; count: number }>;
+  totalCount: number;
+  trend: number;
+  peakCount: number;
+  peakTimestamp: string;
+}> => {
+  try {
+    // In a real implementation, this would be an API call
+    // For now, generate mock data
+    return {
+      points: Array.from({ length: 24 }, (_, i) => ({
+        timestamp: new Date(Date.now() - (24 - i) * 3600 * 1000).toISOString(),
+        count: Math.floor(Math.random() * 10)
+      })),
+      totalCount: 120,
+      trend: Math.floor(Math.random() * 40) - 20, // -20% to +20%
+      peakCount: 15,
+      peakTimestamp: new Date(Date.now() - 8 * 3600 * 1000).toISOString()
+    };
+    
+    // When backend is available, use this instead:
+    // return await apiClient.get<FrequencyResponse>(
+    //   `/analytics/errors/${eventId}/frequency`,
+    //   { params: { timeRange } }
+    // );
+  } catch (error) {
+    handleErrorAnalyticsError(error, {
+      operation: 'getErrorFrequency',
+      eventId,
+      timeRange
+    });
+    throw error;
+  }
+};
+
+/**
  * Access to the mock data generator for development
  */
 export const generateMockErrorAnalytics = errorAnalyticsService.generateMockErrorAnalytics.bind(errorAnalyticsService);
@@ -176,5 +222,6 @@ export default {
   getErrorTrends,
   getErrorDistribution,
   getTopErrors,
+  getErrorFrequency,
   generateMockErrorAnalytics
 };

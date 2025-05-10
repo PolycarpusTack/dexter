@@ -18,10 +18,11 @@ import {
   IconInfoCircle 
 } from '@tabler/icons-react';
 import { SentryEvent } from '../../../types/deadlock';
+import { EventType } from '../../../types/eventTypes';
 import { useIssueImpact } from '../../../hooks/useIssueImpact';
 
 interface ImpactCellProps {
-  event: SentryEvent;
+  event: SentryEvent | EventType;
   issueId?: string;
   timeRange?: string;
   showUsers?: boolean;
@@ -65,7 +66,7 @@ const ImpactCell: React.FC<ImpactCellProps> = ({
   const impact = getImpactLevel();
   
   return (
-    <Group position="left" noWrap>
+    <Group justify="flex-start" wrap="nowrap">
       {/* Ring progress indicator */}
       <Tooltip
         label={`${data.userPercentage.toFixed(1)}% of users affected`}
@@ -76,7 +77,7 @@ const ImpactCell: React.FC<ImpactCellProps> = ({
           size={40}
           thickness={3}
           roundCaps
-          sections={[{ value: Math.min(100, data.userPercentage * 5), color: theme.colors[impact.color][6] }]}
+          sections={[{ value: Math.min(100, data.userPercentage * 5), color: theme.colors[impact.color]?.[6] || theme.colors.blue[6] }]}
           label={
             <Box style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {impact.icon}
@@ -94,7 +95,7 @@ const ImpactCell: React.FC<ImpactCellProps> = ({
         
         {/* User count if enabled */}
         {showUsers && (
-          <Group spacing={4} mt={4}>
+          <Group gap={4} mt={4}>
             <IconUsers size={10} />
             <Text size="xs">
               {data.uniqueUsers} {data.uniqueUsers === 1 ? 'user' : 'users'}

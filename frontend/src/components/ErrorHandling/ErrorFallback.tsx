@@ -65,8 +65,8 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
   
   return (
     <Paper withBorder p="md" radius="md" shadow="md">
-      <Stack spacing="md">
-        <Group spacing="xs">
+      <Stack gap="md">
+        <Group gap="xs">
           <ThemeIcon color="red" size="lg" radius="xl">
             <IconAlertCircle size={24} />
           </ThemeIcon>
@@ -84,14 +84,25 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
           )}
         </Alert>
         
-        <Group position="apart">
-          <Button 
-            leftSection={<IconRefresh size={16} />}
-            onClick={resetError}
-            color="blue"
-          >
-            Try Again
-          </Button>
+        <Group justify="apart">
+          <Group gap="xs">
+            <Button 
+              leftSection={<IconRefresh size={16} />}
+              onClick={resetError}
+              color="blue"
+            >
+              Try Again
+            </Button>
+            
+            <Button 
+              leftSection={<IconArrowBack size={16} />}
+              onClick={() => window.history.back()}
+              variant="outline"
+              color="blue"
+            >
+              Go Back
+            </Button>
+          </Group>
           
           {showDetails && (
             <Button 
@@ -114,7 +125,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
               <Accordion.Item value="info">
                 <Accordion.Control>Error Information</Accordion.Control>
                 <Accordion.Panel>
-                  <Stack spacing="xs">
+                  <Stack gap="xs">
                     <Group>
                       <Text size="sm" fw={500} style={{ width: 100 }}>Type:</Text>
                       <Text size="sm">{errorName}</Text>

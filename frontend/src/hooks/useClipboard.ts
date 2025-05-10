@@ -31,6 +31,7 @@ export function useClipboard() {
       
       return () => clearTimeout(timer);
     }
+    return undefined; // Add explicit return for when isCopied is false
   }, [isCopied]);
   
   /**

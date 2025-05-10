@@ -39,8 +39,8 @@ export interface LocationInfo {
 
 // Tag structure for events
 export interface EventTag {
-  key?: string;
-  value?: string;
+  key: string;  // Required key
+  value: string;  // Required value
   name?: string;
   [key: string]: any; // For other properties
 }

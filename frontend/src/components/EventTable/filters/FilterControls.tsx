@@ -39,13 +39,13 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
       title="Advanced Filters"
       size="md"
     >
-      <Stack spacing="md">
+      <Stack gap="md">
         <Text size="sm">
           This would be a comprehensive filter UI in a real implementation.
           For now, this is just a placeholder.
         </Text>
         
-        <Group position="apart" mt="xl">
+        <Group justify="space-between" mt="xl">
           <Button variant="subtle" onClick={resetFilters}>
             Reset Filters
           </Button>

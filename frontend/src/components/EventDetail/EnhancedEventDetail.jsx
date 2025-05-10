@@ -16,7 +16,8 @@ import {
 import { IconAlertCircle, IconBug } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import useAppStore from "../../store/appStore";
-import { getEventDetails, getLatestEventForIssue, updateIssueStatus } from "../../api/eventsApi";
+import { fetchEventDetails, fetchLatestEvent } from "../../api/eventsApi";
+import { updateIssueStatus } from "../../api/issuesApi";
 import ExplainError from "../ExplainError/ExplainError";
 import EnhancedDeadlockDisplay from "../DeadlockDisplay/EnhancedDeadlockDisplay";
 import EmptyState from "../UI/EmptyState";
@@ -77,9 +78,9 @@ const EnhancedEventDetail = forwardRef(({ eventId: propEventId, issueId: propIss
     queryFn: () => {
       console.log("Fetching event details for:", { effectiveEventId, effectiveIssueId });
       return effectiveEventId 
-        ? getEventDetails(effectiveEventId) 
+        ? fetchEventDetails(effectiveEventId) 
         : effectiveIssueId 
-          ? getLatestEventForIssue(effectiveIssueId) 
+          ? fetchLatestEvent(effectiveIssueId) 
           : Promise.reject(new Error("Either eventId or issueId must be provided"));
     },
     enabled: !!effectiveEventId || !!effectiveIssueId,

@@ -1,6 +1,6 @@
 // File: src/types/visualization.ts
 
-import { SimulationNodeDatum, SimulationLinkDatum } from 'd3-force';
+import { SimulationNodeDatum } from 'd3-force';
 
 /**
  * Interface for visualization node data in D3 graphs
@@ -17,8 +17,8 @@ export interface VisualizationNode extends SimulationNodeDatum {
   locks_waiting?: string[];
   tables?: string[];
   queryFingerprint?: string;
-  x?: number;
-  y?: number;
+  x?: number | undefined;
+  y?: number | undefined;
   fx?: number | null;
   fy?: number | null;
 }
@@ -26,7 +26,7 @@ export interface VisualizationNode extends SimulationNodeDatum {
 /**
  * Interface for visualization edge data in D3 graphs
  */
-export interface VisualizationEdge extends SimulationLinkDatum<VisualizationNode> {
+export interface VisualizationEdge {
   source: string | number | VisualizationNode;
   target: string | number | VisualizationNode;
   label?: string;

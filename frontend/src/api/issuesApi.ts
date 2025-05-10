@@ -31,6 +31,8 @@ export interface Issue {
  */
 export interface IssuesResponse {
   issues: Issue[];
+  items: Issue[];  // Add this to support EventsResponse compatibility
+  count?: number;   // Add this for pagination support
   links?: {
     previous?: {
       cursor: string;
@@ -56,20 +58,34 @@ export interface FetchIssuesOptions {
   query?: string;
   /** Project IDs to filter by */
   project?: string | string[];
+  /** Project ID to filter by */
+  projectId?: string;
   /** Organization ID to filter by */
   organization?: string;
+  /** Organization ID alternative name */
+  organizationId?: string;
   /** Environment to filter by */
   environment?: string;
   /** Status to filter by */
   status?: string;
   /** Sort field */
   sort?: string;
+  /** Sort direction */
+  sortDirection?: 'asc' | 'desc';
   /** Stats period */
   statsPeriod?: string;
+  /** Time range */
+  timeRange?: string;
   /** Start date */
   start?: string;
   /** End date */
   end?: string;
+  /** Level filter */
+  level?: string;
+  /** Page number */
+  page?: number;
+  /** Results per page */
+  perPage?: number;
 }
 
 /**
@@ -119,10 +135,37 @@ export const fetchIssues = async (
   options: FetchIssuesOptions = {}
 ): Promise<IssuesResponse> => {
   try {
-    return await apiClient.get<IssuesResponse>(
+    // Map from the internal option names to API parameter names
+    const apiParams = {
+      limit: options.limit,
+      cursor: options.cursor,
+      query: options.query,
+      project: options.project || options.projectId,
+      organization: options.organization || options.organizationId,
+      environment: options.environment,
+      status: options.status,
+      sort: options.sort,
+      sort_direction: options.sortDirection,
+      stats_period: options.statsPeriod || options.timeRange,
+      start: options.start,
+      end: options.end,
+      level: options.level,
+      page: options.page,
+      per_page: options.perPage,
+    };
+    
+    const response = await apiClient.get<any>(
       '/issues',
-      { params: options }
+      { params: apiParams }
     );
+    
+    // Ensure the response has both issues and items for compatibility
+    return {
+      ...response,
+      issues: response.issues || response.items || [],
+      items: response.items || response.issues || [], // Copy issues to items for EventsResponse compatibility
+      count: response.count || response.meta?.total || response.issues?.length || response.items?.length || 0, // Provide count if not present
+    };
   } catch (error) {
     handleIssuesError(error, {
       operation: 'fetchIssues',
