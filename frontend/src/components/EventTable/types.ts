@@ -11,6 +11,11 @@ export interface EventTableProps {
   maxItems?: number;
   autoRefresh?: boolean;
   enableKeyboardNavigation?: boolean;
+  refreshInterval?: number;
+  optimized?: boolean;
+  onEventUpdate?: (event: EventType) => void;
+  onExport?: () => void;
+  virtualized?: boolean;
 }
 
 /**

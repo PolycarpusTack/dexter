@@ -40,11 +40,29 @@ export function ResultsTable({ data, loading, onSort }: ResultsTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set());
+  const [pageSize, setPageSize] = useState<number>(50);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  if (loading) {
+    return (
+      <Paper p="md" withBorder>
+        <Stack align="center" gap="md">
+          <Text color="dimmed">Loading results...</Text>
+          <Box w={40} h={40}>
+            <svg className="animate-spin" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+          </Box>
+        </Stack>
+      </Paper>
+    );
+  }
 
   if (!data) {
     return (
       <Paper p="md" withBorder>
-        <Text color="dimmed" align="center">
+        <Text c="dimmed" ta="center">
           Execute a query to see results
         </Text>
       </Paper>
@@ -61,6 +79,8 @@ export function ResultsTable({ data, loading, onSort }: ResultsTableProps) {
 
   // Filter and sort data
   const processedData = useMemo(() => {
+    if (!data?.data) return { filtered: [], paginated: [] };
+    
     let filtered = data.data;
 
     // Apply column filters
@@ -100,8 +120,13 @@ export function ResultsTable({ data, loading, onSort }: ResultsTableProps) {
       });
     }
 
-    return filtered;
-  }, [data.data, columnFilters, searchTerm, sortField, sortDirection]);
+    // Apply pagination
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginated = filtered.slice(startIndex, endIndex);
+
+    return { filtered, paginated };
+  }, [data?.data, columnFilters, searchTerm, sortField, sortDirection, currentPage, pageSize]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -120,7 +145,7 @@ export function ResultsTable({ data, loading, onSort }: ResultsTableProps) {
     const headers = columns.filter(col => visibleColumns.has(col));
     const csvContent = [
       headers.join(','),
-      ...processedData.map(row => 
+      ...processedData.paginated.map((row: Record<string, any>) => 
         headers.map(col => JSON.stringify(row[col] ?? '')).join(',')
       )
     ].join('\n');
@@ -169,20 +194,40 @@ export function ResultsTable({ data, loading, onSort }: ResultsTableProps) {
 
   return (
     <Stack>
-      <Group position="apart" mb="md">
-        <TextInput
-          placeholder="Search all fields..."
-          icon={<IconSearch size={16} />}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.currentTarget.value)}
-          style={{ width: 300 }}
-        />
+      <Group justify="space-between" mb="md">
+        <Group>
+          <TextInput
+            placeholder="Search all fields..."
+            leftSection={<IconSearch size={16} />}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.currentTarget.value)}
+            style={{ width: 300 }}
+          />
+          <Select
+            value={String(pageSize)}
+            onChange={(value) => setPageSize(Number(value))}
+            data={[
+              { value: '25', label: '25 rows' },
+              { value: '50', label: '50 rows' },
+              { value: '100', label: '100 rows' },
+            ]}
+            style={{ width: 120 }}
+          />
+        </Group>
         
         <Group>
-          <Menu shadow="md" width={200}>
+          <Menu shadow="md" width={250}>
             <Menu.Target>
-              <Button variant="subtle" leftIcon={<IconColumns size={16} />}>
-                Columns ({visibleColumns.size}/{columns.length})
+              <Button 
+                variant="subtle" 
+                leftSection={<IconColumns size={16} />}
+                rightSection={
+                  <Badge size="xs" variant="filled">
+                    {visibleColumns.size}
+                  </Badge>
+                }
+              >
+                Columns
               </Button>
             </Menu.Target>
             <Menu.Dropdown>
@@ -215,11 +260,44 @@ export function ResultsTable({ data, loading, onSort }: ResultsTableProps) {
           
           <Button
             variant="subtle"
-            leftIcon={<IconDownload size={16} />}
+            leftSection={<IconDownload size={16} />}
             onClick={exportToCsv}
           >
             Export CSV
           </Button>
+          <Group>
+            <ActionIcon 
+              variant="subtle"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              title="Previous Page"
+            >
+              <IconArrowUp size={18} />
+            </ActionIcon>
+            
+            <NumberInput
+              value={currentPage}
+              onChange={(value) => setCurrentPage(Number(value) || 1)}
+              min={1}
+              max={Math.ceil(processedData.filtered.length / pageSize)}
+              style={{ width: 80 }}
+              placeholder="Page"
+              rightSection={
+                <Text size="xs" color="dimmed">
+                  / {Math.ceil(processedData.filtered.length / pageSize)}
+                </Text>
+              }
+            />
+            
+            <ActionIcon 
+              variant="subtle"
+              disabled={currentPage >= Math.ceil(processedData.filtered.length / pageSize)}
+              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(processedData.filtered.length / pageSize), prev + 1))}
+              title="Next Page"
+            >
+              <IconArrowDown size={18} />
+            </ActionIcon>
+          </Group>
         </Group>
       </Group>
 
@@ -231,26 +309,28 @@ export function ResultsTable({ data, loading, onSort }: ResultsTableProps) {
                 {columns
                   .filter((column) => visibleColumns.has(column))
                   .map((column) => (
-                    <th key={column}>
-                      <Group spacing="xs" noWrap>
-                        <Text size="sm" weight={500}>
+                    <th key={column} style={{ position: 'relative' }}>
+                      <Group gap="xs" wrap="nowrap">
+                        <Text size="sm" fw={500}>
                           {getFieldIcon(column)} {column}
                         </Text>
-                        <ActionIcon
-                          size="xs"
-                          variant="subtle"
-                          onClick={() => handleSort(column)}
-                        >
-                          {sortField === column ? (
-                            sortDirection === 'asc' ? (
-                              <IconArrowUp size={14} />
+                        <Tooltip label={`Sort by ${column}`}>
+                          <ActionIcon
+                            size="xs"
+                            variant="subtle"
+                            onClick={() => handleSort(column)}
+                          >
+                            {sortField === column ? (
+                              sortDirection === 'asc' ? (
+                                <IconSortAscending size={14} />
+                              ) : (
+                                <IconSortDescending size={14} />
+                              )
                             ) : (
-                              <IconArrowDown size={14} />
-                            )
-                          ) : (
-                            <IconSortAscending size={14} />
-                          )}
-                        </ActionIcon>
+                              <IconSortAscending size={14} />
+                            )}
+                          </ActionIcon>
+                        </Tooltip>
                       </Group>
                       <TextInput
                         size="xs"
@@ -262,7 +342,7 @@ export function ResultsTable({ data, loading, onSort }: ResultsTableProps) {
                             [column]: e.currentTarget.value,
                           });
                         }}
-                        icon={<IconFilter size={12} />}
+                        leftSection={<IconFilter size={12} />}
                         mt={4}
                       />
                     </th>
@@ -270,24 +350,26 @@ export function ResultsTable({ data, loading, onSort }: ResultsTableProps) {
               </tr>
             </thead>
             <tbody>
-              {processedData.length === 0 ? (
+              {!processedData.paginated || processedData.paginated.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length}>
-                    <Text align="center" color="dimmed" py="md">
+                    <Text ta="center" c="dimmed" py="md">
                       No results found
                     </Text>
                   </td>
                 </tr>
               ) : (
-                processedData.map((row, index) => (
+                processedData.paginated.map((row: Record<string, any>, index) => (
                   <tr key={index}>
                     {columns
                       .filter((column) => visibleColumns.has(column))
                       .map((column) => (
                         <td key={column}>
-                          <Text size="sm" lineClamp={2}>
-                            {formatValue(row[column], column)}
-                          </Text>
+                          <Tooltip label={formatValue(row[column], column)} disabled={!row[column] || String(row[column]).length < 50}>
+                            <Text size="sm" lineClamp={2}>
+                              {formatValue(row[column], column)}
+                            </Text>
+                          </Tooltip>
                         </td>
                       ))}
                   </tr>
@@ -298,11 +380,11 @@ export function ResultsTable({ data, loading, onSort }: ResultsTableProps) {
         </ScrollArea>
       </Paper>
 
-      <Group position="apart">
-        <Text size="sm" color="dimmed">
-          {processedData.length} results
+      <Group justify="space-between">
+        <Text size="sm" c="dimmed">
+          Showing {processedData.paginated.length} of {processedData.filtered.length} results
           {searchTerm || Object.keys(columnFilters).length > 0
-            ? ` (filtered from ${data.data.length})`
+            ? ` (filtered from ${data.data.length} total)`
             : ''}
         </Text>
         <Badge>{data.meta.fields && Object.keys(data.meta.fields).length} fields</Badge>

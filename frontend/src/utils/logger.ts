@@ -68,7 +68,17 @@ class LoggerService {
     // This would integrate with an error reporting service like Sentry
     // For now, it's a placeholder
     try {
-      // Example: window.Sentry?.captureMessage(message, { extra: data });
+      // Actually use the message and data parameters to prepare for future implementation
+      const errorPayload = {
+        message,
+        timestamp: new Date().toISOString(),
+        level: 'error',
+        extra: data || {}
+      };
+      
+      // For future implementation:
+      // window.Sentry?.captureMessage(message, { extra: data });
+      console.debug('Error payload prepared for reporting:', errorPayload);
     } catch (e) {
       // Fail silently
     }

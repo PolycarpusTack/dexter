@@ -382,8 +382,8 @@ export function getBackendUrl(path: string): string {
 }
 
 // Type guard function
-export function isValidCategory(category: string): category is keyof typeof API_PATHS {
-  return category in API_PATHS;
+export function isValidCategory(category: string): category is string {
+  return Object.prototype.hasOwnProperty.call(API_PATHS, category);
 }
 
 // Export types for use in other files

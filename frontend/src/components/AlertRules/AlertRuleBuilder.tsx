@@ -18,7 +18,7 @@ import {
   Alert,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useNotifications } from '@mantine/notifications';
+import { notifications } from '@mantine/notifications';
 import {
   IconAlertCircle,
   IconBell,
@@ -90,7 +90,6 @@ export function AlertRuleBuilder({
   onCancel,
 }: AlertRuleBuilderProps) {
   const { org, project } = useParams<{ org: string; project: string }>();
-  const notifications = useNotifications();
   const [loading, setLoading] = useState(false);
   const [ruleType, setRuleType] = useState<'issue' | 'metric'>(
     initialRuleType || editingRule?.type || 'issue'
@@ -215,7 +214,7 @@ export function AlertRuleBuilder({
   const renderCondition = (condition: AlertRuleCondition, index: number) => {
     return (
       <Card key={index} withBorder>
-        <Group position="apart" mb="sm">
+        <Group justify="space-between" mb="sm">
           <Select
             label="Condition"
             data={ISSUE_CONDITIONS}
@@ -226,7 +225,7 @@ export function AlertRuleBuilder({
               }
             }}
             required
-            sx={{ flex: 1 }}
+            style={{ flex: 1 }}
           />
           <ActionIcon
             color="red"
@@ -247,7 +246,7 @@ export function AlertRuleBuilder({
               placeholder="Count"
               value={condition.value}
               onChange={(value) => {
-                issueForm.setFieldValue(`conditions.${index}.value`, value);
+                issueForm.setFieldValue(`conditions.${index}.value`, value ?? undefined);
               }}
               required
             />
@@ -262,7 +261,7 @@ export function AlertRuleBuilder({
               ]}
               value={condition.interval}
               onChange={(value) => {
-                issueForm.setFieldValue(`conditions.${index}.interval`, value);
+                issueForm.setFieldValue(`conditions.${index}.interval`, value ?? undefined);
               }}
               required
             />
@@ -275,7 +274,7 @@ export function AlertRuleBuilder({
   const renderFilter = (filter: AlertRuleFilter, index: number) => {
     return (
       <Card key={index} withBorder>
-        <Group position="apart" mb="sm">
+        <Group justify="space-between" mb="sm">
           <Select
             label="Filter"
             data={ISSUE_FILTERS}
@@ -286,7 +285,7 @@ export function AlertRuleBuilder({
               }
             }}
             required
-            sx={{ flex: 1 }}
+            style={{ flex: 1 }}
           />
           <ActionIcon
             color="red"
@@ -310,7 +309,7 @@ export function AlertRuleBuilder({
               ]}
               value={filter.comparison_type}
               onChange={(value) => {
-                issueForm.setFieldValue(`filters.${index}.comparison_type`, value);
+                issueForm.setFieldValue(`filters.${index}.comparison_type`, value ?? undefined);
               }}
               required
             />
@@ -319,7 +318,7 @@ export function AlertRuleBuilder({
               placeholder="Days"
               value={filter.value}
               onChange={(value) => {
-                issueForm.setFieldValue(`filters.${index}.value`, value);
+                issueForm.setFieldValue(`filters.${index}.value`, typeof value === 'number' ? value : 0);
               }}
               required
             />
@@ -333,7 +332,7 @@ export function AlertRuleBuilder({
               ]}
               value={filter.time}
               onChange={(value) => {
-                issueForm.setFieldValue(`filters.${index}.time`, value);
+                issueForm.setFieldValue(`filters.${index}.time`, value ?? undefined);
               }}
               required
             />
@@ -346,7 +345,7 @@ export function AlertRuleBuilder({
             placeholder="Number of times"
             value={filter.value}
             onChange={(value) => {
-              issueForm.setFieldValue(`filters.${index}.value`, value);
+              issueForm.setFieldValue(`filters.${index}.value`, typeof value === 'number' ? value : 0);
             }}
             required
           />
@@ -362,7 +361,7 @@ export function AlertRuleBuilder({
             ]}
             value={filter.targetType}
             onChange={(value) => {
-              issueForm.setFieldValue(`filters.${index}.targetType`, value);
+              issueForm.setFieldValue(`filters.${index}.targetType`, value ?? undefined);
             }}
             required
           />
@@ -374,7 +373,7 @@ export function AlertRuleBuilder({
   const renderAction = (action: AlertRuleAction, index: number) => {
     return (
       <Card key={index} withBorder>
-        <Group position="apart" mb="sm">
+        <Group justify="space-between" mb="sm">
           <Select
             label="Action"
             data={ISSUE_ACTIONS}
@@ -385,7 +384,7 @@ export function AlertRuleBuilder({
               }
             }}
             required
-            sx={{ flex: 1 }}
+            style={{ flex: 1 }}
           />
           <ActionIcon
             color="red"
@@ -410,7 +409,7 @@ export function AlertRuleBuilder({
               ]}
               value={action.targetType}
               onChange={(value) => {
-                issueForm.setFieldValue(`actions.${index}.targetType`, value);
+                issueForm.setFieldValue(`actions.${index}.targetType`, value ?? undefined);
               }}
               required
             />
@@ -438,7 +437,7 @@ export function AlertRuleBuilder({
               placeholder="Slack workspace ID"
               value={action.workspace}
               onChange={(value) => {
-                issueForm.setFieldValue(`actions.${index}.workspace`, value);
+                issueForm.setFieldValue(`actions.${index}.workspace`, typeof value === 'number' ? value : 0);
               }}
               required
             />
@@ -464,7 +463,7 @@ export function AlertRuleBuilder({
               placeholder="Jira integration ID"
               value={action.integration}
               onChange={(value) => {
-                issueForm.setFieldValue(`actions.${index}.integration`, value);
+                issueForm.setFieldValue(`actions.${index}.integration`, typeof value === 'number' ? value : 0);
               }}
               required
             />
@@ -501,7 +500,7 @@ export function AlertRuleBuilder({
   const renderTrigger = (trigger: MetricAlertTrigger, index: number) => {
     return (
       <Card key={index} withBorder>
-        <Group position="apart" mb="sm">
+        <Group justify="space-between" mb="sm">
           <Badge
             color={trigger.label === 'critical' ? 'red' : 'yellow'}
             size="lg"
@@ -525,16 +524,16 @@ export function AlertRuleBuilder({
           placeholder="Threshold value"
           value={trigger.alertThreshold}
           onChange={(value) => {
-            metricForm.setFieldValue(`triggers.${index}.alertThreshold`, value!);
+            metricForm.setFieldValue(`triggers.${index}.alertThreshold`, typeof value === 'number' ? value : 0);
           }}
           mb="sm"
           required
         />
 
-        <Text weight={500} mb="xs">Actions</Text>
-        {trigger.actions.map((action, actionIndex) => (
+        <Text fw={500} mb="xs">Actions</Text>
+        {trigger.actions.map((action: AlertRuleAction, actionIndex: number) => (
           <Card key={actionIndex} withBorder mb="xs">
-            <Group position="apart" mb="sm">
+            <Group justify="space-between" mb="sm">
               <Select
                 label="Action"
                 data={ISSUE_ACTIONS}
@@ -548,7 +547,7 @@ export function AlertRuleBuilder({
                   }
                 }}
                 required
-                sx={{ flex: 1 }}
+                style={{ flex: 1 }}
               />
               <ActionIcon
                 color="red"
@@ -566,7 +565,7 @@ export function AlertRuleBuilder({
 
         <Button
           variant="light"
-          leftIcon={<IconPlus size={16} />}
+          leftSection={<IconPlus size={16} />}
           onClick={() => {
             const newActions = [...trigger.actions, { id: '' }];
             metricForm.setFieldValue(`triggers.${index}.actions`, newActions);
@@ -581,13 +580,17 @@ export function AlertRuleBuilder({
 
   return (
     <Stack>
+      <Title order={2}>
+        {editingRule ? 'Edit Alert Rule' : 'Create Alert Rule'}
+      </Title>
+      
       {!editingRule && (
-        <Tabs value={ruleType} onTabChange={(value) => setRuleType(value as 'issue' | 'metric')}>
+        <Tabs value={ruleType} onChange={(value: string | null) => setRuleType(value as 'issue' | 'metric')}>
           <Tabs.List>
-            <Tabs.Tab value="issue" icon={<IconAlertCircle size={16} />}>
+            <Tabs.Tab value="issue" leftSection={<IconAlertCircle size={16} />}>
               Issue Alert
             </Tabs.Tab>
-            <Tabs.Tab value="metric" icon={<IconChartBar size={16} />}>
+            <Tabs.Tab value="metric" leftSection={<IconChartBar size={16} />}>
               Metric Alert
             </Tabs.Tab>
           </Tabs.List>
@@ -622,13 +625,13 @@ export function AlertRuleBuilder({
               {...issueForm.getInputProps('actionMatch')}
             />
 
-            {issueForm.values.conditions.map((condition, index) =>
+            {issueForm.values.conditions.map((condition: AlertRuleCondition, index: number) =>
               renderCondition(condition, index)
             )}
 
             <Button
               variant="light"
-              leftIcon={<IconPlus size={16} />}
+              leftSection={<IconPlus size={16} />}
               onClick={() => {
                 issueForm.setFieldValue('conditions', [
                   ...issueForm.values.conditions,
@@ -653,13 +656,13 @@ export function AlertRuleBuilder({
               />
             )}
 
-            {issueForm.values.filters?.map((filter, index) =>
+            {issueForm.values.filters?.map((filter: AlertRuleFilter, index: number) =>
               renderFilter(filter, index)
             )}
 
             <Button
               variant="light"
-              leftIcon={<IconPlus size={16} />}
+              leftSection={<IconPlus size={16} />}
               onClick={() => {
                 issueForm.setFieldValue('filters', [
                   ...(issueForm.values.filters || []),
@@ -672,13 +675,13 @@ export function AlertRuleBuilder({
 
             <Divider label="Actions" labelPosition="center" />
 
-            {issueForm.values.actions.map((action, index) =>
+            {issueForm.values.actions.map((action: AlertRuleAction, index: number) =>
               renderAction(action, index)
             )}
 
             <Button
               variant="light"
-              leftIcon={<IconPlus size={16} />}
+              leftSection={<IconPlus size={16} />}
               onClick={() => {
                 issueForm.setFieldValue('actions', [
                   ...issueForm.values.actions,
@@ -697,7 +700,7 @@ export function AlertRuleBuilder({
               {...issueForm.getInputProps('frequency')}
             />
 
-            <Group position="right" mt="md">
+            <Group justify="flex-end" mt="md">
               <Button variant="subtle" onClick={onCancel}>
                 Cancel
               </Button>
@@ -727,11 +730,33 @@ export function AlertRuleBuilder({
               {...metricForm.getInputProps('environment')}
             />
 
+            <MultiSelect
+              label="Projects"
+              description="Select projects to monitor"
+              placeholder="Choose projects"
+              data={[
+                { value: project || '', label: project || '' }
+              ]}
+              defaultValue={project ? [project] : []}
+              {...metricForm.getInputProps('projects')}
+              required
+            />
+
+            <JsonInput
+              label="Additional Configuration"
+              description="Advanced configuration in JSON format"
+              placeholder='{"custom": "config"}'
+              formatOnBlur
+              autosize
+              minRows={4}
+            />
+
             <Select
               label="Metric"
               data={METRIC_AGGREGATES}
               required
               {...metricForm.getInputProps('aggregate')}
+              leftSection={<IconBell size={16} />}
             />
 
             <Select
@@ -770,14 +795,14 @@ export function AlertRuleBuilder({
 
             <Divider label="Triggers" labelPosition="center" />
 
-            {metricForm.values.triggers.map((trigger, index) =>
+            {metricForm.values.triggers.map((trigger: MetricAlertTrigger, index: number) =>
               renderTrigger(trigger, index)
             )}
 
             <Group>
               <Button
                 variant="light"
-                leftIcon={<IconPlus size={16} />}
+                leftSection={<IconPlus size={16} />}
                 color="red"
                 onClick={() => {
                   metricForm.setFieldValue('triggers', [
@@ -785,13 +810,13 @@ export function AlertRuleBuilder({
                     { label: 'critical', alertThreshold: 0, actions: [] },
                   ]);
                 }}
-                disabled={metricForm.values.triggers.some(t => t.label === 'critical')}
+                disabled={metricForm.values.triggers.some((t: MetricAlertTrigger) => t.label === 'critical')}
               >
                 Add Critical Trigger
               </Button>
               <Button
                 variant="light"
-                leftIcon={<IconPlus size={16} />}
+                leftSection={<IconPlus size={16} />}
                 color="yellow"
                 onClick={() => {
                   metricForm.setFieldValue('triggers', [
@@ -799,7 +824,7 @@ export function AlertRuleBuilder({
                     { label: 'warning', alertThreshold: 0, actions: [] },
                   ]);
                 }}
-                disabled={metricForm.values.triggers.some(t => t.label === 'warning')}
+                disabled={metricForm.values.triggers.some((t: MetricAlertTrigger) => t.label === 'warning')}
               >
                 Add Warning Trigger
               </Button>
@@ -817,14 +842,14 @@ export function AlertRuleBuilder({
               {...metricForm.getInputProps('resolveThreshold')}
             />
 
-            <Group position="right" mt="md">
+            <Group justify="flex-end" mt="md">
               <Button variant="subtle" onClick={onCancel}>
                 Cancel
               </Button>
               <Button 
                 type="submit" 
                 loading={loading}
-                disabled={!metricForm.values.triggers.some(t => t.label === 'critical')}
+                disabled={!metricForm.values.triggers.some((t: MetricAlertTrigger) => t.label === 'critical')}
               >
                 {editingRule ? 'Update Rule' : 'Create Rule'}
               </Button>

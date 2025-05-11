@@ -9,6 +9,9 @@ import { requestBatcher } from '../utils/requestBatcher';
 import { requestDeduplicator } from '../utils/requestDeduplicator';
 import { requestCache } from '../utils/requestCache';
 
+// Define type alias for AxiosResponse for better type safety
+type ApiResponse<T = any> = AxiosResponse<T>;
+
 /**
  * API optimization options
  */
@@ -27,7 +30,7 @@ interface OptimizationOptions {
  * Enhanced API client with retry capability, structured error handling, and performance optimizations
  */
 export class EnhancedApiClient {
-  private axiosInstance: AxiosInstance;
+  protected axiosInstance: AxiosInstance;
   private defaultRetryConfig: Partial<RetryConfig>;
   private optimizations: Required<OptimizationOptions>;
   
@@ -98,8 +101,8 @@ export class EnhancedApiClient {
         // Add cache headers if caching is enabled
         if (this.optimizations.enableCaching && config.method === 'GET') {
           const cached = requestCache.get(config.url!, config);
-          if (cached && cached.etag) {
-            config.headers['If-None-Match'] = cached.etag;
+          if (cached && typeof cached === 'object' && 'etag' in cached) {
+            config.headers['If-None-Match'] = (cached as any).etag;
           }
         }
         
@@ -149,7 +152,15 @@ export class EnhancedApiClient {
         if (error.response?.status === 304) {
           const cached = requestCache.get(error.config!.url!, error.config);
           if (cached) {
-            return { ...error.response, data: cached };
+            const response: ApiResponse = {
+              ...error.response,
+              data: cached,
+              status: 200,
+              statusText: 'OK',
+              headers: error.response.headers,
+              config: error.config!
+            };
+            return response;
           }
         }
         
@@ -401,6 +412,14 @@ export class EnhancedApiClient {
    */
   getAxiosInstance(): AxiosInstance {
     return this.axiosInstance;
+  }
+  
+  /**
+   * Make a raw request that returns the full Axios response
+   * This is useful when you need access to headers, status, etc.
+   */
+  async makeRawRequest<T = any>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.axiosInstance(config);
   }
   
   /**

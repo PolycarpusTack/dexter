@@ -30,26 +30,12 @@ import {
   IconDots,
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import api from '../../utils/api';
+import { discoverApi, DiscoverQueryResponse } from '../../utils/api';
 
 // Types
-interface ResultData {
-  data: any[];
-  meta: {
-    fields: Record<string, string>;
-    units: Record<string, string>;
-  };
-  query: any;
-  executedAt: string;
-  _pagination?: {
-    next?: { cursor: string; url: string };
-    previous?: { cursor: string; url: string };
-  };
-}
-
 interface ResultTableProps {
   query: any;
-  onExecute: () => void;
+  onExecute: (updatedQuery?: any) => void;
   onVisualize: (data: any) => void;
 }
 
@@ -85,6 +71,7 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [queryLimit, setQueryLimit] = useState(query.limit || 50);
 
   // Fetch results
   const {
@@ -93,20 +80,16 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
     isFetching,
     error,
     refetch,
-  } = useQuery<ResultData>(
-    ['discover-results', query, page],
-    async () => {
-      const response = await api.post('/api/discover/query', {
+  } = useQuery<DiscoverQueryResponse>({
+    queryKey: ['discover-results', query, page],
+    queryFn: async (): Promise<DiscoverQueryResponse> => {
+      return discoverApi.query({
         ...query,
-        cursor: page > 1 ? results?._pagination?.next?.cursor : undefined,
+        cursor: page > 1 ? results?._pagination?.next : undefined,
       });
-      return response.data;
     },
-    {
-      enabled: !!query,
-      keepPreviousData: true,
-    }
-  );
+    enabled: !!query,
+  });
 
   // Initialize visible columns
   React.useEffect(() => {
@@ -116,7 +99,7 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
   }, [results?.meta?.fields]);
 
   // Filter and sort data
-  const processedData = useMemo(() => {
+  const processedData = useMemo<any[]>(() => {
     if (!results?.data) return [];
 
     let filtered = results.data;
@@ -159,14 +142,14 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
     if (!results?.data) return;
 
     const data = selectedRows.length > 0
-      ? results.data.filter((_, index) => selectedRows.includes(String(index)))
+      ? results.data.filter((_: any, index: number) => selectedRows.includes(String(index)))
       : results.data;
 
     if (format === 'csv') {
       const headers = Object.keys(results.meta.fields);
       const csvContent = [
         headers.join(','),
-        ...data.map((row) =>
+        ...data.map((row: any) =>
           headers.map((field) => JSON.stringify(row[field] ?? '')).join(',')
         ),
       ].join('\n');
@@ -203,30 +186,36 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
   if (error) {
     return (
       <Paper p="md" withBorder>
-        <Text color="red">Error executing query: {(error as any).message}</Text>
+        <Text c="red">Error executing query: {(error as any).message}</Text>
       </Paper>
     );
   }
 
   return (
     <Box>
-      <Stack spacing="md">
+      <Stack gap="md">
         {/* Toolbar */}
         <Paper p="md" withBorder>
-          <Group position="apart">
+          <Group justify="space-between">
             <Group>
               <TextInput
                 placeholder="Search results..."
-                icon={<IconSearch size={16} />}
+                leftSection={<IconSearch size={16} />}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ width: 300 }}
               />
               <Select
                 placeholder="Limit"
-                value={String(query.limit || 50)}
-                onChange={(value) => {
-                  // Update query limit
+                value={String(queryLimit)}
+                onChange={(value: string | null) => {
+                  if (value) {
+                    setQueryLimit(Number(value));
+                    // Update the query and re-execute
+                    const updatedQuery = { ...query, limit: Number(value) };
+                    // Pass the updated query to the parent component
+                    onExecute(updatedQuery);
+                  }
                 }}
                 data={[
                   { value: '10', label: '10 rows' },
@@ -236,10 +225,15 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
                 ]}
                 style={{ width: 120 }}
               />
+              <Tooltip label="Apply filters">
+                <ActionIcon variant="default" size="lg">
+                  <IconFilter size={18} />
+                </ActionIcon>
+              </Tooltip>
             </Group>
             <Group>
               <Button
-                leftIcon={<IconRefresh size={16} />}
+                leftSection={<IconRefresh size={16} />}
                 variant="default"
                 onClick={() => refetch()}
                 loading={isFetching}
@@ -247,16 +241,16 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
                 Refresh
               </Button>
               <Button
-                leftIcon={<IconChartBar size={16} />}
+                leftSection={<IconChartBar size={16} />}
                 variant="default"
-                onClick={() => onVisualize(results)}
+                onClick={() => results && onVisualize(results)}
                 disabled={!results?.data?.length}
               >
                 Visualize
               </Button>
               <Menu position="bottom-end">
                 <Menu.Target>
-                  <Button leftIcon={<IconDownload size={16} />} variant="default">
+                  <Button leftSection={<IconDownload size={16} />} variant="default">
                     Export
                   </Button>
                 </Menu.Target>
@@ -267,15 +261,23 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
               </Menu>
               <Menu position="bottom-end">
                 <Menu.Target>
-                  <ActionIcon variant="default">
-                    <IconDots size={16} />
-                  </ActionIcon>
+                  <Button 
+                    leftSection={<IconColumns size={16} />} 
+                    variant="default"
+                    rightSection={
+                      <Badge size="xs" variant="filled">
+                        {visibleColumns.length}
+                      </Badge>
+                    }
+                  >
+                    Columns
+                  </Button>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Label>Columns</Menu.Label>
+                  <Menu.Label>Show/Hide Columns</Menu.Label>
                   {results?.meta?.fields &&
                     Object.keys(results.meta.fields).map((field) => (
-                      <Menu.Item key={field}>
+                      <Menu.Item key={field} closeMenuOnClick={false}>
                         <Checkbox
                           checked={visibleColumns.includes(field)}
                           onChange={(e) => {
@@ -303,7 +305,16 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
           
           {results?.data?.length === 0 ? (
             <Box p="xl" style={{ textAlign: 'center' }}>
-              <Text color="dimmed">No results found</Text>
+              <Text c="dimmed">No results found</Text>
+              <ActionIcon 
+                variant="transparent" 
+                color="blue" 
+                mx="auto" 
+                mt="md"
+                onClick={() => refetch()}
+              >
+                <IconDots size={24} />
+              </ActionIcon>
             </Box>
           ) : (
             <ScrollArea>
@@ -323,7 +334,7 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
                         onChange={(e) => {
                           if (e.currentTarget.checked) {
                             setSelectedRows(
-                              processedData.map((_, index) => String(index))
+                              processedData.map((_: any, index: number) => String(index))
                             );
                           } else {
                             setSelectedRows([]);
@@ -333,25 +344,37 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
                     </th>
                     {results?.meta?.fields &&
                       Object.entries(results.meta.fields)
-                        .filter(([field]) => visibleColumns.includes(field))
-                        .map(([field, type]) => (
+                      .filter(([field]) => visibleColumns.includes(field))
+                      .map(([field, _type]) => (
                           <th key={field}>
                             <Group
-                              spacing="xs"
+                              gap="xs"
                               style={{ cursor: 'pointer' }}
                               onClick={() => toggleSort(field)}
                             >
-                              <Text size="sm" weight={600}>
+                              <Text size="sm" fw={600}>
                                 {field}
                               </Text>
                               {sortField === field && (
-                                <ActionIcon size="xs" variant="subtle">
-                                  {sortDirection === 'asc' ? (
-                                    <IconSortAscending size={12} />
-                                  ) : (
-                                    <IconSortDescending size={12} />
-                                  )}
-                                </ActionIcon>
+                                <Tooltip label={`Sorted ${sortDirection}ending`}>
+                                  <ActionIcon size="xs" variant="subtle">
+                                    {sortDirection === 'asc' ? (
+                                      <IconSortAscending size={12} />
+                                    ) : (
+                                      <IconSortDescending size={12} />
+                                    )}
+                                  </ActionIcon>
+                                </Tooltip>
+                              )}
+                              {type === 'string' && (
+                                <Badge size="xs" variant="light" color="blue">
+                                  text
+                                </Badge>
+                              )}
+                              {type === 'number' && (
+                                <Badge size="xs" variant="light" color="green">
+                                  num
+                                </Badge>
                               )}
                             </Group>
                           </th>
@@ -359,7 +382,7 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
                   </tr>
                 </thead>
                 <tbody>
-                  {processedData.map((row, index) => (
+                  {processedData.map((row: any, index: number) => (
                     <tr key={index}>
                       <td>
                         <Checkbox
@@ -394,12 +417,12 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
         </Paper>
 
         {/* Pagination */}
-        {results?.data?.length > 0 && (results._pagination?.next || results._pagination?.previous) && (
-          <Group position="center">
+        {results?.data?.length && results._pagination && (results._pagination.next || results._pagination.previous) && (
+          <Group justify="center">
             <Pagination
               value={page}
               onChange={setPage}
-              total={10} // This would need to be calculated based on total results
+              total={10} // TODO: Calculate based on total results
             />
           </Group>
         )}
@@ -407,11 +430,11 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
         {/* Query Info */}
         {results && (
           <Paper p="md" withBorder>
-            <Group position="apart">
-              <Text size="sm" color="dimmed">
-                Query executed at: {new Date(results.executedAt).toLocaleString()}
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">
+                {results.executedAt ? `Query executed at: ${new Date(results.executedAt).toLocaleString()}` : 'Query executed'}
               </Text>
-              <Text size="sm" color="dimmed">
+              <Text size="sm" c="dimmed">
                 {results.data.length} results
               </Text>
             </Group>

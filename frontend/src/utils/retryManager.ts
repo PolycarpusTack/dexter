@@ -19,6 +19,8 @@ export interface RetryConfig {
   retryableCheck: (error: unknown) => boolean;
   /** Whether to add randomness to the delay */
   jitter: boolean;
+  /** Custom retry delay function (overrides standard delay calculation) */
+  retryDelay?: (retryCount: number, error: unknown) => number;
 }
 
 /**

@@ -158,12 +158,13 @@ export function deduplicated(keyGenerator?: KeyGenerator) {
 
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
+    const className = target.constructor?.name || 'Unknown';
 
     descriptor.value = async function (...args: any[]) {
-      // Generate key from method name and arguments
+      // Generate key from class name, method name and arguments to ensure uniqueness
       const key = keyGenerator ? 
         keyGenerator(propertyKey, { data: args }) : 
-        `${propertyKey}:${JSON.stringify(args)}`;
+        `${className}.${propertyKey}:${JSON.stringify(args)}`;
 
       return deduplicator.deduplicate(
         key,

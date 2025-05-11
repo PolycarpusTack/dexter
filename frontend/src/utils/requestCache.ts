@@ -200,6 +200,10 @@ export class RequestCache {
     });
 
     if (lruKey) {
+      // Log eviction for debugging if needed
+      if (lruEntry) {
+        console.debug(`Cache: Evicting LRU entry with key ${lruKey}, hits: ${lruEntry.hits}, age: ${Date.now() - lruEntry.timestamp}ms`);
+      }
       this.removeEntry(lruKey);
     }
   }
@@ -350,9 +354,11 @@ export const persistentCache = new RequestCache({
 export function cached(ttl?: number, cacheInstance: RequestCache = requestCache) {
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
+    const className = target.constructor?.name || 'Unknown';
 
     descriptor.value = async function (...args: any[]) {
-      const cacheKey = `${propertyKey}:${JSON.stringify(args)}`;
+      // Use class name and method name to create a more specific key
+      const cacheKey = `${className}.${propertyKey}:${JSON.stringify(args)}`;
       
       // Check cache first
       const cached = cacheInstance.get(cacheKey);

@@ -103,7 +103,7 @@ export function useRealtimeUpdates(config: RealtimeConfig = {}) {
     });
 
     // Connect with authentication token
-    client.connect(token);
+    client.connect(token ?? undefined);
 
     return () => {
       client.disconnect();
@@ -210,7 +210,7 @@ export function useRealtimeUpdates(config: RealtimeConfig = {}) {
 
   // Manual reconnect
   const reconnect = useCallback(() => {
-    wsClientRef.current?.connect(token);
+    wsClientRef.current?.connect(token ?? undefined);
   }, [token]);
 
   return {
@@ -259,10 +259,13 @@ export function useRealtimeIssueUpdates(issueId?: string) {
  */
 export function useRealtimePresence() {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const { updatePresence } = useRealtimeUpdates();
+  const { updatePresence, subscribe, unsubscribe } = useRealtimeUpdates();
+  const wsClientRef = useRef<WebSocketClient | null>(null);
 
   useEffect(() => {
-    if (!wsClientRef.current) return;
+    const wsClient = getWebSocketClient();
+    if (!wsClient) return;
+    wsClientRef.current = wsClient;
 
     const handlePresenceUpdate = (message: WebSocketMessage) => {
       const { user_id, status } = message;
@@ -303,9 +306,12 @@ export function useRealtimePresence() {
 export function useRealtimeNotifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const { isConnected } = useRealtimeUpdates();
+  const wsClientRef = useRef<WebSocketClient | null>(null);
 
   useEffect(() => {
-    if (!wsClientRef.current || !isConnected) return;
+    const wsClient = getWebSocketClient();
+    if (!wsClient || !isConnected) return;
+    wsClientRef.current = wsClient;
 
     const handleNotification = (message: WebSocketMessage) => {
       const notification = {

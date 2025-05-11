@@ -3,7 +3,7 @@ import { lazy, Suspense } from 'react';
 import { LoadingOverlay } from '@mantine/core';
 
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
-const AlertRules = lazy(() => import('../components/AlertRules/AlertRules'));
+const AlertRules = lazy(() => import('../components/AlertRules/AlertRules').then(module => ({ default: module.default })));
 
 export function AppRouter() {
   return (

@@ -163,13 +163,13 @@ const TestBulkOperations: React.FC = () => {
 
   return (
     <Paper p="md" radius="md" withBorder>
-      <Stack spacing="md">
+      <Stack gap="md">
         <Title order={2}>Test Bulk Operations</Title>
         
         {/* Issue Selection */}
         <Stack>
           <Group justify="space-between">
-            <Text weight={600}>Select Issues</Text>
+            <Text fw={600}>Select Issues</Text>
             <Button size="xs" variant="subtle" onClick={handleSelectAll}>
               {selectedIssues.length === TEST_ISSUES.length ? 'Deselect All' : 'Select All'}
             </Button>
@@ -201,7 +201,7 @@ const TestBulkOperations: React.FC = () => {
         
         {/* Bulk Status Update */}
         <Stack>
-          <Text weight={600}>Bulk Status Update</Text>
+          <Text fw={600}>Bulk Status Update</Text>
           <Group>
             <Select
               placeholder="Select status"
@@ -228,7 +228,7 @@ const TestBulkOperations: React.FC = () => {
         
         {/* Bulk Assignment */}
         <Stack>
-          <Text weight={600}>Bulk Assignment</Text>
+          <Text fw={600}>Bulk Assignment</Text>
           <Group>
             <TextInput
               placeholder="Enter assignee email"
@@ -250,7 +250,7 @@ const TestBulkOperations: React.FC = () => {
         
         {/* Bulk Tagging */}
         <Stack>
-          <Text weight={600}>Bulk Tagging</Text>
+          <Text fw={600}>Bulk Tagging</Text>
           <Group>
             <TextInput
               placeholder="Enter tags (comma-separated)"
@@ -272,7 +272,7 @@ const TestBulkOperations: React.FC = () => {
         
         {/* Mixed Operations Test */}
         <Stack>
-          <Text weight={600}>Mixed Operations Test</Text>
+          <Text fw={600}>Mixed Operations Test</Text>
           <Text size="sm" color="dimmed">
             This will apply different operations to selected issues
           </Text>
@@ -290,7 +290,7 @@ const TestBulkOperations: React.FC = () => {
         {isProcessing && (
           <Paper p="sm" withBorder bg="blue.0">
             <Group>
-              <Text weight={600}>Processing:</Text>
+              <Text fw={600}>Processing:</Text>
               <Text>
                 {progress.processed} / {progress.total} completed
               </Text>
@@ -306,8 +306,8 @@ const TestBulkOperations: React.FC = () => {
         
         {/* Result Display */}
         {result && (
-          <Stack spacing="sm">
-            <Text weight={600}>Result:</Text>
+          <Stack gap="sm">
+            <Text fw={600}>Result:</Text>
             <Code block>{JSON.stringify(result, null, 2)}</Code>
           </Stack>
         )}

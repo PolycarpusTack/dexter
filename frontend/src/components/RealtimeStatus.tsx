@@ -2,7 +2,7 @@
  * Component showing real-time connection status
  */
 
-import React from 'react';
+// React import required for JSX
 import { Badge, Group, Indicator, Text, Tooltip } from '@mantine/core';
 import { IconPlugConnected, IconPlugConnectedX, IconRefresh } from '@tabler/icons-react';
 import { useRealtimeUpdates } from '../hooks/useRealtimeUpdates';

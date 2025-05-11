@@ -1,429 +1,614 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   TextInput,
+  Textarea,
   Select,
   Button,
   Group,
-  Text,
   Stack,
-  MultiSelect,
-  ActionIcon,
-  Paper,
-  Tooltip,
   Tabs,
-  Textarea,
   Autocomplete,
-  Chip,
-  SimpleGrid,
   Card,
-  Badge,
-  Modal,
+  Text,
+  Alert,
   LoadingOverlay,
+  ActionIcon,
+  Modal,
+  Code,
+  Table,
 } from '@mantine/core';
+import { DateTimePicker } from '@mantine/dates';
 import {
   IconSearch,
-  IconPlus,
-  IconTrash,
-  IconClock,
   IconFilter,
-  IconSortAscending,
-  IconHelp,
+  IconCalendar,
+  IconPlaystationX,
+  IconPlus,
+  IconAlertCircle,
   IconCode,
-  IconEye,
   IconWand,
   IconBookmark,
-  IconShare,
+  IconTrash,
 } from '@tabler/icons-react';
+import { useQuery } from '@tanstack/react-query';
+import { discoverApi, FieldSuggestion, QueryExample } from '../../utils/api';
 import { notifications } from '@mantine/notifications';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import api from '../../utils/api';
-
-// Types
-interface DiscoverField {
-  field: string;
-  alias?: string;
-}
-
-interface DiscoverQuery {
-  fields: DiscoverField[];
-  query?: string;
-  orderby?: string;
-  start?: string;
-  end?: string;
-  statsPeriod?: string;
-  environment?: string[];
-  project?: number[];
-  limit?: number;
-}
-
-interface FieldSuggestion {
-  name: string;
-  type: string;
-  description: string;
-}
-
-interface QueryExample {
-  name: string;
-  description: string;
-  query: DiscoverQuery;
-}
 
 interface QueryBuilderProps {
-  onExecute: (query: DiscoverQuery) => void;
+  onExecute: (query: any) => void;
 }
 
-// Component
-const QueryBuilder: React.FC<QueryBuilderProps> = ({ onExecute }) => {
-  const [activeTab, setActiveTab] = useState<string | null>('visual');
-  const [query, setQuery] = useState<DiscoverQuery>({
-    fields: [{ field: 'count()' }],
-    query: '',
-    statsPeriod: '24h',
-    limit: 50,
-  });
-  const [naturalLanguageQuery, setNaturalLanguageQuery] = useState('');
-  const [showHelpModal, setShowHelpModal] = useState(false);
-  const [isConverting, setIsConverting] = useState(false);
+interface QueryFormData {
+  query: string;
+  fields: string[];
+  sort?: string;
+  limit?: number;
+  project?: string[];
+  environment?: string[];
+  timeRange?: string;
+  customTimeStart?: string;
+  customTimeEnd?: string;
+}
 
-  // Execute query handler
+const QueryBuilder: React.FC<QueryBuilderProps> = ({ onExecute }) => {
+  const [activeTab, setActiveTab] = useState<string | null>('search');
+  const [query, setQuery] = useState<QueryFormData>({
+    query: '',
+    fields: [],
+    sort: '',
+    limit: 100,
+    project: [],
+    environment: [],
+    timeRange: '24h',
+  });
+
+  const [savedQueries, setSavedQueries] = useState<any[]>([]);
+  const [selectedField, setSelectedField] = useState('');
+  const [syntaxHelpOpen, setSyntaxHelpOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+
+  // Fetch field suggestions
+  const { data: fieldSuggestions = [], isLoading: loadingFields } = useQuery({
+    queryKey: ['fieldSuggestions'],
+    queryFn: () => discoverApi.getFieldSuggestions(),
+  });
+
+  // Fetch query examples
+  const { data: queryExamples = [], isLoading: loadingExamples } = useQuery({
+    queryKey: ['queryExamples'],
+    queryFn: () => discoverApi.getQueryExamples(),
+  });
+
+  // Load saved queries from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('discoverQueries');
+    if (saved) {
+      setSavedQueries(JSON.parse(saved));
+    }
+  }, []);
+
+  const handleAddField = () => {
+    if (selectedField && !query.fields.includes(selectedField)) {
+      setQuery({
+        ...query,
+        fields: [...query.fields, selectedField],
+      });
+      setSelectedField('');
+    }
+  };
+
+  const handleRemoveField = (field: string) => {
+    setQuery({
+      ...query,
+      fields: query.fields.filter((f) => f !== field),
+    });
+  };
+
   const handleExecute = () => {
-    if (query.fields.length === 0) {
+    if (!query.query.trim()) {
       notifications.show({
-        title: 'Error',
-        message: 'Please select at least one field',
+        title: 'Query required',
+        message: 'Please enter a search query',
         color: 'red',
       });
       return;
     }
-    onExecute(query);
+
+    const queryParams = {
+      ...query,
+      fields: query.fields.length > 0 ? query.fields : undefined,
+      start: query.timeRange === 'custom' ? query.customTimeStart : undefined,
+      end: query.timeRange === 'custom' ? query.customTimeEnd : undefined,
+    };
+
+    onExecute(queryParams);
   };
-  const { data: availableFields, isLoading: fieldsLoading } = useQuery<FieldSuggestion[]>(
-    ['discover-fields'],
-    () => api.get('/api/discover/fields').then((res) => res.data)
-  );
 
-  // Fetch query examples
-  const { data: examples } = useQuery<QueryExample[]>(
-    ['discover-examples'],
-    () => api.get('/api/discover/examples').then((res) => res.data)
-  );
-
-  // Convert natural language to query
-  const convertNaturalLanguage = async () => {
-    setIsConverting(true);
-    try {
-      const response = await api.post('/api/discover/natural-language', {
-        query: naturalLanguageQuery,
-      });
-      setQuery(response.data);
-      setActiveTab('visual');
+  const handleSaveQuery = () => {
+    const name = prompt('Enter a name for this query:');
+    if (name) {
+      const newSavedQuery = {
+        id: Date.now(),
+        name,
+        query: { ...query },
+      };
+      const updated = [...savedQueries, newSavedQuery];
+      setSavedQueries(updated);
+      localStorage.setItem('discoverQueries', JSON.stringify(updated));
       notifications.show({
-        title: 'Query converted',
-        message: 'Your natural language query has been converted to a Discover query',
+        title: 'Query saved',
+        message: `Query "${name}" has been saved`,
         color: 'green',
       });
-    } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to convert natural language query',
-        color: 'red',
-      });
-    } finally {
-      setIsConverting(false);
     }
   };
 
-  // Field management
-  const addField = useCallback(() => {
-    setQuery((prev) => ({
-      ...prev,
-      fields: [...prev.fields, { field: '' }],
-    }));
-  }, []);
-
-  const removeField = useCallback((index: number) => {
-    setQuery((prev) => ({
-      ...prev,
-      fields: prev.fields.filter((_, i) => i !== index),
-    }));
-  }, []);
-
-  const updateField = useCallback((index: number, field: Partial<DiscoverField>) => {
-    setQuery((prev) => ({
-      ...prev,
-      fields: prev.fields.map((f, i) => (i === index ? { ...f, ...field } : f)),
-    }));
-  }, []);
-
-  // Time range options
-  const timeRangeOptions = [
-    { value: '1h', label: 'Last hour' },
-    { value: '24h', label: 'Last 24 hours' },
-    { value: '7d', label: 'Last 7 days' },
-    { value: '14d', label: 'Last 14 days' },
-    { value: '30d', label: 'Last 30 days' },
-    { value: '90d', label: 'Last 90 days' },
-  ];
-
-  // Environment options (mock data - would fetch from API)
-  const environmentOptions = [
-    { value: 'production', label: 'Production' },
-    { value: 'staging', label: 'Staging' },
-    { value: 'development', label: 'Development' },
-  ];
-
-  // Load example query
-  const loadExample = (example: QueryExample) => {
-    setQuery(example.query);
+  const handleLoadQuery = (savedQuery: any) => {
+    setQuery(savedQuery.query);
     notifications.show({
-      title: 'Example loaded',
-      message: `Loaded "${example.name}" example query`,
+      title: 'Query loaded',
+      message: `Loaded query "${savedQuery.name}"`,
       color: 'blue',
     });
   };
 
+  const handleDeleteQuery = (id: number) => {
+    const updated = savedQueries.filter((q) => q.id !== id);
+    setSavedQueries(updated);
+    localStorage.setItem('discoverQueries', JSON.stringify(updated));
+    notifications.show({
+      title: 'Query deleted',
+      message: 'Saved query has been deleted',
+      color: 'red',
+    });
+  };
+
+  const handleExampleClick = (example: QueryExample) => {
+    setQuery({
+      ...query,
+      query: example.query,
+    });
+    setActiveTab('search');
+  };
+
   return (
-    <Box>
-      <Stack spacing="lg">
-        {/* Header */}
-        <Group position="apart">
-          <Text size="xl" weight={700}>
-            Discover Query Builder
-          </Text>
-          <Group>
+    <Stack gap="lg">
+      {(loadingFields || loadingExamples) && <LoadingOverlay visible />}
+
+      <Group justify="space-between">
+        <Text size="lg" fw={700}>
+          Build Your Query
+        </Text>
+        <Group>
+          <Button
+            leftSection={<IconWand size={16} />}
+            onClick={() => setActiveTab('examples')}
+          >
+            Examples
+          </Button>
+          <Button
+            leftSection={<IconBookmark size={16} />}
+            variant="default"
+            onClick={() => setActiveTab('saved')}
+          >
+            Saved Queries
+          </Button>
+          {activeTab === 'search' && (
             <Button
-              leftIcon={<IconSearch size={16} />}
-              onClick={handleExecute}
+              leftSection={<IconPlaystationX size={16} />}
+              variant="subtle"
+              onClick={handleSaveQuery}
             >
-              Execute Query
-            </Button>
-            <Button
-              leftIcon={<IconHelp size={16} />}
-              variant="default"
-              onClick={() => setShowHelpModal(true)}
-            >
-              Help
-            </Button>
-            <Button leftIcon={<IconBookmark size={16} />} variant="subtle">
               Save Query
             </Button>
-            <Button leftIcon={<IconShare size={16} />} variant="subtle">
-              Share
-            </Button>
-          </Group>
+          )}
         </Group>
+      </Group>
 
-        {/* Query Builder Tabs */}
-        <Tabs value={activeTab} onTabChange={setActiveTab}>
-          <Tabs.List>
-            <Tabs.Tab value="visual" icon={<IconEye size={14} />}>
-              Visual Builder
-            </Tabs.Tab>
-            <Tabs.Tab value="natural" icon={<IconWand size={14} />}>
-              Natural Language
-            </Tabs.Tab>
-            <Tabs.Tab value="json" icon={<IconCode size={14} />}>
-              JSON
-            </Tabs.Tab>
-          </Tabs.List>
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List>
+          <Tabs.Tab value="search" leftSection={<IconSearch size={16} />}>
+            Search Query
+          </Tabs.Tab>
+          <Tabs.Tab value="filters" leftSection={<IconFilter size={16} />}>
+            Filters
+          </Tabs.Tab>
+          <Tabs.Tab value="examples" leftSection={<IconWand size={16} />}>
+            Examples
+          </Tabs.Tab>
+        </Tabs.List>
 
-          <Tabs.Panel value="visual" pt="xl">
-            <Stack spacing="md">
-              {/* Fields */}
-              <Paper p="md" withBorder>
-                <Stack spacing="sm">
-                  <Group position="apart">
-                    <Text weight={600}>Fields</Text>
-                    <Button
-                      size="xs"
-                      leftIcon={<IconPlus size={14} />}
-                      onClick={addField}
-                    >
-                      Add Field
-                    </Button>
-                  </Group>
-
-                  {query.fields.map((field, index) => (
-                    <Group key={index} spacing="sm">
-                      <Autocomplete
-                        style={{ flex: 1 }}
-                        placeholder="Select or type field"
-                        value={field.field}
-                        onChange={(value) => updateField(index, { field: value })}
-                        data={
-                          availableFields?.map((f) => ({
-                            value: f.name,
-                            label: f.name,
-                          })) || []
-                        }
-                        loading={fieldsLoading}
-                      />
-                      <TextInput
-                        style={{ flex: 0.5 }}
-                        placeholder="Alias (optional)"
-                        value={field.alias || ''}
-                        onChange={(e) =>
-                          updateField(index, { alias: e.target.value })
-                        }
-                      />
-                      <ActionIcon
-                        color="red"
-                        onClick={() => removeField(index)}
-                        disabled={query.fields.length === 1}
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Group>
-                  ))}
-                </Stack>
-              </Paper>
-
-              {/* Filters */}
-              <Paper p="md" withBorder>
-                <Stack spacing="sm">
-                  <Text weight={600}>Filters</Text>
-                  <Textarea
-                    placeholder="Enter filter query (e.g., level:error AND environment:production)"
-                    value={query.query || ''}
-                    onChange={(e) =>
-                      setQuery((prev) => ({ ...prev, query: e.target.value }))
-                    }
-                    autosize
-                    minRows={2}
-                    icon={<IconFilter size={16} />}
-                  />
-                </Stack>
-              </Paper>
-
-              {/* Time Range and Environment */}
-              <Paper p="md" withBorder>
-                <SimpleGrid cols={3} spacing="md">
-                  <Select
-                    label="Time Range"
-                    placeholder="Select time range"
-                    value={query.statsPeriod}
-                    onChange={(value) =>
-                      setQuery((prev) => ({ ...prev, statsPeriod: value || undefined }))
-                    }
-                    data={timeRangeOptions}
-                    icon={<IconClock size={16} />}
-                  />
-                  <MultiSelect
-                    label="Environment"
-                    placeholder="Select environments"
-                    value={query.environment || []}
-                    onChange={(value) =>
-                      setQuery((prev) => ({ ...prev, environment: value }))
-                    }
-                    data={environmentOptions}
-                  />
-                  <TextInput
-                    label="Order By"
-                    placeholder="e.g., -count()"
-                    value={query.orderby || ''}
-                    onChange={(e) =>
-                      setQuery((prev) => ({ ...prev, orderby: e.target.value }))
-                    }
-                    icon={<IconSortAscending size={16} />}
-                  />
-                </SimpleGrid>
-              </Paper>
-            </Stack>
-          </Tabs.Panel>
-
-          <Tabs.Panel value="natural" pt="xl">
-            <Stack spacing="md">
-              <Textarea
-                placeholder="Describe your query in natural language (e.g., 'Show me the slowest transactions in the last 24 hours')"
-                value={naturalLanguageQuery}
-                onChange={(e) => setNaturalLanguageQuery(e.target.value)}
-                autosize
-                minRows={4}
-                icon={<IconWand size={16} />}
-              />
-              <Button
-                leftIcon={<IconWand size={16} />}
-                onClick={convertNaturalLanguage}
-                loading={isConverting}
-                disabled={!naturalLanguageQuery.trim()}
-              >
-                Convert to Query
-              </Button>
-            </Stack>
-          </Tabs.Panel>
-
-          <Tabs.Panel value="json" pt="xl">
-            <Textarea
-              value={JSON.stringify(query, null, 2)}
-              onChange={(e) => {
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  setQuery(parsed);
-                } catch {
-                  // Invalid JSON, don't update
-                }
-              }}
-              autosize
-              minRows={10}
-              style={{ fontFamily: 'monospace' }}
-            />
-          </Tabs.Panel>
-        </Tabs>
-
-        {/* Examples */}
-        {examples && examples.length > 0 && (
-          <Paper p="md" withBorder>
-            <Stack spacing="sm">
-              <Text weight={600}>Example Queries</Text>
-              <SimpleGrid cols={2} spacing="md">
-                {examples.map((example) => (
-                  <Card key={example.name} padding="sm" withBorder>
-                    <Stack spacing="xs">
-                      <Group position="apart">
-                        <Text weight={600}>{example.name}</Text>
-                        <Button
-                          size="xs"
-                          variant="light"
-                          onClick={() => loadExample(example)}
+        <Tabs.Panel value="search" pt="md">
+          <Stack gap="md">
+            {/* Main query input */}
+            <Box>
+              <Stack gap="xs">
+                <Group justify="space-between">
+                  <Text fw={500}>Search Query</Text>
+                  <Button
+                    size="xs"
+                    leftSection={<IconCode size={14} />}
+                    onClick={() => setSyntaxHelpOpen(true)}
+                  >
+                    Syntax Help
+                  </Button>
+                </Group>
+                {query.fields.map((field, index) => (
+                  <Group key={index} gap="xs">
+                    <Card withBorder p="xs" style={{ flex: 1 }}>
+                      <Group justify="space-between">
+                        <Text size="sm">{field}</Text>
+                        <ActionIcon
+                          color="red"
+                          size="sm"
+                          onClick={() => handleRemoveField(field)}
                         >
-                          Load
-                        </Button>
+                          <IconTrash size={14} />
+                        </ActionIcon>
                       </Group>
-                      <Text size="sm" color="dimmed">
-                        {example.description}
-                      </Text>
-                    </Stack>
-                  </Card>
+                    </Card>
+                  </Group>
                 ))}
-              </SimpleGrid>
-            </Stack>
-          </Paper>
-        )}
-      </Stack>
+                <Group grow>
+                  <Autocomplete
+                    style={{ flex: 1 }}
+                    placeholder="Select a field to add"
+                    value={selectedField}
+                    onChange={setSelectedField}
+                    data={fieldSuggestions.map((f: FieldSuggestion) => ({
+                      value: f.field,
+                      label: `${f.field} (${f.type})`,
+                    }))}
+                  />
+                  <Button
+                    leftSection={<IconPlus size={16} />}
+                    onClick={handleAddField}
+                    disabled={!selectedField}
+                  >
+                    Add Field
+                  </Button>
+                </Group>
+              </Stack>
+            </Box>
 
-      {/* Help Modal */}
+            {/* Search query textarea */}
+            <Stack gap="xs">
+              <Text fw={500}>Query</Text>
+              <Textarea
+                placeholder="Enter your search query... (e.g., error.type:TypeError)"
+                value={query.query}
+                onChange={(e) => setQuery({ ...query, query: e.currentTarget.value })}
+                autosize
+                minRows={3}
+              />
+            </Stack>
+
+            {/* Sort */}
+            <Select
+              label="Sort By"
+              placeholder="Select sort field"
+              value={query.sort}
+              onChange={(value) => setQuery({ ...query, sort: value || '' })}
+              data={[
+                { value: '-timestamp', label: 'Newest First' },
+                { value: 'timestamp', label: 'Oldest First' },
+                { value: '-count', label: 'Most Frequent' },
+                { value: 'count', label: 'Least Frequent' },
+              ]}
+            />
+
+            {/* Limit */}
+            <TextInput
+              label="Limit"
+              placeholder="Number of results"
+              value={query.limit}
+              onChange={(e) => setQuery({ ...query, limit: parseInt(e.currentTarget.value) || 100 })}
+              type="number"
+            />
+          </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="filters" pt="md">
+          <Stack gap="md">
+            {/* Time range */}
+            <Select
+              label="Time Range"
+              value={query.timeRange}
+              onChange={(value) => setQuery({ ...query, timeRange: value || '24h' })}
+              leftSection={<IconCalendar size={16} />}
+              data={[
+                { value: '1h', label: 'Last 1 hour' },
+                { value: '24h', label: 'Last 24 hours' },
+                { value: '7d', label: 'Last 7 days' },
+                { value: '30d', label: 'Last 30 days' },
+                { value: 'custom', label: 'Custom range' },
+              ]}
+            />
+
+            {query.timeRange === 'custom' && (
+              <Group grow>
+                <DateTimePicker
+                  label="Start Date"
+                  placeholder="Pick start date/time"
+                  value={query.customTimeStart ? new Date(query.customTimeStart) : null}
+                  onChange={(date) => setQuery({ 
+                    ...query, 
+                    customTimeStart: date?.toISOString() || ''
+                  })}
+                  leftSection={<IconCalendar size={16} />}
+                />
+                <DateTimePicker
+                  label="End Date"
+                  placeholder="Pick end date/time"
+                  value={query.customTimeEnd ? new Date(query.customTimeEnd) : null}
+                  onChange={(date) => setQuery({ 
+                    ...query, 
+                    customTimeEnd: date?.toISOString() || ''
+                  })}
+                  leftSection={<IconCalendar size={16} />}
+                />
+              </Group>
+            )}
+
+            {/* Additional filters can be added here */}
+          </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="examples" pt="md">
+          {loadingExamples ? (
+            <Text>Loading examples...</Text>
+          ) : queryExamples.length > 0 ? (
+            <Stack gap="md">
+              <Text fw={500}>Query Examples</Text>
+              {queryExamples.map((example: QueryExample) => (
+                <Card
+                  key={example.query}
+                  withBorder
+                  p="md"
+                  onClick={() => handleExampleClick(example)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <Stack gap="xs">
+                    <Group justify="space-between">
+                      <Text fw={500}>{example.title}</Text>
+                      <Text size="sm" c="dimmed">{example.category}</Text>
+                    </Group>
+                    <Text size="sm" c="dimmed">{example.description}</Text>
+                    <Text size="xs" ff="monospace" c="blue">
+                      {example.query}
+                    </Text>
+                  </Stack>
+                </Card>
+              ))}
+            </Stack>
+          ) : (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              title="No examples available"
+              color="blue"
+            >
+              Query examples are not available at this time.
+            </Alert>
+          )}
+        </Tabs.Panel>
+      </Tabs>
+
+      {/* Action buttons */}
+      <Group justify="flex-end">
+        <Button variant="default" onClick={() => setQuery({
+          query: '',
+          fields: [],
+          sort: '',
+          limit: 100,
+          project: [],
+          environment: [],
+          timeRange: '24h',
+        })}>
+          Clear
+        </Button>
+        <Button
+          leftSection={<IconSearch size={16} />}
+          onClick={handleExecute}
+          loading={false}
+          disabled={!query.query.trim()}
+        >
+          Execute Query
+        </Button>
+        <Button
+          variant="subtle"
+          onClick={() => setPreviewModalOpen(true)}
+        >
+          Preview Query
+        </Button>
+      </Group>
+
+      {/* Saved queries modal/drawer would go here */}
+      {activeTab === 'saved' && (
+        <Stack gap="md">
+          <Text fw={500}>Saved Queries</Text>
+          {savedQueries.length > 0 ? (
+            savedQueries.map((savedQuery) => (
+              <Card key={savedQuery.id} withBorder p="md">
+                <Group justify="space-between">
+                  <Box style={{ flex: 1 }}>
+                    <Text fw={500}>{savedQuery.name}</Text>
+                    <Text size="sm" c="dimmed" ff="monospace">
+                      {savedQuery.query.query}
+                    </Text>
+                  </Box>
+                  <Group>
+                    <Button
+                      size="sm"
+                      variant="light"
+                      onClick={() => handleLoadQuery(savedQuery)}
+                    >
+                      Load
+                    </Button>
+                    <ActionIcon
+                      color="red"
+                      onClick={() => handleDeleteQuery(savedQuery.id)}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Group>
+                </Group>
+              </Card>
+            ))
+          ) : (
+            <Text c="dimmed" ta="center" py="xl">
+              No saved queries yet. Execute a query and save it for later use.
+            </Text>
+          )}
+        </Stack>
+      )}
+      
+      {/* Query Preview Modal */}
       <Modal
-        opened={showHelpModal}
-        onClose={() => setShowHelpModal(false)}
-        title="Discover Query Help"
+        opened={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        title="Query Preview"
         size="lg"
       >
-        <Stack spacing="md">
-          <Text>
-            Use the Discover Query Builder to explore your Sentry data with powerful
-            queries.
-          </Text>
-          <Text weight={600}>Tips:</Text>
-          <ul>
-            <li>Start with simple queries and add complexity as needed</li>
-            <li>Use aggregate functions like count(), avg(), and p95() for metrics</li>
-            <li>Combine multiple fields to get detailed insights</li>
-            <li>Use the natural language tab for quick query generation</li>
-          </ul>
+        <Stack gap="md">
+          <Text fw={500}>Generated Query Parameters</Text>
+          <Code block>
+            {JSON.stringify({
+              ...query,
+              fields: query.fields.length > 0 ? query.fields : undefined,
+              start: query.timeRange === 'custom' ? query.customTimeStart : undefined,
+              end: query.timeRange === 'custom' ? query.customTimeEnd : undefined,
+            }, null, 2)}
+          </Code>
+          <Group sx={{ justifyContent: "right" }}>
+            <Button onClick={() => setPreviewModalOpen(false)}>Close</Button>
+            <Button onClick={() => {
+              setPreviewModalOpen(false);
+              handleExecute();
+            }} color="blue">Execute Query</Button>
+          </Group>
         </Stack>
       </Modal>
-    </Box>
+      
+      {/* Syntax Help Modal */}
+      <Modal
+        opened={syntaxHelpOpen}
+        onClose={() => setSyntaxHelpOpen(false)}
+        title="Query Syntax Help"
+        size="lg"
+      >
+        <Stack gap="md">
+          <Text fw={700} size="lg">Discover Query Syntax</Text>
+          
+          <Card withBorder>
+            <Text fw={600} mb="xs">Basic Syntax</Text>
+            <Text>
+              Search for events containing specific terms or use key:value pairs to search specific fields.
+            </Text>
+            <Code block mt="sm">
+              {`
+# Search for any event with "error" in it
+error
+
+# Search for events with TypeError
+error.type:TypeError
+
+# Combine multiple conditions
+error.type:TypeError project:frontend
+              `}
+            </Code>
+          </Card>
+          
+          <Card withBorder>
+            <Text fw={600} mb="xs">Operators</Text>
+            <Stack sx={{ gap: 'var(--mantine-spacing-xs)' }}>
+              <Text fw={500} size="sm">Comparison Operators</Text>
+              <Table>
+                <thead>
+                  <tr>
+                    <th>Operator</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>:</td>
+                    <td>Equals</td>
+                    <td>level:error</td>
+                  </tr>
+                  <tr>
+                    <td>!</td>
+                    <td>Not equals</td>
+                    <td>!level:info</td>
+                  </tr>
+                  <tr>
+                    <td>&gt;</td>
+                    <td>Greater than</td>
+                    <td>duration:&gt;1000</td>
+                  </tr>
+                  <tr>
+                    <td>&lt;</td>
+                    <td>Less than</td>
+                    <td>duration:&lt;100</td>
+                  </tr>
+                  <tr>
+                    <td>&gt;=</td>
+                    <td>Greater than or equal</td>
+                    <td>memory:&gt;=512</td>
+                  </tr>
+                  <tr>
+                    <td>&lt;=</td>
+                    <td>Less than or equal</td>
+                    <td>memory:&lt;=1024</td>
+                  </tr>
+                </tbody>
+              </Table>
+            </Stack>
+          </Card>
+          
+          <Card withBorder>
+            <Text fw={600} mb="xs">Boolean Logic</Text>
+            <Text>
+              Combine search terms with AND, OR, and NOT operators.
+            </Text>
+            <Code block mt="sm">
+              {`
+# Events with errors AND from production environment
+error AND environment:production
+
+# Events with warnings OR errors
+level:warning OR level:error
+
+# All events except those from development
+NOT environment:development
+              `}
+            </Code>
+          </Card>
+          
+          <Card withBorder>
+            <Text fw={600} mb="xs">Grouping</Text>
+            <Text>
+              Use parentheses to group expressions and control precedence.
+            </Text>
+            <Code block mt="sm">
+              {`
+# Events from production with errors or warnings
+environment:production AND (level:error OR level:warning)
+              `}
+            </Code>
+          </Card>
+          
+          <Button 
+            mt="md" 
+            fullWidth 
+            onClick={() => setSyntaxHelpOpen(false)}
+          >
+            Close
+          </Button>
+        </Stack>
+      </Modal>
+    </Stack>
   );
 };
 

@@ -15,7 +15,8 @@ import {
   TextInput,
   Stack,
   MultiSelect,
-  Loader
+  Loader,
+  ActionIcon
 } from '@mantine/core';
 import { 
   IconTag, 
@@ -104,9 +105,9 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
       return;
     }
     
-    const operations = selectedEvents.map(event => ({
+    const operations: BulkOperation[] = selectedEvents.map(event => ({
       issue_id: event.id,
-      operation_type: 'status',
+      operation_type: 'status' as 'status' | 'tag' | 'assign',
       data: { status }
     }));
     
@@ -144,9 +145,9 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
       return;
     }
     
-    const operations = selectedEvents.map(event => ({
+    const operations: BulkOperation[] = selectedEvents.map(event => ({
       issue_id: event.id,
-      operation_type: 'assign',
+      operation_type: 'assign' as 'status' | 'tag' | 'assign',
       data: { assignee: assigneeEmail.trim() }
     }));
     
@@ -185,9 +186,9 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
       return;
     }
     
-    const operations = selectedEvents.map(event => ({
+    const operations: BulkOperation[] = selectedEvents.map(event => ({
       issue_id: event.id,
-      operation_type: 'tag',
+      operation_type: 'tag' as 'status' | 'tag' | 'assign',
       data: { tags: selectedTags }
     }));
     
@@ -287,14 +288,23 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
                   
                   <Menu shadow="md" width={200}>
                     <Menu.Target>
-                      <Button 
-                        variant="light" 
-                        size="xs" 
-                        rightSection={<IconChevronRight size={12} />}
-                        loading={isProcessing}
-                      >
-                        More Actions
-                      </Button>
+                      <Group gap={4}>
+                        <Button 
+                          variant="light" 
+                          size="xs" 
+                          rightSection={<IconChevronRight size={12} />}
+                          loading={isProcessing}
+                        >
+                          More Actions
+                        </Button>
+                        <ActionIcon 
+                          variant="subtle" 
+                          size="sm"
+                          disabled={isProcessing}
+                        >
+                          <IconDotsVertical size={14} />
+                        </ActionIcon>
+                      </Group>
                     </Menu.Target>
                     
                     <Menu.Dropdown>
@@ -386,8 +396,13 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
             value={selectedTags}
             onChange={setSelectedTags}
             searchable
-            creatable
-            getCreateLabel={(query) => `+ Create "${query}"`}
+            // Using getOptionLabel and onCreate to replace creatable prop
+            getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+            onCreate={(query: string) => {
+              const newTag = query.trim();
+              setSelectedTags([...selectedTags, newTag]);
+              return newTag;
+            }}
             leftSection={<IconTag size={16} />}
           />
           <Group justify="right">

@@ -1,164 +1,107 @@
-// File: frontend/src/test/test-utils.tsx
-
 import React from 'react';
-import { render, RenderOptions } from '@testing-library/react';
+import { render as rtlRender, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MantineProvider } from '@mantine/core';
-import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
+import { Notifications } from '@mantine/notifications';
 import { BrowserRouter } from 'react-router-dom';
 
-// Mock store for testing
-const createMockStore = (initialState = {}) => {
-  return configureStore({
-    reducer: {
-      // Add your reducers here
-      app: (state = initialState) => state,
-    },
-    preloadedState: initialState,
-  });
-};
-
-interface AllProvidersProps {
-  children: React.ReactNode;
-  initialState?: any;
-  queryClientConfig?: any;
+// Create a custom render function that includes all providers
+interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
+  initialEntries?: string[];
+  route?: string;
 }
 
-export const AllProviders: React.FC<AllProvidersProps> = ({ 
-  children, 
-  initialState = {},
-  queryClientConfig = {}
-}) => {
+function customRender(
+  ui: React.ReactElement,
+  {
+    initialEntries = ['/'],
+    route = '/',
+    ...renderOptions
+  }: CustomRenderOptions = {}
+) {
+  // Create a new QueryClient for each test
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
-        refetchOnWindowFocus: false,
-        ...queryClientConfig.queries
       },
-      mutations: {
-        retry: false,
-        ...queryClientConfig.mutations
-      }
     },
-    logger: {
-      log: console.log,
-      warn: console.warn,
-      error: () => {}, // Silence errors in tests
-    }
   });
 
-  const store = createMockStore(initialState);
-
-  return (
-    <Provider store={store}>
+  function Wrapper({ children }: { children: React.ReactNode }) {
+    return (
       <QueryClientProvider client={queryClient}>
         <MantineProvider>
+          <Notifications />
           <BrowserRouter>
             {children}
           </BrowserRouter>
         </MantineProvider>
       </QueryClientProvider>
-    </Provider>
-  );
-};
-
-const customRender = (
-  ui: React.ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'> & {
-    initialState?: any;
-    queryClientConfig?: any;
+    );
   }
-) => {
-  const { initialState, queryClientConfig, ...renderOptions } = options || {};
 
-  return render(ui, {
-    wrapper: ({ children }) => (
-      <AllProviders initialState={initialState} queryClientConfig={queryClientConfig}>
-        {children}
-      </AllProviders>
-    ),
-    ...renderOptions,
-  });
-};
+  // Set the initial route
+  window.history.pushState({}, 'Test page', route);
+
+  return {
+    ...rtlRender(ui, { wrapper: Wrapper, ...renderOptions }),
+    queryClient,
+  };
+}
 
 // Re-export everything
 export * from '@testing-library/react';
+
+// Override render method
 export { customRender as render };
 
-// Utility functions for testing
-export const waitForLoadingToFinish = () =>
-  waitFor(() => {
-    const loadingElements = screen.queryAllByText(/loading/i);
-    expect(loadingElements).toHaveLength(0);
+// Helper to wait for async operations
+export async function waitForLoadingToFinish() {
+  // Proper imports for testing-library
+  const { waitFor } = await import('@testing-library/react');
+  
+  // Use the screen from testing-library
+  const screen = await import('@testing-library/react').then(mod => mod.screen);
+  const loadingElements = await screen.findAllByText(/loading/i);
+  
+  await waitFor(() => {
+    loadingElements.forEach((element: HTMLElement) => {
+      expect(element).not.toBeInTheDocument();
+    });
   });
+}
 
-export const createMockResponse = (data: any, options = {}) => ({
-  data,
-  status: 200,
-  statusText: 'OK',
-  headers: {},
-  config: {},
-  ...options
-});
-
-export const createMockError = (message = 'Error', status = 500) => ({
-  response: {
-    data: { detail: message },
-    status,
-    statusText: status === 404 ? 'Not Found' : 'Internal Server Error',
-  },
-  message,
-  isAxiosError: true
-});
-
-// Mock IntersectionObserver for virtualized components
-export const mockIntersectionObserver = () => {
-  const mockIntersectionObserver = vi.fn();
-  mockIntersectionObserver.mockReturnValue({
-    observe: vi.fn().mockReturnValue(null),
-    unobserve: vi.fn().mockReturnValue(null),
-    disconnect: vi.fn().mockReturnValue(null)
+// Helper to mock API responses
+export function mockApiResponse(endpoint: string, response: any, status = 200) {
+  global.fetch = jest.fn().mockImplementation((url) => {
+    if (url.includes(endpoint)) {
+      return Promise.resolve({
+        ok: status < 300,
+        status,
+        json: async () => response,
+      });
+    }
+    return Promise.reject(new Error('Not found'));
   });
-  window.IntersectionObserver = mockIntersectionObserver;
-};
+}
 
-// Mock ResizeObserver
-export const mockResizeObserver = () => {
-  const mockResizeObserver = vi.fn();
-  mockResizeObserver.mockReturnValue({
-    observe: vi.fn().mockReturnValue(null),
-    unobserve: vi.fn().mockReturnValue(null),
-    disconnect: vi.fn().mockReturnValue(null)
+// Helper to get by text with partial match
+export function getByTextContent(text: string) {
+  // Import screen from testing-library
+  const { screen } = require('@testing-library/react');
+  
+  return screen.getByText((content: string, element: Element | null) => {
+    const hasText = (element: Element | null): boolean => element?.textContent === text;
+    const elementHasText = hasText(element);
+    const childrenDontHaveText = element?.children 
+      ? Array.from(element.children).every((child: Element) => !hasText(child))
+      : true;
+    return elementHasText && childrenDontHaveText;
   });
-  window.ResizeObserver = mockResizeObserver;
-};
+}
 
-// Performance testing utilities
-export const measureRenderTime = async (component: React.ReactElement) => {
-  const startTime = performance.now();
-  const { unmount } = render(component);
-  await waitForLoadingToFinish();
-  const endTime = performance.now();
-  unmount();
-  return endTime - startTime;
-};
-
-export const simulateSlowNetwork = () => {
-  const originalFetch = global.fetch;
-  global.fetch = async (...args) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return originalFetch(...args);
-  };
-  return () => {
-    global.fetch = originalFetch;
-  };
-};
-
-// Accessibility testing utilities
-export const checkAccessibility = async (container: HTMLElement) => {
-  const axe = await import('axe-core');
-  const results = await axe.run(container);
-  return results.violations;
-};
+// Helper for testing navigation
+export function expectNavigation(pathname: string) {
+  expect(window.location.pathname).toBe(pathname);
+}

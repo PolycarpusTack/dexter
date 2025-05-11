@@ -1,18 +1,40 @@
 // Enhanced API client with path resolution
-import { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { AxiosRequestConfig } from 'axios';
 import { apiClient, EnhancedApiClient } from './apiClient';
 import { apiPathManager, HttpMethod } from '../config/api/pathMappings';
 import ErrorFactory from '../utils/errorFactory';
 
+// Define interfaces for better type safety
+interface PathParamsMap {
+  [key: string]: string | number | boolean;
+}
+
+// Interface for resolved path details
+interface Resolved {
+  path: string;
+  pathParams: PathParamsMap;
+  queryParams: Record<string, any>;
+  originalPath?: string;
+}
+
 export interface ApiCallOptions extends AxiosRequestConfig {
   retryConfig?: {
     maxRetries?: number;
-    retryDelay?: number;
+    retryDelay?: ((retryCount: number, error: unknown) => number);
   };
 }
 
 export class PathAwareApiClient extends EnhancedApiClient {
   private pathManager = apiPathManager;
+
+  constructor(
+    baseURL?: string,
+    config?: AxiosRequestConfig,
+    retryConfig?: any
+  ) {
+    super(baseURL, config, retryConfig);
+    // No need to override axiosInstance as it's now protected in the parent class
+  }
 
   async callEndpoint<T = any>(
     endpointName: string,
@@ -37,19 +59,34 @@ export class PathAwareApiClient extends EnhancedApiClient {
     // Resolve the path
     const path = endpoint.resolveBackendPath(params);
 
-    // Separate path and query parameters
-    const pathParams = Object.fromEntries(
-      Object.entries(params).filter(([key]) => endpoint.pathParams.includes(key))
-    );
-    const queryParams = Object.fromEntries(
-      Object.entries(params).filter(([key]) => endpoint.queryParams.includes(key))
-    );
+    // Separate path and query parameters with proper type assertions
+    const pathParamsMap: PathParamsMap = {};
+    const queryParams: Record<string, any> = {};
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (endpoint.pathParams.includes(key)) {
+        pathParamsMap[key] = value;
+      } else if (endpoint.queryParams.includes(key)) {
+        queryParams[key] = value;
+      }
+    });
 
     // Build request config
     const requestConfig: AxiosRequestConfig = {
       ...options,
       params: queryParams,
     };
+
+    // Create a resolved path object using our Resolved interface
+    const resolved: Resolved = {
+      path,
+      pathParams: pathParamsMap,
+      queryParams,
+      originalPath: endpoint.backendPath
+    };
+
+    // Log resolved path details for debugging
+    console.debug('Resolved endpoint path:', resolved);
 
     // Make the request based on method
     switch (endpoint.method) {
@@ -175,6 +212,40 @@ export class PathAwareApiClient extends EnhancedApiClient {
   // Get cached endpoints
   getCachedEndpoints() {
     return this.pathManager.getCachedEndpoints();
+  }
+  
+  // Use direct API call via the base apiClient
+  // This allows fallback to the standard API client when needed
+  async fallbackApiCall<T = any>(
+    method: HttpMethod,
+    path: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    switch (method) {
+      case HttpMethod.GET:
+        return apiClient.get<T>(path, config);
+      case HttpMethod.POST:
+        return apiClient.post<T>(path, data, config);
+      case HttpMethod.PUT:
+        return apiClient.put<T>(path, data, config);
+      case HttpMethod.DELETE:
+        return apiClient.delete<T>(path, config);
+      case HttpMethod.PATCH:
+        return apiClient.patch<T>(path, data, config);
+      default:
+        throw ErrorFactory.create(new Error(`Unsupported HTTP method: ${method}`));
+    }
+  }
+  
+  // This method uses the axiosInstance for direct access
+  async makeDirectRequest<T = any>(config: AxiosRequestConfig): Promise<T> {
+    try {
+      const response = await this.axiosInstance.request<T>(config);
+      return response.data;
+    } catch (error) {
+      throw ErrorFactory.create(error as Error);
+    }
   }
 }
 

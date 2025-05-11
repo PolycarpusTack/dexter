@@ -139,7 +139,9 @@ describe('EventTable', () => {
     });
 
     const envSelect = screen.getByLabelText(/environment/i);
-    await userEvent.selectOptions(envSelect, 'production');
+    
+    // Change selection
+    fireEvent.change(envSelect, { target: { value: 'production' } });
 
     expect(apiClient.get).toHaveBeenCalledWith(
       expect.any(String),
@@ -237,6 +239,40 @@ describe('EventTable', () => {
     await waitFor(() => {
       expect(screen.getByText(/event details/i)).toBeInTheDocument();
       expect(screen.getByText('TypeError: Cannot read property of undefined')).toBeInTheDocument();
+    });
+  });
+  
+  it('handles keyboard navigation through events', async () => {
+    render(
+      <TestWrapper>
+        <EventTable />
+      </TestWrapper>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Error in production')).toBeInTheDocument();
+    });
+
+    // Select the first row
+    const eventRow = screen.getByText('Error in production').closest('tr');
+    fireEvent.click(eventRow!);
+    
+    // Navigate to next row using keyboard
+    fireEvent.keyDown(eventRow!, { key: 'ArrowDown', code: 'ArrowDown' });
+    
+    // Check if the second row got focus
+    await waitFor(() => {
+      const secondRow = screen.getByText('Database connection failed').closest('tr');
+      expect(secondRow).toHaveFocus();
+    });
+    
+    // Press Enter to view details
+    const secondRow = screen.getByText('Database connection failed').closest('tr');
+    fireEvent.keyDown(secondRow!, { key: 'Enter', code: 'Enter' });
+    
+    await waitFor(() => {
+      expect(screen.getByText(/event details/i)).toBeInTheDocument();
+      expect(screen.getByText('Connection timeout')).toBeInTheDocument();
     });
   });
 

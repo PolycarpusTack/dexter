@@ -21,14 +21,13 @@ import {
   IconAlertCircle,
   IconBell,
 } from '@tabler/icons-react';
-import { useNotifications } from '@mantine/notifications';
+import { notifications } from '@mantine/notifications';
 import { alertsApi, AlertRuleResponse } from '../../api/alertsApi';
 import { AlertRuleBuilder } from './AlertRuleBuilder';
 import { useParams } from 'react-router-dom';
 
-export function AlertRules() {
+const AlertRules = () => {
   const { org, project } = useParams<{ org: string; project: string }>();
-  const notifications = useNotifications();
   const [loading, setLoading] = useState(true);
   const [rules, setRules] = useState<AlertRuleResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +106,7 @@ export function AlertRules() {
   if (loading) {
     return (
       <Card>
-        <Group position="center" mt="xl">
+        <Group justify="center" mt="xl">
           <Loader size="lg" />
         </Group>
       </Card>
@@ -116,10 +115,10 @@ export function AlertRules() {
 
   return (
     <Stack>
-      <Group position="apart">
+      <Group justify="space-between">
         <Title order={3}>Alert Rules</Title>
         <Button
-          leftIcon={<IconPlus size={16} />}
+          leftSection={<IconPlus size={16} />}
           onClick={handleCreate}
         >
           Create Alert Rule
@@ -148,9 +147,9 @@ export function AlertRules() {
             {rules.map((rule) => (
               <tr key={rule.id}>
                 <td>
-                  <Group spacing="xs">
+                  <Group gap="xs">
                     <IconBell size={16} />
-                    <Text weight={500}>{rule.name}</Text>
+                    <Text fw={500}>{rule.name}</Text>
                   </Group>
                 </td>
                 <td>
@@ -172,7 +171,7 @@ export function AlertRules() {
                 <td>{rule.environment || '-'}</td>
                 <td>{new Date(rule.dateCreated).toLocaleDateString()}</td>
                 <td>
-                  <Group spacing="xs">
+                  <Group gap="xs">
                     <Tooltip label="Edit">
                       <ActionIcon
                         color="blue"
@@ -197,7 +196,7 @@ export function AlertRules() {
         </Table>
 
         {rules.length === 0 && (
-          <Text color="dimmed" align="center" py="xl">
+          <Text c="dimmed" ta="center" py="xl">
             No alert rules found. Create your first rule to get started.
           </Text>
         )}
@@ -219,3 +218,5 @@ export function AlertRules() {
     </Stack>
   );
 }
+
+export default AlertRules;

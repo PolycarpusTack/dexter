@@ -1,4 +1,4 @@
-import api from '../utils/api';
+import { apiClient } from '../utils/api';
 
 export interface DiscoverQuery {
   fields: Array<{
@@ -44,7 +44,7 @@ export interface SavedQuery {
 const discoverApi = {
   // Execute a Discover query
   executeQuery: async (query: DiscoverQuery): Promise<QueryResult> => {
-    const response = await api.post('/api/discover/query', query);
+    const response = await apiClient.post('/api/discover/query', query);
     return response.data;
   },
 
@@ -53,26 +53,26 @@ const discoverApi = {
     query: string;
     context?: any;
   }): Promise<DiscoverQuery> => {
-    const response = await api.post('/api/discover/natural-language', naturalQuery);
+    const response = await apiClient.post('/api/discover/natural-language', naturalQuery);
     return response.data;
   },
 
   // Get available fields
   getFields: async (partial?: string): Promise<any[]> => {
     const params = partial ? { partial } : {};
-    const response = await api.get('/api/discover/fields', { params });
+    const response = await apiClient.get('/api/discover/fields', { params });
     return response.data;
   },
 
   // Get query examples
   getExamples: async (): Promise<any[]> => {
-    const response = await api.get('/api/discover/examples');
+    const response = await apiClient.get('/api/discover/examples');
     return response.data;
   },
 
   // Save a query
   saveQuery: async (savedQuery: Omit<SavedQuery, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>): Promise<SavedQuery> => {
-    const response = await api.post('/api/discover/saved-queries', savedQuery);
+    const response = await apiClient.post('/api/discover/saved-queries', savedQuery);
     return response.data;
   },
 
@@ -81,13 +81,13 @@ const discoverApi = {
     isPublic?: boolean;
     tags?: string[];
   }): Promise<SavedQuery[]> => {
-    const response = await api.get('/api/discover/saved-queries', { params: filters });
+    const response = await apiClient.get('/api/discover/saved-queries', { params: filters });
     return response.data;
   },
 
   // Get query syntax help
   getSyntaxHelp: async (): Promise<any> => {
-    const response = await api.get('/api/discover/syntax-help');
+    const response = await apiClient.get('/api/discover/syntax-help');
     return response.data;
   },
 };

@@ -1,17 +1,12 @@
 /**
- * Main application component with WebSocket integration
+ * Main application component
  */
 
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
-import { DashboardPage } from './pages/DashboardPage';
-import { IssuesPage } from './pages/IssuesPage';
-import { IssueDetailPage } from './pages/IssueDetailPage';
-import { useRealtimeUpdates } from './hooks/useRealtimeUpdates';
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -23,34 +18,22 @@ const queryClient = new QueryClient({
   },
 });
 
-function AppContent() {
-  // Initialize real-time updates
-  const { isConnected } = useRealtimeUpdates({
-    enabled: true,
-    autoReconnect: true,
-    showNotifications: true,
-    channels: ['issues', 'alerts', 'presence'],
-  });
-
-  return (
-    <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/issues" element={<IssuesPage />} />
-          <Route path="/issues/:id" element={<IssueDetailPage />} />
-        </Routes>
-      </Layout>
-    </Router>
-  );
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <MantineProvider>
         <Notifications />
-        <AppContent />
+        <Router>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<div>Dashboard Page</div>} />
+              <Route path="/issues" element={<div>Issues Page</div>} />
+              <Route path="/issues/:id" element={<div>Issue Detail Page</div>} />
+              <Route path="/discover" element={<div>Discover Page</div>} />
+              <Route path="/alert-rules" element={<div>Alert Rules Page</div>} />
+            </Routes>
+          </Layout>
+        </Router>
       </MantineProvider>
     </QueryClientProvider>
   );

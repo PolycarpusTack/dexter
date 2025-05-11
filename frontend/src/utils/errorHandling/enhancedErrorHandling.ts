@@ -1,3 +1,4 @@
+import React from 'react';
 import { 
   categorizeError as originalCategorizeError,
   ErrorCategory,
@@ -30,11 +31,11 @@ export function enhancedCategorizeError(error: any): ErrorCategory {
 
 // Enhanced error handler that combines both systems
 export function createEnhancedErrorHandler(context: ErrorContext = {}) {
-  const originalHandler = originalCreateErrorHandler(context);
+  const originalHandler = originalCreateErrorHandler(context.component || 'Unknown', { context });
   
   return async (error: any, options: ApiErrorOptions = {}) => {
     // Use original handler for basic error handling
-    await originalHandler(error);
+    originalHandler(error, context);
     
     // Add API-specific error handling
     await handleApiError(error, {
@@ -121,3 +122,6 @@ export const enhancedErrorHandling = {
   useErrorHandler: useEnhancedErrorHandler,
   showErrorNotification: showEnhancedErrorNotification
 };
+
+// Export the original withApiErrorHandling for compatibility
+export { withApiErrorHandling };

@@ -61,28 +61,38 @@ export class OptimizedIssueService {
   /**
    * Method with custom caching
    */
-  @cached(10 * 60 * 1000) // Cache for 10 minutes
   async getIssueStats(issueId: string) {
-    const [issue, events, comments] = await Promise.all([
-      this.getIssue(issueId),
-      apiClient.get(`/issues/${issueId}/events`),
-      apiClient.get(`/issues/${issueId}/comments`)
-    ]);
+    const cachedFn = cached(10 * 60 * 1000)(this, 'getIssueStats', {
+      value: async () => {
+        const [issue, events, comments] = await Promise.all([
+          this.getIssue(issueId),
+          apiClient.get(`/issues/${issueId}/events`),
+          apiClient.get(`/issues/${issueId}/comments`)
+        ]);
+        
+        return {
+          issue,
+          eventCount: events.length,
+          commentCount: comments.length
+        };
+      }
+    }).value;
     
-    return {
-      issue,
-      eventCount: events.length,
-      commentCount: comments.length
-    };
+    return cachedFn();
   }
   
   /**
    * Method with deduplication
    */
-  @deduplicated()
   async getProjectIssues(projectId: string) {
-    // Multiple components can call this method without causing duplicate requests
-    return apiClient.get(`/projects/${projectId}/issues`);
+    const deduplicatedFn = deduplicated()(this, 'getProjectIssues', {
+      value: async () => {
+        // Multiple components can call this method without causing duplicate requests
+        return apiClient.get(`/projects/${projectId}/issues`);
+      }
+    }).value;
+    
+    return deduplicatedFn();
   }
   
   /**

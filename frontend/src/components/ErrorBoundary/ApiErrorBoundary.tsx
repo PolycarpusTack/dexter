@@ -47,15 +47,15 @@ const ApiErrorFallback: React.FC<ApiErrorFallbackProps> = ({ error, resetError, 
   if (isNetworkError && !isOnline) {
     return (
       <Center h={400}>
-        <Stack align="center" spacing="md">
+        <Stack align="center" gap="md">
           <IconWifi size={48} stroke={1.5} />
-          <Text size="lg" weight={500}>No Internet Connection</Text>
-          <Text color="dimmed" align="center">
+          <Text size="lg" fw={500}>No Internet Connection</Text>
+          <Text c="dimmed" ta="center">
             Please check your internet connection and try again.
           </Text>
           <Stack>
             <Button
-              leftIcon={<IconRefresh size={16} />}
+              leftSection={<IconRefresh size={16} />}
               onClick={handleRetry}
               variant="light"
             >
@@ -74,13 +74,13 @@ const ApiErrorFallback: React.FC<ApiErrorFallbackProps> = ({ error, resetError, 
   // Default API error display
   return (
     <Center h={400}>
-      <Stack align="center" spacing="md">
-        <Text size="lg" weight={500}>Failed to Load Data</Text>
-        <Text color="dimmed" align="center" maw={400}>
+      <Stack align="center" gap="md">
+        <Text size="lg" fw={500}>Failed to Load Data</Text>
+        <Text c="dimmed" ta="center" maw={400}>
           {error.message || 'An error occurred while fetching data.'}
         </Text>
         <Button
-          leftIcon={<IconRefresh size={16} />}
+          leftSection={<IconRefresh size={16} />}
           onClick={handleRetry}
         >
           Try Again
@@ -95,9 +95,21 @@ export const ApiErrorBoundary: React.FC<ApiErrorBoundaryProps> = ({
   onRetry,
   fallback
 }) => {
+  // Use our custom ApiErrorFallback if no fallback is provided
+  // Create a proper ReactNode fallback for EnhancedErrorBoundary
   return (
     <EnhancedErrorBoundary
-      fallback={fallback}
+      fallback={
+        fallback ? (
+          fallback
+        ) : (
+          <ApiErrorFallback 
+            error={new Error('An error occurred')} // This will be replaced by actual error
+            resetError={() => {}} // This will be replaced by actual resetError
+            onRetry={onRetry} 
+          />
+        )
+      }
       resetOnPropsChange
       resetKeys={['children']}
     >

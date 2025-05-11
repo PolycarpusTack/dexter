@@ -86,21 +86,21 @@ export const ErrorRecovery: React.FC<ErrorRecoveryProps> = ({
 
   return (
     <Paper p="md" withBorder>
-      <Stack align="center" spacing="md">
+      <Stack align="center" gap="md">
         <IconAlertTriangle size={48} color="orange" />
         
-        <Text weight={500} size="lg" align="center">
+        <Text fw={500} size="lg" ta="center">
           Recovery in Progress
         </Text>
         
-        <Text size="sm" color="dimmed" align="center">
+        <Text size="sm" c="dimmed" ta="center">
           Attempting to recover from the error...
         </Text>
         
         {isRecovering && (
-          <Stack spacing="xs" w="100%">
+          <Stack gap="xs" w="100%">
             <Progress value={recoveryProgress} animated />
-            <Text size="xs" color="dimmed" align="center">
+            <Text size="xs" c="dimmed" ta="center">
               Attempt {attempts} of {maxAttempts}
             </Text>
           </Stack>
@@ -108,7 +108,7 @@ export const ErrorRecovery: React.FC<ErrorRecoveryProps> = ({
         
         {!isRecovering && attempts < maxAttempts && (
           <Button
-            leftIcon={<IconRefresh size={16} />}
+            leftSection={<IconRefresh size={16} />}
             onClick={handleManualRetry}
             variant="light"
           >
@@ -118,15 +118,17 @@ export const ErrorRecovery: React.FC<ErrorRecoveryProps> = ({
         
         {attempts >= maxAttempts && (
           <Stack align="center">
-            <Text color="red" size="sm">
+            <Text c="red" size="sm">
               Automatic recovery failed after {maxAttempts} attempts
             </Text>
-            <Button
-              leftIcon={<IconRefresh size={16} />}
-              onClick={() => window.location.reload()}
-            >
-              Reload Page
-            </Button>
+            <Center>
+              <Button
+                leftSection={<IconRefresh size={16} />}
+                onClick={() => window.location.reload()}
+              >
+                Reload Page
+              </Button>
+            </Center>
           </Stack>
         )}
       </Stack>

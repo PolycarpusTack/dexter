@@ -43,8 +43,8 @@ const TestAssignIssue: React.FC = () => {
 
   return (
     <Paper p="md" radius="md" withBorder>
-      <Stack spacing="md">
-        <Text size="lg" weight={600}>Test Issue Assignment</Text>
+      <Stack>
+        <Text size="lg" fw={600}>Test Issue Assignment</Text>
         
         <TextInput
           label="Issue ID"
@@ -71,8 +71,8 @@ const TestAssignIssue: React.FC = () => {
         </Group>
         
         {result && (
-          <Stack spacing="sm">
-            <Text weight={600}>Result:</Text>
+          <Stack>
+            <Text fw={600}>Result:</Text>
             <Code block>{JSON.stringify(result, null, 2)}</Code>
           </Stack>
         )}

@@ -1,3 +1,4 @@
+import React from 'react';
 import { ErrorCategory, categorizeError, showErrorNotification } from './errorHandling';
 import { Logger } from './logger';
 
@@ -62,7 +63,7 @@ export class ApiErrorHandler {
     this.registerRecoveryStrategy('auth', {
       shouldAttempt: (error) => {
         const category = categorizeError(error);
-        return category === 'authentication' || 
+        return category === 'authorization' || 
                (error.response?.status === 401 || error.response?.status === 403);
       },
       execute: async (error) => {
@@ -125,7 +126,11 @@ export class ApiErrorHandler {
     }
   }
 
-  private createErrorDetails(error: any, options: ApiErrorOptions): ErrorDetails {
+  public categorizeError(error: any): ErrorCategory {
+    return categorizeError(error);
+  }
+
+  public createErrorDetails(error: any, options: ApiErrorOptions): ErrorDetails {
     const category = categorizeError(error);
     const timestamp = new Date().toISOString();
     
@@ -189,32 +194,36 @@ export class ApiErrorHandler {
   private notifyUser(errorDetails: ErrorDetails, customMessage?: string) {
     const message = customMessage || this.getUserFriendlyMessage(errorDetails);
     showErrorNotification({
-      title: 'Error',
+      title: errorDetails.code ? `Error ${errorDetails.code}` : 'Error',
       message,
       autoClose: errorDetails.category === 'validation' ? 10000 : 5000
     });
   }
 
-  private getUserFriendlyMessage(errorDetails: ErrorDetails): string {
+  public getUserFriendlyMessage(errorDetails: ErrorDetails): string {
     switch (errorDetails.category) {
       case 'network':
         return 'Unable to connect to the server. Please check your internet connection.';
-      case 'authentication':
+      case 'authorization':
         return 'Your session has expired. Please log in again.';
       case 'validation':
         return errorDetails.message || 'Please check your input and try again.';
-      case 'server':
+      case 'server_error':
         return 'The server encountered an error. Please try again later.';
-      case 'not-found':
+      case 'not_found':
         return 'The requested resource was not found.';
-      case 'permission':
-        return 'You do not have permission to perform this action.';
+      case 'timeout':
+        return 'The request timed out. Please try again.';
+      case 'client_error':
+        return 'There was an error with your request. Please check and try again.';
+      case 'parsing':
+        return 'Error processing the response. Please try again.';
       default:
         return 'An unexpected error occurred. Please try again.';
     }
   }
 
-  private async attemptRecovery(error: any): Promise<boolean> {
+  public async attemptRecovery(error: any): Promise<boolean> {
     for (const [name, strategy] of this.recoveryStrategies) {
       if (strategy.shouldAttempt(error)) {
         try {
@@ -223,7 +232,11 @@ export class ApiErrorHandler {
           Logger.info(`${name} recovery strategy succeeded`);
           return true;
         } catch (recoveryError) {
-          Logger.error(`${name} recovery strategy failed`, recoveryError);
+          // Convert unknown error to LogData type or undefined
+          const logData = recoveryError ? { 
+            error: typeof recoveryError === 'object' ? recoveryError : String(recoveryError) 
+          } : undefined;
+          Logger.error(`${name} recovery strategy failed`, logData);
         }
       }
     }
@@ -286,6 +299,6 @@ export function withApiErrorHandler<P extends object>(
       };
     }, []);
 
-    return <Component {...props} />;
+    return React.createElement(Component, props);
   };
 }

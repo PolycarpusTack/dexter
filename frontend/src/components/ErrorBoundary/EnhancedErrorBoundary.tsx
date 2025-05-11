@@ -40,7 +40,7 @@ export class EnhancedErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
 
     // Log error
@@ -66,7 +66,7 @@ export class EnhancedErrorBoundary extends Component<Props, State> {
     }
   }
 
-  componentDidUpdate(prevProps: Props) {
+  override componentDidUpdate(prevProps: Props) {
     const { resetOnPropsChange, resetKeys } = this.props;
     const { hasError } = this.state;
 
@@ -85,7 +85,7 @@ export class EnhancedErrorBoundary extends Component<Props, State> {
     }
   }
 
-  componentWillUnmount() {
+  override componentWillUnmount() {
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
     }
@@ -143,7 +143,7 @@ export class EnhancedErrorBoundary extends Component<Props, State> {
     }
   };
 
-  render() {
+  override render() {
     const { hasError, error, retryCount } = this.state;
     const { children, fallback } = this.props;
 
@@ -155,28 +155,28 @@ export class EnhancedErrorBoundary extends Component<Props, State> {
       return (
         <Container size="sm" py="xl">
           <Paper p="xl" shadow="sm" withBorder>
-            <Stack spacing="md" align="center">
+            <Stack gap="md" align="center">
               <IconAlertCircle size={48} color="red" />
               
-              <Title order={2} align="center">
+              <Title order={2} ta="center">
                 Something went wrong
               </Title>
               
-              <Text align="center" color="dimmed">
+              <Text ta="center" c="dimmed">
                 We're sorry for the inconvenience. An unexpected error occurred.
               </Text>
 
               {error && (
                 <Paper p="md" bg="gray.0" radius="sm" w="100%">
-                  <Text size="sm" color="red" style={{ wordBreak: 'break-word' }}>
+                  <Text size="sm" c="red" style={{ wordBreak: 'break-word' }}>
                     {error.message}
                   </Text>
                 </Paper>
               )}
 
-              <Group position="center" mt="md">
+              <Group justify="center" mt="md">
                 <Button
-                  leftIcon={<IconRefresh size={16} />}
+                  leftSection={<IconRefresh size={16} />}
                   onClick={this.handleRetry}
                   disabled={retryCount >= this.maxRetries}
                 >
@@ -185,14 +185,14 @@ export class EnhancedErrorBoundary extends Component<Props, State> {
                 
                 <Button
                   variant="light"
-                  leftIcon={<IconBug size={16} />}
+                  leftSection={<IconBug size={16} />}
                   onClick={this.handleReportError}
                 >
                   Report Error
                 </Button>
               </Group>
 
-              <Text size="xs" color="dimmed" align="center">
+              <Text size="xs" c="dimmed" ta="center">
                 If the problem persists, please contact support.
               </Text>
             </Stack>

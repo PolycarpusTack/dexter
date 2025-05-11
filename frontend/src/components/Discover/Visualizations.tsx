@@ -10,9 +10,9 @@ import {
   SimpleGrid,
   ColorInput,
   Switch,
-  NumberInput,
   Menu,
   ActionIcon,
+  Card,
 } from '@mantine/core';
 import {
   IconChartBar,
@@ -22,7 +22,13 @@ import {
   IconTable,
   IconDownload,
   IconSettings,
-  IconDots,
+  IconCalculator,
+  IconStack,
+  IconTarget,
+  IconBrush,
+  IconActivity,
+  IconGraph,
+  IconChartBubble,
 } from '@tabler/icons-react';
 import {
   LineChart,
@@ -41,10 +47,11 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { DiscoverQueryResponse } from '../../utils/api';
 
 // Types
 interface VisualizationProps {
-  data: any;
+  data: DiscoverQueryResponse;
   query: any;
 }
 
@@ -76,7 +83,7 @@ const CHART_COLORS = [
 ];
 
 // Component
-const Visualizations: React.FC<VisualizationProps> = ({ data, query }) => {
+const Visualizations: React.FC<VisualizationProps> = ({ data, query: _query }) => {
   const [chartConfig, setChartConfig] = useState<ChartConfig>({
     type: 'bar',
     showGrid: true,
@@ -142,7 +149,7 @@ const Visualizations: React.FC<VisualizationProps> = ({ data, query }) => {
     if (!chartConfig.xAxis || !chartConfig.yAxis) {
       return (
         <Box p="xl" style={{ textAlign: 'center' }}>
-          <Text color="dimmed">Please select X and Y axes to visualize data</Text>
+          <Text c="dimmed">Please select X and Y axes to visualize data</Text>
         </Box>
       );
     }
@@ -207,10 +214,10 @@ const Visualizations: React.FC<VisualizationProps> = ({ data, query }) => {
         );
 
       case 'pie':
-        const pieData = chartData.map((item) => ({
-          name: item[chartConfig.xAxis],
-          value: item[chartConfig.yAxis],
-        }));
+        const pieData = chartData.map((item: any) => ({
+          name: chartConfig.xAxis ? item[chartConfig.xAxis] : undefined,
+          value: chartConfig.yAxis ? item[chartConfig.yAxis] : undefined,
+        })).filter(item => item.name !== undefined && item.value !== undefined);
 
         return (
           <ResponsiveContainer width="100%" height={400}>
@@ -224,7 +231,7 @@ const Visualizations: React.FC<VisualizationProps> = ({ data, query }) => {
                 outerRadius={150}
                 label
               >
-                {pieData.map((entry, index) => (
+                {pieData.map((_entry: any, index: number) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={CHART_COLORS[index % CHART_COLORS.length]}
@@ -244,31 +251,62 @@ const Visualizations: React.FC<VisualizationProps> = ({ data, query }) => {
 
   // Export chart as image
   const exportChart = () => {
-    // Implementation would use a library like html2canvas or dom-to-image
+    // TODO: Implement chart export functionality using html2canvas or dom-to-image
     console.log('Export chart functionality to be implemented');
   };
 
   return (
     <Box>
-      <Stack spacing="md">
+      <Stack gap="md">
         {/* Chart Type Selector */}
         <Paper p="md" withBorder>
-          <Group position="apart">
+          <Group justify="space-between">
             <Group>
-              <Select
-                label="Chart Type"
-                value={chartConfig.type}
-                onChange={(value) =>
-                  setChartConfig((prev) => ({ ...prev, type: value as ChartType }))
-                }
-                data={[
-                  { value: 'bar', label: 'Bar Chart' },
-                  { value: 'line', label: 'Line Chart' },
-                  { value: 'area', label: 'Area Chart' },
-                  { value: 'pie', label: 'Pie Chart' },
-                ]}
-                icon={<IconChartBar size={16} />}
-              />
+              <Stack gap="xs">
+                <Text size="sm" fw={500}>Chart Type</Text>
+                <Group>
+                  <ActionIcon 
+                    variant={chartConfig.type === 'bar' ? 'filled' : 'subtle'}
+                    color="blue"
+                    onClick={() => setChartConfig(prev => ({ ...prev, type: 'bar' }))}
+                    title="Bar Chart"
+                  >
+                    <IconChartBar size={18} />
+                  </ActionIcon>
+                  <ActionIcon 
+                    variant={chartConfig.type === 'line' ? 'filled' : 'subtle'}
+                    color="blue"
+                    onClick={() => setChartConfig(prev => ({ ...prev, type: 'line' }))}
+                    title="Line Chart"
+                  >
+                    <IconChartLine size={18} />
+                  </ActionIcon>
+                  <ActionIcon 
+                    variant={chartConfig.type === 'area' ? 'filled' : 'subtle'}
+                    color="blue"
+                    onClick={() => setChartConfig(prev => ({ ...prev, type: 'area' }))}
+                    title="Area Chart"
+                  >
+                    <IconChartArea size={18} />
+                  </ActionIcon>
+                  <ActionIcon 
+                    variant={chartConfig.type === 'pie' ? 'filled' : 'subtle'}
+                    color="blue"
+                    onClick={() => setChartConfig(prev => ({ ...prev, type: 'pie' }))}
+                    title="Pie Chart"
+                  >
+                    <IconChartPie size={18} />
+                  </ActionIcon>
+                  <ActionIcon 
+                    variant={chartConfig.type === 'table' ? 'filled' : 'subtle'}
+                    color="blue"
+                    onClick={() => setChartConfig(prev => ({ ...prev, type: 'table' }))}
+                    title="Table View"
+                  >
+                    <IconTable size={18} />
+                  </ActionIcon>
+                </Group>
+              </Stack>
               <Select
                 label="X Axis"
                 placeholder="Select field"
@@ -306,7 +344,7 @@ const Visualizations: React.FC<VisualizationProps> = ({ data, query }) => {
                   </ActionIcon>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Stack spacing="xs" p="sm">
+                  <Stack gap="xs" p="sm">
                     <Switch
                       label="Show Grid"
                       checked={chartConfig.showGrid}
@@ -340,7 +378,7 @@ const Visualizations: React.FC<VisualizationProps> = ({ data, query }) => {
                 </Menu.Dropdown>
               </Menu>
               <Button
-                leftIcon={<IconDownload size={16} />}
+                leftSection={<IconDownload size={16} />}
                 variant="default"
                 onClick={exportChart}
               >
@@ -356,7 +394,7 @@ const Visualizations: React.FC<VisualizationProps> = ({ data, query }) => {
             renderChart()
           ) : (
             <Box p="xl" style={{ textAlign: 'center' }}>
-              <Text color="dimmed">No data available for visualization</Text>
+              <Text c="dimmed">No data available for visualization</Text>
             </Box>
           )}
         </Paper>
@@ -364,14 +402,59 @@ const Visualizations: React.FC<VisualizationProps> = ({ data, query }) => {
         {/* Chart Info */}
         {chartData.length > 0 && (
           <Paper p="md" withBorder>
-            <Group position="apart">
-              <Text size="sm" color="dimmed">
-                Showing {chartData.length} data points
-              </Text>
-              <Text size="sm" color="dimmed">
-                Last updated: {new Date(data.executedAt).toLocaleString()}
-              </Text>
-            </Group>
+            <Stack gap="md">
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">
+                  Showing {chartData.length} data points
+                </Text>
+                <Text size="sm" c="dimmed">
+                  {data.executedAt ? 
+                    `Last updated: ${new Date(data.executedAt).toLocaleString()}` : 
+                    'Last updated: Not available'
+                  }
+                </Text>
+              </Group>
+              
+              {/* Advanced Visualization Options */}
+              <SimpleGrid cols={4}>
+                <Card withBorder p="xs">
+                  <Group>
+                    <IconCalculator size={18} />
+                    <Text size="sm">Analytics</Text>
+                  </Group>
+                </Card>
+                <Card withBorder p="xs">
+                  <Group>
+                    <IconStack size={18} />
+                    <Text size="sm">Data Layers</Text>
+                  </Group>
+                </Card>
+                <Card withBorder p="xs">
+                  <Group>
+                    <IconTarget size={18} />
+                    <Text size="sm">Anomalies</Text>
+                  </Group>
+                </Card>
+                <Card withBorder p="xs">
+                  <Group>
+                    <IconBrush size={18} />
+                    <Text size="sm">Themes</Text>
+                  </Group>
+                </Card>
+              </SimpleGrid>
+              
+              <Group sx={{ justifyContent: 'center' }}>
+                <Button variant="subtle" leftSection={<IconActivity size={16} />}>
+                  View Trends
+                </Button>
+                <Button variant="subtle" leftSection={<IconGraph size={16} />}>
+                  Compare Metrics
+                </Button>
+                <Button variant="subtle" leftSection={<IconChartBubble size={16} />}>
+                  Advanced Analysis
+                </Button>
+              </Group>
+            </Stack>
           </Paper>
         )}
       </Stack>

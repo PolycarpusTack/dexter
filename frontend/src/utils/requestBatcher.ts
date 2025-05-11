@@ -158,7 +158,7 @@ export class RequestBatcher {
    */
   private getBatchKey(endpoint: string, method: string): string {
     // Extract base path for batching similar requests
-    const basePath = endpoint.split('?')[0].split('/').slice(0, 3).join('/');
+    const basePath = endpoint ? endpoint.split('?')[0].split('/').slice(0, 3).join('/') : '';
     return `${method}:${basePath}`;
   }
 
@@ -214,7 +214,7 @@ requestBatcher.registerProcessor('GET:/issues', async (items) => {
   // Map results back to individual requests
   return items.map(item => {
     const match = item.endpoint.match(/\/issues\/([^\/\?]+)/);
-    if (match) {
+    if (match && match[1]) {
       return data[match[1]];
     }
     return null;
