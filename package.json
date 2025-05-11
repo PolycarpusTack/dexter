@@ -1,0 +1,23 @@
+{
+  "name": "dexter-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dexter - Sentry Observability Companion",
+  "scripts": {
+    "generate:api-types": "node scripts/generate-api-types.js",
+    "generate:types": "npm run generate:api-types",
+    "frontend:dev": "cd frontend && npm run dev",
+    "backend:dev": "cd backend && python -m app.main",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && poetry install",
+    "postinstall": "npm run generate:types"
+  },
+  "devDependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "workspaces": [
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

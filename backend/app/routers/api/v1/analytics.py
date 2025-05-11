@@ -7,8 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional, Dict, Any
 import logging
 import httpx
+from fastapi import Request
 
 from app.services.sentry_client import SentryApiClient
+from app.services.cache_service import cached
 from app.config import settings
 from app.models.analytics import AnalyticsResponse
 
@@ -32,7 +34,9 @@ async def get_sentry_client():
     summary="Get Issue Impact",
     description="Get impact statistics for an issue"
 )
+@cached(ttl=600, prefix="issue_impact")  # 10 minute TTL
 async def get_issue_impact(
+    request: Request,
     issue_id: str,
     stats_period: Optional[str] = Query("7d", description="Stats period (e.g., 7d, 24h, 30d)"),
     environment: Optional[str] = Query(None, description="Filter by environment"),
@@ -82,7 +86,9 @@ async def get_issue_impact(
     summary="Get Issue Frequency",
     description="Get frequency data for an issue over time"
 )
+@cached(ttl=600, prefix="issue_frequency")  # 10 minute TTL
 async def get_issue_frequency(
+    request: Request,
     issue_id: str,
     stats_period: Optional[str] = Query("24h", description="Stats period (e.g., 24h, 7d, 30d)"),
     interval: Optional[str] = Query(None, description="Stats interval (e.g., 1h, 1d)"),
@@ -133,7 +139,9 @@ async def get_issue_frequency(
     summary="Get Issue Tags Distribution",
     description="Get tag distribution for an issue"
 )
+@cached(ttl=600, prefix="issue_tags")  # 10 minute TTL
 async def get_issue_tags(
+    request: Request,
     issue_id: str,
     stats_period: Optional[str] = Query("7d", description="Stats period (e.g., 7d, 24h, 30d)"),
     environment: Optional[str] = Query(None, description="Filter by environment"),

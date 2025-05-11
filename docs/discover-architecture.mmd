@@ -1,0 +1,57 @@
+graph TB
+    subgraph Frontend
+        A[DiscoverPage] --> B[QueryBuilder]
+        A --> C[ResultTable]
+        A --> D[Visualizations]
+        A --> E[SavedQueries]
+        A --> F[QueryHistory]
+        
+        B --> G[Visual Builder]
+        B --> H[Natural Language]
+        B --> I[JSON Editor]
+        
+        C --> J[Data Grid]
+        C --> K[Export]
+        C --> L[Pagination]
+        
+        D --> M[Charts]
+        D --> N[Configuration]
+    end
+    
+    subgraph API Layer
+        O[Discover API Client] --> P[Execute Query]
+        O --> Q[Natural Language]
+        O --> R[Field Suggestions]
+        O --> S[Save/Load Queries]
+    end
+    
+    subgraph Backend
+        T[Discover Router] --> U[Query Endpoint]
+        T --> V[NL Conversion]
+        T --> W[Fields Endpoint]
+        T --> X[Saved Queries]
+        
+        Y[Discover Service] --> Z[Query Validation]
+        Y --> AA[Field Management]
+        Y --> AB[Query Examples]
+        
+        AC[Enhanced Sentry Client] --> AD[Sentry Discover API]
+        AC --> AE[Pagination Handler]
+        AC --> AF[Error Transformer]
+    end
+    
+    subgraph External
+        AG[Sentry API]
+        AH[LLM Service]
+    end
+    
+    A --> O
+    O --> T
+    T --> Y
+    Y --> AC
+    AC --> AG
+    V --> AH
+    
+    style A fill:#f9f,stroke:#333,stroke-width:4px
+    style AG fill:#bbf,stroke:#333,stroke-width:4px
+    style AH fill:#bbf,stroke:#333,stroke-width:4px

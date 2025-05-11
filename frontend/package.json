@@ -39,6 +39,8 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "js-yaml": "^4.1.0",
+    "openapi-typescript": "^6.7.0",
     "postcss": "^8.4.38",
     "rimraf": "^6.0.1",
     "rollup-plugin-visualizer": "^5.14.0",
@@ -58,7 +60,8 @@
     "clean": "rimraf dist",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "optimize": "npm run clean && npm run build:prod",
-    "size": "npm run build:analyze"
+    "size": "npm run build:analyze",
+    "generate:api-types": "node ../scripts/generate-api-types.js"
   },
   "resolutions": {
     "@mantine/hooks": "7.10.1",

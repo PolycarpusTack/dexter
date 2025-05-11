@@ -1,36 +1,71 @@
 // File: frontend/src/api/apiClient.ts
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosError, AxiosResponse } from 'axios';
 import { API_BASE_URL, axiosConfig } from './config';
 import retryManager, { RetryConfig } from '../utils/retryManager';
 import ErrorFactory, { ApiError } from '../utils/errorFactory';
 import { logErrorToService } from '../utils/errorTracking';
+import { requestBatcher } from '../utils/requestBatcher';
+import { requestDeduplicator } from '../utils/requestDeduplicator';
+import { requestCache } from '../utils/requestCache';
 
 /**
- * Enhanced API client with retry capability and structured error handling
+ * API optimization options
+ */
+interface OptimizationOptions {
+  enableBatching?: boolean;
+  enableDeduplication?: boolean;
+  enableCaching?: boolean;
+  cacheOptions?: {
+    ttl?: number;
+    storage?: 'memory' | 'localStorage' | 'sessionStorage';
+  };
+  compressionThreshold?: number;
+}
+
+/**
+ * Enhanced API client with retry capability, structured error handling, and performance optimizations
  */
 export class EnhancedApiClient {
   private axiosInstance: AxiosInstance;
   private defaultRetryConfig: Partial<RetryConfig>;
+  private optimizations: Required<OptimizationOptions>;
   
   /**
    * Creates a new EnhancedApiClient instance
    * @param baseURL - Base URL for API requests
    * @param config - Axios config options
    * @param retryConfig - Retry configuration
+   * @param optimizations - Performance optimization options
    */
   constructor(
     baseURL: string = API_BASE_URL, 
     config: AxiosRequestConfig = axiosConfig,
-    retryConfig: Partial<RetryConfig> = {}
+    retryConfig: Partial<RetryConfig> = {},
+    optimizations: OptimizationOptions = {}
   ) {
+    // Set default optimization options
+    this.optimizations = {
+      enableBatching: true,
+      enableDeduplication: true,
+      enableCaching: true,
+      cacheOptions: {
+        ttl: 5 * 60 * 1000, // 5 minutes
+        storage: 'memory',
+        ...optimizations.cacheOptions
+      },
+      compressionThreshold: 1024, // 1KB
+      ...optimizations
+    };
+    
     // Create axios instance
     this.axiosInstance = axios.create({
       baseURL,
       ...config,
       headers: {
         ...config.headers,
-        'Accept': 'application/json',
+        'Accept': 'application/json, application/gzip',
+        'Accept-Encoding': 'gzip, deflate',
       }
     });
     
@@ -40,7 +75,7 @@ export class EnhancedApiClient {
       ...retryConfig
     };
     
-    // Add response interceptors
+    // Add request and response interceptors
     this.setupInterceptors();
   }
   
@@ -48,23 +83,76 @@ export class EnhancedApiClient {
    * Set up request and response interceptors
    */
   private setupInterceptors() {
-    // Request interceptor for logging and request enhancement
+    // Request interceptor for logging, compression, and caching
     this.axiosInstance.interceptors.request.use(
       (config) => {
-        // You could add request timing, logging, etc. here
+        // Add request timing
+        (config as any).metadata = { startTime: new Date().getTime() };
+        
+        // Check if request should be compressed
+        if (config.data && this.shouldCompress(config.data)) {
+          // In a real implementation, you'd compress the data here
+          config.headers['Content-Encoding'] = 'gzip';
+        }
+        
+        // Add cache headers if caching is enabled
+        if (this.optimizations.enableCaching && config.method === 'GET') {
+          const cached = requestCache.get(config.url!, config);
+          if (cached && cached.etag) {
+            config.headers['If-None-Match'] = cached.etag;
+          }
+        }
+        
         return config;
       },
       (error) => {
-        // Handle request preparation errors
         console.error('Request preparation error:', error);
         return Promise.reject(error);
       }
     );
     
-    // Response interceptor for error handling
+    // Response interceptor for error handling, timing, and caching
     this.axiosInstance.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Calculate request duration
+        const metadata = (response.config as any).metadata;
+        if (metadata?.startTime) {
+          const duration = new Date().getTime() - metadata.startTime;
+          (response as any).duration = duration;
+        }
+        
+        // Handle caching for GET requests
+        if (this.optimizations.enableCaching && response.config.method === 'GET') {
+          const etag = response.headers['etag'];
+          const cacheControl = response.headers['cache-control'];
+          
+          let ttl: number | undefined;
+          if (cacheControl) {
+            const maxAge = cacheControl.match(/max-age=(\d+)/);
+            if (maxAge) {
+              ttl = parseInt(maxAge[1]) * 1000;
+            }
+          }
+          
+          requestCache.set(
+            response.config.url!,
+            response.data,
+            response.config,
+            { ttl, etag }
+          );
+        }
+        
+        return response;
+      },
       (error: AxiosError) => {
+        // Handle 304 Not Modified
+        if (error.response?.status === 304) {
+          const cached = requestCache.get(error.config!.url!, error.config);
+          if (cached) {
+            return { ...error.response, data: cached };
+          }
+        }
+        
         // Log the error
         console.error('API Error:', error);
         
@@ -82,6 +170,7 @@ export class EnhancedApiClient {
             source: 'apiClient',
             url: error.config?.url,
             method: error.config?.method,
+            duration: (error.response as any)?.duration,
           });
         }
         
@@ -154,30 +243,50 @@ export class EnhancedApiClient {
   }
   
   /**
-   * Make GET request with retry
-   * @param url - Request URL
-   * @param config - Axios request config
-   * @param retryConfig - Custom retry configuration for this request
-   * @returns Promise with the response data
+   * Check if data should be compressed
+   */
+  private shouldCompress(data: any): boolean {
+    if (!data) return false;
+    
+    const size = typeof data === 'string' ? 
+      data.length : 
+      JSON.stringify(data).length;
+    
+    return size > this.optimizations.compressionThreshold;
+  }
+  
+  /**
+   * Make optimized GET request
    */
   async get<T = any>(
     url: string, 
     config?: AxiosRequestConfig,
     retryConfig?: Partial<RetryConfig>
   ): Promise<T> {
-    return retryManager.execute(
+    // Check cache first
+    if (this.optimizations.enableCaching) {
+      const cached = requestCache.get<T>(url, config);
+      if (cached !== null) {
+        return cached;
+      }
+    }
+    
+    // Define the actual request function
+    const requestFn = () => retryManager.execute(
       () => this.axiosInstance.get<T>(url, config).then(response => response.data),
       { ...this.defaultRetryConfig, ...retryConfig }
     );
+    
+    // Apply deduplication
+    if (this.optimizations.enableDeduplication) {
+      return requestDeduplicator.deduplicate(url, requestFn, config);
+    }
+    
+    return requestFn();
   }
   
   /**
-   * Make POST request with retry
-   * @param url - Request URL
-   * @param data - Request payload
-   * @param config - Axios request config
-   * @param retryConfig - Custom retry configuration for this request
-   * @returns Promise with the response data
+   * Make optimized POST request
    */
   async post<T = any>(
     url: string,
@@ -185,6 +294,7 @@ export class EnhancedApiClient {
     config?: AxiosRequestConfig,
     retryConfig?: Partial<RetryConfig>
   ): Promise<T> {
+    // POST requests typically shouldn't be deduplicated or cached
     return retryManager.execute(
       () => this.axiosInstance.post<T>(url, data, config).then(response => response.data),
       { ...this.defaultRetryConfig, ...retryConfig }
@@ -192,12 +302,7 @@ export class EnhancedApiClient {
   }
   
   /**
-   * Make PUT request with retry
-   * @param url - Request URL
-   * @param data - Request payload
-   * @param config - Axios request config
-   * @param retryConfig - Custom retry configuration for this request
-   * @returns Promise with the response data
+   * Make optimized PUT request
    */
   async put<T = any>(
     url: string,
@@ -212,17 +317,18 @@ export class EnhancedApiClient {
   }
   
   /**
-   * Make DELETE request with retry
-   * @param url - Request URL
-   * @param config - Axios request config
-   * @param retryConfig - Custom retry configuration for this request
-   * @returns Promise with the response data
+   * Make optimized DELETE request
    */
   async delete<T = any>(
     url: string,
     config?: AxiosRequestConfig,
     retryConfig?: Partial<RetryConfig>
   ): Promise<T> {
+    // Clear cache for this resource
+    if (this.optimizations.enableCaching) {
+      requestCache.remove(url, config);
+    }
+    
     return retryManager.execute(
       () => this.axiosInstance.delete<T>(url, config).then(response => response.data),
       { ...this.defaultRetryConfig, ...retryConfig }
@@ -230,12 +336,7 @@ export class EnhancedApiClient {
   }
   
   /**
-   * Make PATCH request with retry
-   * @param url - Request URL
-   * @param data - Request payload
-   * @param config - Axios request config
-   * @param retryConfig - Custom retry configuration for this request
-   * @returns Promise with the response data
+   * Make optimized PATCH request
    */
   async patch<T = any>(
     url: string,
@@ -243,6 +344,11 @@ export class EnhancedApiClient {
     config?: AxiosRequestConfig,
     retryConfig?: Partial<RetryConfig>
   ): Promise<T> {
+    // Clear cache for this resource
+    if (this.optimizations.enableCaching) {
+      requestCache.remove(url, config);
+    }
+    
     return retryManager.execute(
       () => this.axiosInstance.patch<T>(url, data, config).then(response => response.data),
       { ...this.defaultRetryConfig, ...retryConfig }
@@ -250,24 +356,87 @@ export class EnhancedApiClient {
   }
   
   /**
+   * Batch multiple GET requests
+   */
+  async batchGet<T = any>(urls: string[], config?: AxiosRequestConfig): Promise<T[]> {
+    if (!this.optimizations.enableBatching) {
+      // Fallback to individual requests
+      return Promise.all(urls.map(url => this.get<T>(url, config)));
+    }
+    
+    // Use request batcher
+    return Promise.all(
+      urls.map(url => requestBatcher.batch<T>(url, config))
+    );
+  }
+  
+  /**
+   * Invalidate cache for specific URL or pattern
+   */
+  invalidateCache(urlPattern: string | RegExp) {
+    if (typeof urlPattern === 'string') {
+      requestCache.remove(urlPattern);
+    } else {
+      // For RegExp patterns, we'd need to implement pattern matching in the cache
+      console.warn('RegExp cache invalidation not yet implemented');
+    }
+  }
+  
+  /**
+   * Clear all caches
+   */
+  clearCache() {
+    requestCache.clear();
+  }
+  
+  /**
+   * Get cache statistics
+   */
+  getCacheStats() {
+    return requestCache.getStats();
+  }
+  
+  /**
    * Get raw axios instance for custom usage
-   * @returns Axios instance
    */
   getAxiosInstance(): AxiosInstance {
     return this.axiosInstance;
   }
+  
+  /**
+   * Update optimization settings
+   */
+  updateOptimizations(options: Partial<OptimizationOptions>) {
+    this.optimizations = {
+      ...this.optimizations,
+      ...options
+    };
+  }
 }
 
-// Export default API client instance
+// Export default API client instance with optimizations
 export const apiClient = new EnhancedApiClient();
 
 // Export factory function for creating custom API clients
 export function createApiClient(
   baseURL?: string,
   config?: AxiosRequestConfig,
-  retryConfig?: Partial<RetryConfig>
+  retryConfig?: Partial<RetryConfig>,
+  optimizations?: OptimizationOptions
 ): EnhancedApiClient {
-  return new EnhancedApiClient(baseURL, config, retryConfig);
+  return new EnhancedApiClient(baseURL, config, retryConfig, optimizations);
 }
+
+// Create specialized clients for different use cases
+export const uncachedClient = createApiClient(undefined, undefined, undefined, {
+  enableCaching: false
+});
+
+export const persistentClient = createApiClient(undefined, undefined, undefined, {
+  cacheOptions: {
+    storage: 'localStorage',
+    ttl: 30 * 60 * 1000 // 30 minutes
+  }
+});
 
 export default apiClient;

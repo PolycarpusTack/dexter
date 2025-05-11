@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     log_level: str = Field("INFO", env="LOG_LEVEL")
     organization_slug: str = Field("", env="SENTRY_ORGANIZATION_SLUG")
     project_slug: str = Field("", env="SENTRY_PROJECT_SLUG")
+    redis_url: str = Field("redis://localhost:6379/0", env="REDIS_URL")
 
     @property
     def sentry_org_web_url_base(self) -> str:

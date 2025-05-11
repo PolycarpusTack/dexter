@@ -8,11 +8,13 @@ from io import StringIO
 import csv
 import json
 import httpx
+from fastapi import Request
 
 from ..services.sentry_client import SentryApiClient
 from ..services.config_service import ConfigService, get_config_service
-from ..models.issues import IssueSummary, IssuePagination, IssueResponse, IssueStatusUpdate
+from ..models.issues import IssueSummary, IssuePagination, IssueResponse, IssueStatusUpdate, IssueAssignment
 from ..utils.error_handling import SentryAPIError
+from ..services.cache_service import cached, invalidate_issue_cache
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -76,7 +78,9 @@ async def list_issues(
     summary="Get Issue Details",
     description="Retrieve details for a specific issue."
 )
+@cached(ttl=60, prefix="get_issue")  # 1 minute TTL
 async def get_issue_details(
+    request: Request,
     organization_slug: str,
     issue_id: str,
     sentry_client: SentryApiClient = Depends(get_sentry_client),
@@ -187,6 +191,7 @@ async def export_issues(
 async def update_issue_status(
     issue_id: str,
     status_update: IssueStatusUpdate,
+    request: Request,
     sentry_client: SentryApiClient = Depends(get_sentry_client),
     config_service: ConfigService = Depends(get_config_service)
 ):
@@ -196,6 +201,10 @@ async def update_issue_status(
             issue_id=issue_id,
             status=status_update.status
         )
+        
+        # Invalidate cache for this issue and the issues list
+        await invalidate_issue_cache(request.app.state.cache, issue_id)
+        
         return result
     except Exception as e:
         logger.exception(f"Error updating issue status: {e}")
@@ -204,6 +213,124 @@ async def update_issue_status(
         if isinstance(e, HTTPException):
             raise
         raise SentryAPIError(message=f"Failed to update issue status: {str(e)}")
+
+@router.put(
+    "/issues/{issue_id}/assign",
+    response_model=Dict[str, Any],
+    summary="Assign Issue",
+    description="Assign a Sentry issue to a user."
+)
+async def assign_issue(
+    issue_id: str,
+    assignment: IssueAssignment,
+    request: Request,
+    sentry_client: SentryApiClient = Depends(get_sentry_client),
+    config_service: ConfigService = Depends(get_config_service)
+):
+    """Assign an issue to a user."""
+    try:
+        result = await sentry_client.assign_issue(
+            issue_id=issue_id,
+            assignee=assignment.assignee
+        )
+        
+        # Invalidate cache for this issue and the issues list
+        await invalidate_issue_cache(request.app.state.cache, issue_id)
+        
+        return result
+    except Exception as e:
+        logger.exception(f"Error assigning issue: {e}")
+        if isinstance(e, SentryAPIError):
+            raise
+        if isinstance(e, HTTPException):
+            raise
+        raise SentryAPIError(message=f"Failed to assign issue: {str(e)}")
+
+@router.post(
+    "/issues/bulk",
+    response_model=Dict[str, Any],
+    summary="Bulk Operations on Issues",
+    description="Perform bulk operations on multiple issues (status update, assignment, tagging)"
+)
+async def bulk_issue_operations(
+    operations: List[Dict[str, Any]],
+    sentry_client: SentryApiClient = Depends(get_sentry_client),
+    config_service: ConfigService = Depends(get_config_service)
+):
+    """Perform bulk operations on multiple issues.
+    
+    Each operation should include:
+    - issue_id: The ID of the issue
+    - operation_type: 'status' | 'assign' | 'tag'
+    - data: The operation-specific data
+    """
+    results = []
+    errors = []
+    
+    # Process operations in parallel
+    async def process_operation(op: Dict[str, Any]) -> Dict[str, Any]:
+        issue_id = op.get('issue_id')
+        operation_type = op.get('operation_type')
+        data = op.get('data', {})
+        
+        if not issue_id or not operation_type:
+            return {
+                'issue_id': issue_id,
+                'success': False,
+                'error': 'Missing issue_id or operation_type'
+            }
+        
+        try:
+            result = None
+            if operation_type == 'status':
+                result = await sentry_client.update_issue_status(issue_id, data.get('status'))
+            elif operation_type == 'assign':
+                result = await sentry_client.assign_issue(issue_id, data.get('assignee'))
+            elif operation_type == 'tag':
+                result = await sentry_client.add_issue_tags(issue_id, data.get('tags', []))
+            else:
+                return {
+                    'issue_id': issue_id,
+                    'success': False,
+                    'error': f'Unknown operation type: {operation_type}'
+                }
+            
+            return {
+                'issue_id': issue_id,
+                'success': True,
+                'operation_type': operation_type,
+                'result': result
+            }
+        except Exception as e:
+            logger.exception(f"Error processing operation for issue {issue_id}: {e}")
+            return {
+                'issue_id': issue_id,
+                'success': False,
+                'error': str(e)
+            }
+    
+    # Process all operations
+    import asyncio
+    tasks = [process_operation(op) for op in operations]
+    completed_operations = await asyncio.gather(*tasks)
+    
+    # Separate successes and failures
+    for result in completed_operations:
+        if result['success']:
+            results.append(result)
+        else:
+            errors.append(result)
+    
+    # Log the bulk operation
+    logger.info(f"Bulk operation completed: {len(results)} successes, {len(errors)} failures")
+    
+    return {
+        'total': len(operations),
+        'succeeded': len(results),
+        'failed': len(errors),
+        'results': results,
+        'errors': errors
+    }
 
 def create_csv_content(issues: List[Dict[str, Any]]) -> str:
     """Convert issues list to CSV format."""

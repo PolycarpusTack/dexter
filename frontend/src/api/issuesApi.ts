@@ -246,7 +246,7 @@ export const assignIssue = async (
 ): Promise<IssueAssignmentResponse> => {
   try {
     return await apiClient.put<IssueAssignmentResponse>(
-      `/issue/${issueId}/assign`,
+      `/issues/${issueId}/assign`,
       { assignee: assigneeId || null },
       { params: { project_id: projectId } }
     );

@@ -58,3 +58,6 @@ class IssueResponse(BaseModel):
 class IssueStatusUpdate(BaseModel):
     status: str = Field(..., pattern="^(resolved|unresolved|ignored)$")
     ignoreDuration: Optional[int] = None # Example other fields
+
+class IssueAssignment(BaseModel):
+    assignee: str = Field(..., description="User ID or email of the assignee")

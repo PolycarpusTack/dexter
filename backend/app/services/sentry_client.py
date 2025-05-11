@@ -254,6 +254,112 @@ class SentryApiClient:
                 detail=f"Unexpected error: {str(e)}"
             )
     
+    async def add_issue_tags(self, issue_id: str, tags: List[str]) -> Dict[str, Any]:
+        """Add tags to an issue.
+        
+        Args:
+            issue_id: The ID of the issue
+            tags: List of tags to add
+            
+        Returns:
+            The updated issue data as a dictionary
+        """
+        logger.info(f"Adding tags to issue {issue_id}: {tags}")
+        
+        # Use mock data if enabled
+        if getattr(settings, "USE_MOCK_DATA", "false").lower() == "true":
+            logger.info("Using mock data for adding tags")
+            return {
+                "id": issue_id,
+                "tags": tags,
+                "status": "success"
+            }
+        
+        # For Sentry API, tags are added through the issue update endpoint
+        try:
+            url = f"{self.base_url}/issues/{issue_id}/"
+            logger.info(f"Making PUT request to {url} to add tags")
+            
+            # Sentry expects tags in a specific format
+            tags_data = {f"tags[{tag}]": tag for tag in tags}
+            
+            response = await self.client.put(url, headers=self.headers, json=tags_data)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error adding tags: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except httpx.RequestError as e:
+            logger.error(f"Request error adding tags: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Error connecting to Sentry API: {str(e)}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error adding tags: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def assign_issue(self, issue_id: str, assignee: str) -> Dict[str, Any]:
+        """Assign an issue to a user.
+        
+        Args:
+            issue_id: The ID of the issue
+            assignee: The user ID or email of the assignee
+            
+        Returns:
+            The updated issue data as a dictionary
+        """
+        logger.info(f"Assigning issue {issue_id} to {assignee}")
+        
+        # Use mock data if enabled
+        if getattr(settings, "USE_MOCK_DATA", "false").lower() == "true":
+            logger.info("Using mock data for issue assignment")
+            return {
+                "id": issue_id,
+                "assignee": {
+                    "id": assignee,
+                    "email": f"{assignee}@example.com" if '@' not in assignee else assignee,
+                },
+                "assignedBy": "current_user",
+                "dateAssigned": "2023-07-05T14:32:00Z"
+            }
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/issues/{issue_id}/"
+            logger.info(f"Making PUT request to {url} with assignee={assignee}")
+            
+            data = {"assignedTo": assignee}
+            response = await self.client.put(url, headers=self.headers, json=data)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error assigning issue: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except httpx.RequestError as e:
+            logger.error(f"Request error assigning issue: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Error connecting to Sentry API: {str(e)}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error assigning issue: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
     async def update_issue_status(self, issue_id: str, status: str) -> Dict[str, Any]:
         """Update the status of an issue.
         
@@ -509,6 +615,387 @@ class SentryApiClient:
                 detail=f"Unexpected error: {str(e)}"
             )
     
+    # Alert rule methods
+    async def list_issue_alert_rules(
+        self,
+        organization_slug: str,
+        project_slug: str
+    ) -> Dict[str, Any]:
+        """List issue alert rules for a project.
+        
+        Args:
+            organization_slug: The slug of the organization
+            project_slug: The slug of the project
+            
+        Returns:
+            A dictionary containing the issue alert rules
+        """
+        logger.info(f"Listing issue alert rules for {organization_slug}/{project_slug}")
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/projects/{organization_slug}/{project_slug}/rules/"
+            logger.info(f"Making GET request to {url}")
+            
+            response = await self.client.get(url, headers=self.headers)
+            response.raise_for_status()
+            
+            return {"data": response.json()}
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error listing issue alert rules: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error listing issue alert rules: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def list_metric_alert_rules(
+        self,
+        organization_slug: str
+    ) -> Dict[str, Any]:
+        """List metric alert rules for an organization.
+        
+        Args:
+            organization_slug: The slug of the organization
+            
+        Returns:
+            A dictionary containing the metric alert rules
+        """
+        logger.info(f"Listing metric alert rules for {organization_slug}")
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/alert-rules/"
+            logger.info(f"Making GET request to {url}")
+            
+            response = await self.client.get(url, headers=self.headers)
+            response.raise_for_status()
+            
+            return {"data": response.json()}
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error listing metric alert rules: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error listing metric alert rules: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def create_issue_alert_rule(
+        self,
+        organization_slug: str,
+        project_slug: str,
+        rule_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Create an issue alert rule.
+        
+        Args:
+            organization_slug: The slug of the organization
+            project_slug: The slug of the project
+            rule_data: The rule configuration data
+            
+        Returns:
+            The created issue alert rule data
+        """
+        logger.info(f"Creating issue alert rule for {organization_slug}/{project_slug}")
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/projects/{organization_slug}/{project_slug}/rules/"
+            logger.info(f"Making POST request to {url}")
+            
+            response = await self.client.post(url, headers=self.headers, json=rule_data)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error creating issue alert rule: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error creating issue alert rule: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def create_metric_alert_rule(
+        self,
+        organization_slug: str,
+        rule_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Create a metric alert rule.
+        
+        Args:
+            organization_slug: The slug of the organization
+            rule_data: The rule configuration data
+            
+        Returns:
+            The created metric alert rule data
+        """
+        logger.info(f"Creating metric alert rule for {organization_slug}")
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/alert-rules/"
+            logger.info(f"Making POST request to {url}")
+            
+            response = await self.client.post(url, headers=self.headers, json=rule_data)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error creating metric alert rule: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error creating metric alert rule: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def update_issue_alert_rule(
+        self,
+        organization_slug: str,
+        project_slug: str,
+        rule_id: str,
+        rule_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Update an issue alert rule.
+        
+        Args:
+            organization_slug: The slug of the organization
+            project_slug: The slug of the project
+            rule_id: The ID of the rule to update
+            rule_data: The updated rule configuration data
+            
+        Returns:
+            The updated issue alert rule data
+        """
+        logger.info(f"Updating issue alert rule {rule_id} for {organization_slug}/{project_slug}")
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/projects/{organization_slug}/{project_slug}/rules/{rule_id}/"
+            logger.info(f"Making PUT request to {url}")
+            
+            response = await self.client.put(url, headers=self.headers, json=rule_data)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error updating issue alert rule: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error updating issue alert rule: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def update_metric_alert_rule(
+        self,
+        organization_slug: str,
+        rule_id: str,
+        rule_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Update a metric alert rule.
+        
+        Args:
+            organization_slug: The slug of the organization
+            rule_id: The ID of the rule to update
+            rule_data: The updated rule configuration data
+            
+        Returns:
+            The updated metric alert rule data
+        """
+        logger.info(f"Updating metric alert rule {rule_id} for {organization_slug}")
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/alert-rules/{rule_id}/"
+            logger.info(f"Making PUT request to {url}")
+            
+            response = await self.client.put(url, headers=self.headers, json=rule_data)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error updating metric alert rule: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error updating metric alert rule: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def delete_issue_alert_rule(
+        self,
+        organization_slug: str,
+        project_slug: str,
+        rule_id: str
+    ) -> None:
+        """Delete an issue alert rule.
+        
+        Args:
+            organization_slug: The slug of the organization
+            project_slug: The slug of the project
+            rule_id: The ID of the rule to delete
+        """
+        logger.info(f"Deleting issue alert rule {rule_id} for {organization_slug}/{project_slug}")
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/projects/{organization_slug}/{project_slug}/rules/{rule_id}/"
+            logger.info(f"Making DELETE request to {url}")
+            
+            response = await self.client.delete(url, headers=self.headers)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error deleting issue alert rule: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error deleting issue alert rule: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def delete_metric_alert_rule(
+        self,
+        organization_slug: str,
+        rule_id: str
+    ) -> None:
+        """Delete a metric alert rule.
+        
+        Args:
+            organization_slug: The slug of the organization
+            rule_id: The ID of the rule to delete
+        """
+        logger.info(f"Deleting metric alert rule {rule_id} for {organization_slug}")
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/alert-rules/{rule_id}/"
+            logger.info(f"Making DELETE request to {url}")
+            
+            response = await self.client.delete(url, headers=self.headers)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error deleting metric alert rule: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error deleting metric alert rule: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def get_issue_alert_rule(
+        self,
+        organization_slug: str,
+        project_slug: str,
+        rule_id: str
+    ) -> Dict[str, Any]:
+        """Get an issue alert rule.
+        
+        Args:
+            organization_slug: The slug of the organization
+            project_slug: The slug of the project
+            rule_id: The ID of the rule to retrieve
+            
+        Returns:
+            The issue alert rule data
+        """
+        logger.info(f"Getting issue alert rule {rule_id} for {organization_slug}/{project_slug}")
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/projects/{organization_slug}/{project_slug}/rules/{rule_id}/"
+            logger.info(f"Making GET request to {url}")
+            
+            response = await self.client.get(url, headers=self.headers)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error getting issue alert rule: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error getting issue alert rule: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def get_metric_alert_rule(
+        self,
+        organization_slug: str,
+        rule_id: str
+    ) -> Dict[str, Any]:
+        """Get a metric alert rule.
+        
+        Args:
+            organization_slug: The slug of the organization
+            rule_id: The ID of the rule to retrieve
+            
+        Returns:
+            The metric alert rule data
+        """
+        logger.info(f"Getting metric alert rule {rule_id} for {organization_slug}")
+        
+        # Make API request
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/alert-rules/{rule_id}/"
+            logger.info(f"Making GET request to {url}")
+            
+            response = await self.client.get(url, headers=self.headers)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error getting metric alert rule: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error getting metric alert rule: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
     async def _make_request(self, method: str, url: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """Make a raw HTTP request to the Sentry API.
         
@@ -547,6 +1034,271 @@ class SentryApiClient:
             )
         except Exception as e:
             logger.error(f"Unexpected error in raw request: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    # Discover API methods
+    async def execute_discover_query(
+        self,
+        organization_slug: str,
+        query_params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Execute a Discover query.
+        
+        Args:
+            organization_slug: The slug of the organization
+            query_params: Query parameters for Discover
+            
+        Returns:
+            Query results with data and metadata
+        """
+        logger.info(f"Executing Discover query for {organization_slug}")
+        
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/eventsv2/"
+            logger.info(f"Making GET request to {url}")
+            
+            # Convert fields list to comma-separated string
+            if "fields" in query_params and isinstance(query_params["fields"], list):
+                query_params["field"] = query_params["fields"]
+                del query_params["fields"]
+            
+            response = await self.client.get(url, headers=self.headers, params=query_params)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error executing Discover query: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error executing Discover query: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def execute_discover_timeseries(
+        self,
+        organization_slug: str,
+        query_params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Execute a Discover timeseries query.
+        
+        Args:
+            organization_slug: The slug of the organization
+            query_params: Query parameters for Discover timeseries
+            
+        Returns:
+            Timeseries data with intervals and groups
+        """
+        logger.info(f"Executing Discover timeseries for {organization_slug}")
+        
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/events-stats/"
+            logger.info(f"Making GET request to {url}")
+            
+            # Convert fields list to comma-separated string
+            if "fields" in query_params and isinstance(query_params["fields"], list):
+                query_params["field"] = query_params["fields"]
+                del query_params["fields"]
+            
+            response = await self.client.get(url, headers=self.headers, params=query_params)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error executing Discover timeseries: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error executing Discover timeseries: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def list_saved_queries(
+        self,
+        organization_slug: str
+    ) -> List[Dict[str, Any]]:
+        """List saved Discover queries.
+        
+        Args:
+            organization_slug: The slug of the organization
+            
+        Returns:
+            List of saved queries
+        """
+        logger.info(f"Listing saved queries for {organization_slug}")
+        
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/discover/saved/"
+            logger.info(f"Making GET request to {url}")
+            
+            response = await self.client.get(url, headers=self.headers)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error listing saved queries: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error listing saved queries: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def create_saved_query(
+        self,
+        organization_slug: str,
+        query_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Create a saved Discover query.
+        
+        Args:
+            organization_slug: The slug of the organization
+            query_data: Query data to save
+            
+        Returns:
+            Created saved query
+        """
+        logger.info(f"Creating saved query for {organization_slug}")
+        
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/discover/saved/"
+            logger.info(f"Making POST request to {url}")
+            
+            response = await self.client.post(url, headers=self.headers, json=query_data)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error creating saved query: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error creating saved query: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def get_saved_query(
+        self,
+        organization_slug: str,
+        query_id: str
+    ) -> Dict[str, Any]:
+        """Get a saved Discover query.
+        
+        Args:
+            organization_slug: The slug of the organization
+            query_id: ID of the saved query
+            
+        Returns:
+            Saved query data
+        """
+        logger.info(f"Getting saved query {query_id} for {organization_slug}")
+        
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/discover/saved/{query_id}/"
+            logger.info(f"Making GET request to {url}")
+            
+            response = await self.client.get(url, headers=self.headers)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error getting saved query: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error getting saved query: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def update_saved_query(
+        self,
+        organization_slug: str,
+        query_id: str,
+        query_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Update a saved Discover query.
+        
+        Args:
+            organization_slug: The slug of the organization
+            query_id: ID of the saved query
+            query_data: Updated query data
+            
+        Returns:
+            Updated saved query
+        """
+        logger.info(f"Updating saved query {query_id} for {organization_slug}")
+        
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/discover/saved/{query_id}/"
+            logger.info(f"Making PUT request to {url}")
+            
+            response = await self.client.put(url, headers=self.headers, json=query_data)
+            response.raise_for_status()
+            
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error updating saved query: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error updating saved query: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    async def delete_saved_query(
+        self,
+        organization_slug: str,
+        query_id: str
+    ) -> None:
+        """Delete a saved Discover query.
+        
+        Args:
+            organization_slug: The slug of the organization
+            query_id: ID of the saved query
+        """
+        logger.info(f"Deleting saved query {query_id} for {organization_slug}")
+        
+        try:
+            url = f"{self.base_url}/organizations/{organization_slug}/discover/saved/{query_id}/"
+            logger.info(f"Making DELETE request to {url}")
+            
+            response = await self.client.delete(url, headers=self.headers)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error deleting saved query: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Sentry API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error deleting saved query: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Unexpected error: {str(e)}"

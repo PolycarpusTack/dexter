@@ -1,0 +1,1037 @@
+openapi: 3.0.3
+info:
+  title: Sentry API
+  version: 0.0.1
+  description: Partial OpenAPI specification for Sentry API endpoints used by Dexter
+servers:
+  - url: https://sentry.io/api/0
+    description: Sentry API
+
+paths:
+  /projects/{organization_slug}/{project_slug}/issues/:
+    get:
+      summary: List project issues
+      operationId: listProjectIssues
+      parameters:
+        - name: organization_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: project_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: statsPeriod
+          in: query
+          schema:
+            type: string
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: environment
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [resolved, unresolved, ignored]
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Issue'
+    
+    put:
+      summary: Bulk mutate issues
+      operationId: bulkMutateIssues
+      parameters:
+        - name: organization_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: project_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          description: Issue IDs to mutate
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [resolved, unresolved, ignored]
+          description: Filter issues by status
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkMutate'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                
+  /issues/{issue_id}/:
+    get:
+      summary: Retrieve an issue
+      operationId: getIssue
+      parameters:
+        - name: issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+    
+    put:
+      summary: Update an issue
+      operationId: updateIssue
+      parameters:
+        - name: issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUpdate'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+                
+    delete:
+      summary: Delete an issue
+      operationId: deleteIssue
+      parameters:
+        - name: issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Success
+          
+  /issues/{issue_id}/events/:
+    get:
+      summary: List issue events
+      operationId: listIssueEvents
+      parameters:
+        - name: issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: full
+          in: query
+          schema:
+            type: boolean
+          description: Include full event details
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: environment
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+                  
+  /issues/{issue_id}/events/latest/:
+    get:
+      summary: Get latest event for issue
+      operationId: getLatestEvent
+      parameters:
+        - name: issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+                
+  /issues/{issue_id}/events/oldest/:
+    get:
+      summary: Get oldest event for issue
+      operationId: getOldestEvent
+      parameters:
+        - name: issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+                
+  /issues/{issue_id}/hashes/:
+    get:
+      summary: List issue hashes
+      operationId: listIssueHashes
+      parameters:
+        - name: issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventHash'
+                  
+  /issues/{issue_id}/tags/{key}/:
+    get:
+      summary: Get tag details
+      operationId: getTagDetails
+      parameters:
+        - name: issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagDetail'
+                
+  /issues/{issue_id}/tags/{key}/values/:
+    get:
+      summary: List tag values
+      operationId: listTagValues
+      parameters:
+        - name: issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TagValue'
+                  
+  /organizations/{organization_slug}/projects/:
+    get:
+      summary: List organization projects
+      operationId: listProjects
+      parameters:
+        - name: organization_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+                  
+  /projects/{organization_slug}/{project_slug}/:
+    get:
+      summary: Get project details
+      operationId: getProject
+      parameters:
+        - name: organization_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: project_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+                
+  /projects/{organization_slug}/{project_slug}/events/{event_id}/:
+    get:
+      summary: Retrieve event for project
+      operationId: getProjectEvent
+      parameters:
+        - name: organization_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: project_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+                
+  /organizations/{organization_slug}/events/:
+    get:
+      summary: Query discover events
+      operationId: queryDiscoverEvents
+      parameters:
+        - name: organization_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: field
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: project
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: statsPeriod
+          in: query
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: environment
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoverEventsResponse'
+
+components:
+  schemas:
+    Issue:
+      type: object
+      required:
+        - id
+        - title
+        - status
+      properties:
+        id:
+          type: string
+        shortId:
+          type: string
+        title:
+          type: string
+        culprit:
+          type: string
+          nullable: true
+        permalink:
+          type: string
+        logger:
+          type: string
+          nullable: true
+        level:
+          type: string
+          enum: [debug, info, warning, error, fatal]
+        status:
+          type: string
+          enum: [resolved, unresolved, ignored]
+        statusDetails:
+          type: object
+          nullable: true
+        isPublic:
+          type: boolean
+        platform:
+          type: string
+          nullable: true
+        project:
+          $ref: '#/components/schemas/Project'
+        type:
+          type: string
+        metadata:
+          type: object
+        numComments:
+          type: integer
+        assignedTo:
+          oneOf:
+            - $ref: '#/components/schemas/User'
+            - $ref: '#/components/schemas/Team'
+          nullable: true
+        isBookmarked:
+          type: boolean
+        isSubscribed:
+          type: boolean
+        subscriptionDetails:
+          type: object
+          nullable: true
+        hasSeen:
+          type: boolean
+        annotations:
+          type: array
+          items:
+            type: string
+        isUnhandled:
+          type: boolean
+        count:
+          type: string
+        userCount:
+          type: integer
+        firstSeen:
+          type: string
+          format: date-time
+        lastSeen:
+          type: string
+          format: date-time
+        stats:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: array
+              items:
+                type: number
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+              
+    IssueUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [resolved, resolvedInNextRelease, unresolved, ignored]
+        statusDetails:
+          type: object
+        assignedTo:
+          type: string
+          description: User or team ID
+          nullable: true
+        hasSeen:
+          type: boolean
+        isBookmarked:
+          type: boolean
+        isPublic:
+          type: boolean
+        merge:
+          type: boolean
+        
+    BulkMutate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [resolved, resolvedInNextRelease, unresolved, ignored]
+        statusDetails:
+          type: object
+        ignoreDuration:
+          type: integer
+        isPublic:
+          type: boolean
+        merge:
+          type: boolean
+        assignedTo:
+          type: string
+          nullable: true
+        hasSeen:
+          type: boolean
+        isBookmarked:
+          type: boolean
+        
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        hasPasswordAuth:
+          type: boolean
+        isManaged:
+          type: boolean
+        dateJoined:
+          type: string
+          format: date-time
+        lastLogin:
+          type: string
+          format: date-time
+          nullable: true
+        has2fa:
+          type: boolean
+        lastActive:
+          type: string
+          format: date-time
+          nullable: true
+        isSuperuser:
+          type: boolean
+        isStaff:
+          type: boolean
+        experiments:
+          type: object
+        emails:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              email:
+                type: string
+              is_verified:
+                type: boolean
+                
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        dateCreated:
+          type: string
+          format: date-time
+        isMember:
+          type: boolean
+        teamRole:
+          type: string
+          nullable: true
+        flags:
+          type: object
+        access:
+          type: array
+          items:
+            type: string
+        hasAccess:
+          type: boolean
+        isPending:
+          type: boolean
+        memberCount:
+          type: integer
+        avatar:
+          type: object
+          properties:
+            avatarType:
+              type: string
+            avatarUuid:
+              type: string
+              nullable: true
+              
+    Tag:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        _searchable:
+          type: boolean
+          
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        platform:
+          type: string
+          nullable: true
+        dateCreated:
+          type: string
+          format: date-time
+        isPublic:
+          type: boolean
+        isMember:
+          type: boolean
+        features:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        colors:
+          type: object
+          properties:
+            color:
+              type: string
+            secondaryColor:
+              type: string
+        isBookmarked:
+          type: boolean
+        hasUserReports:
+          type: boolean
+          nullable: true
+        environments:
+          type: array
+          items:
+            type: string
+        organization:
+          $ref: '#/components/schemas/Organization'
+            
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        status:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        name:
+          type: string
+        dateCreated:
+          type: string
+          format: date-time
+        isEarlyAdopter:
+          type: boolean
+        require2FA:
+          type: boolean
+        requireEmailVerification:
+          type: boolean
+        avatar:
+          type: object
+          properties:
+            avatarType:
+              type: string
+            avatarUuid:
+              type: string
+              nullable: true
+        features:
+          type: array
+          items:
+            type: string
+        
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+        eventID:
+          type: string
+        groupID:
+          type: string
+        message:
+          type: string
+        title:
+          type: string
+        location:
+          type: string
+          nullable: true
+        culprit:
+          type: string
+          nullable: true
+        platform:
+          type: string
+        dateCreated:
+          type: string
+          format: date-time
+        dateReceived:
+          type: string
+          format: date-time
+        size:
+          type: integer
+        type:
+          type: string
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+        user:
+          $ref: '#/components/schemas/EventUser'
+        contexts:
+          type: object
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventEntry'
+        packages:
+          type: object
+        sdk:
+          type: object
+        _meta:
+          type: object
+        request:
+          $ref: '#/components/schemas/EventRequest'
+        exception:
+          $ref: '#/components/schemas/EventException'
+        
+    EventUser:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        ip_address:
+          type: string
+        name:
+          type: string
+        geo:
+          type: object
+          nullable: true
+          
+    EventEntry:
+      type: object
+      properties:
+        type:
+          type: string
+        data:
+          type: object
+          
+    EventRequest:
+      type: object
+      nullable: true
+      properties:
+        url:
+          type: string
+        method:
+          type: string
+        data:
+          type: object
+          nullable: true
+        query_string:
+          type: string
+          nullable: true
+        cookies:
+          type: string
+          nullable: true
+        headers:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        env:
+          type: object
+          nullable: true
+          
+    EventException:
+      type: object
+      nullable: true
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExceptionValue'
+        exc_omitted:
+          type: array
+          nullable: true
+          items:
+            type: integer
+        hasSystemFrames:
+          type: boolean
+          
+    ExceptionValue:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+        module:
+          type: string
+          nullable: true
+        thread_id:
+          type: integer
+          nullable: true
+        mechanism:
+          $ref: '#/components/schemas/ExceptionMechanism'
+        stacktrace:
+          $ref: '#/components/schemas/Stacktrace'
+          
+    ExceptionMechanism:
+      type: object
+      properties:
+        type:
+          type: string
+        description:
+          type: string
+          nullable: true
+        help_link:
+          type: string
+          nullable: true
+        handled:
+          type: boolean
+          nullable: true
+        meta:
+          type: object
+          nullable: true
+        data:
+          type: object
+          nullable: true
+        synthetic:
+          type: boolean
+          nullable: true
+          
+    Stacktrace:
+      type: object
+      properties:
+        frames:
+          type: array
+          items:
+            $ref: '#/components/schemas/Frame'
+        frames_omitted:
+          type: array
+          nullable: true
+          items:
+            type: integer
+        registers:
+          type: object
+          nullable: true
+          
+    Frame:
+      type: object
+      properties:
+        filename:
+          type: string
+        function:
+          type: string
+        module:
+          type: string
+          nullable: true
+        lineno:
+          type: integer
+          nullable: true
+        colno:
+          type: integer
+          nullable: true
+        abs_path:
+          type: string
+          nullable: true
+        context_line:
+          type: string
+          nullable: true
+        pre_context:
+          type: array
+          nullable: true
+          items:
+            type: string
+        post_context:
+          type: array
+          nullable: true
+          items:
+            type: string
+        in_app:
+          type: boolean
+        stack_start:
+          type: boolean
+        vars:
+          type: object
+          nullable: true
+        instruction_addr:
+          type: string
+          nullable: true
+        addr_mode:
+          type: string
+          nullable: true
+        symbol_addr:
+          type: string
+          nullable: true
+        image_addr:
+          type: string
+          nullable: true
+        package:
+          type: string
+          nullable: true
+        platform:
+          type: string
+          nullable: true
+          
+    EventHash:
+      type: object
+      properties:
+        id:
+          type: string
+        hash:
+          type: string
+          
+    TagDetail:
+      type: object
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        totalValues:
+          type: integer
+        uniqueValues:
+          type: integer
+          
+    TagValue:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        count:
+          type: integer
+        firstSeen:
+          type: string
+          format: date-time
+        lastSeen:
+          type: string
+          format: date-time
+        
+    DiscoverEventsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+        meta:
+          type: object
+          properties:
+            fields:
+              type: object
+            units:
+              type: object

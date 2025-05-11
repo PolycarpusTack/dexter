@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional, Dict, Any, List
 import logging
 import httpx
+from fastapi import Request
 
 from app.services.sentry_client import SentryApiClient
 from app.services.config_service import ConfigService, get_config_service
+from app.services.cache_service import cached, invalidate_issue_cache
 from app.utils.error_handling import SentryAPIError
 
 logger = logging.getLogger(__name__)
@@ -23,7 +25,9 @@ async def get_sentry_client():
         await client.aclose()
 
 @router.get("/issues", response_model=None)
+@cached(ttl=300, prefix="list_issues")  # 5 minute TTL
 async def get_issues(
+    request: Request,
     # Query params matching the expected frontend format
     organization: Optional[str] = Query(None, description="Organization slug/ID"),
     project: Optional[str] = Query(None, description="Project slug/ID or comma-separated list"),

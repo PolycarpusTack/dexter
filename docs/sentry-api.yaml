@@ -1,0 +1,2895 @@
+openapi: 3.0.1
+info:
+  title: Sentry API Collection
+  description: "# The Sentry API\n\nThe Sentry API is used for submitting events to\
+    \ the Sentry collector as well as exporting and managing data. The reporting and\
+    \ web APIs are individually versioned. This document refers to the web APIs only.\
+    \ For information about the reporting API see [<i>SDK Development</i>](https://develop.sentry.dev/sdk/overview/).\n\
+    \n## To Use This Collection\n\n#### Organization Slug\n\nAdd your Sentry organization_slug\
+    \ to the Collection Variable or as an Environment Variable (if you are access\
+    \ multiple Sentry Organizations)\n\n#### Authentication Token (Bearer Token)\n\
+    \nYou must create a Sentry Auth Token ([https://docs.sentry.io/product/integrations/integration-platform/#internal-integrations](https://docs.sentry.io/product/integrations/integration-platform/#internal-integrations))\
+    \ and add it to the Collection Variables or an Environment Variable (Environment\
+    \ Variables take precedence in Postman)\n\n#### Path Variables\n\nMany of the\
+    \ endpoints have one or more path variables (:project_slug). These are required\
+    \ to access the Sentry resource in question.\n\n## Versioning\n\nThe current version\
+    \ of the web API is known as **v0** and is considered to be in a draft phase.\
+    \ While we don\u2019t expect public endpoints to change greatly, keep in mind\
+    \ that the API is still under development.\n\n## Getting Started\n\n- [Authentication](https://docs.sentry.io/api/auth/)\n\
+    \    \n- [Pagination](https://docs.sentry.io/api/pagination/)\n    \n- [Permissions](https://docs.sentry.io/api/permissions/)\n\
+    \    \n- [Rate Limits](https://docs.sentry.io/api/ratelimits)\n    \n- [Requests](https://docs.sentry.io/api/requests/)\n\
+    \    \n\n**Note:** The URL endpoints are sensitive to the trailing \"/\", which\
+    \ is required"
+  version: 0.0.1
+paths:
+  /api/0/projects/{organization_slug}/{project_slug}/rules/:
+    post:
+      summary: Create Project Issue Alert Rule
+      description: "# Create an Issue Alert Rule for a Project\n\n[https://docs.sentry.io/api/alerts/create-an-issue-alert-rule-for-a-project/<br>](https://docs.sentry.io/api/alerts/create-an-issue-alert-rule-for-a-project/)\
+        \  \nPOST/api/0/projects/{organization_slug}/{project_slug}/rules/\n\nCreate\
+        \ a new issue alert rule for the given project.\n\nAn issue alert rule triggers\
+        \ whenever a new event is received for any issue in a project that matches\
+        \ the specified alert conditions. These conditions can include a resolved\
+        \ issue re-appearing or an issue affecting many users. Alert conditions have\
+        \ three parts:\n\n- Triggers: specify what type of activity you'd like monitored\
+        \ or when an alert should be triggered.\n    \n- Filters: help control noise\
+        \ by triggering an alert only if the issue matches the specified criteria.\n\
+        \    \n- Actions: specify what should happen when the trigger conditions are\
+        \ met and the filters match.\n    \n\n### Path Parameters\n\n`organization_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n`project_slug`\__(string)_REQUIRED\n\nThe slug of the project the resource\
+        \ belongs to.\n\n### Body Parameters\n\n`name`\__(string)_REQUIRED\n\nThe\
+        \ name for the rule.\n\n`actionMatch`\__(string)_REQUIRED\n\nA string determining\
+        \ which of the conditions need to be true before any filters are evaluated.\n\
+        \n- `all`\_- All conditions must evaluate to true.\n    \n- `any`\_- At least\
+        \ one of the conditions must evaluate to true.\n    \n- `none`\_- All conditions\
+        \ must evaluate to false.\n    \n\n`conditions`\__(array(object))_REQUIRED\n\
+        \nA list of triggers that determine when the rule fires. See below for a list\
+        \ of possible conditions.\n\n**A new issue is created**\n\nJSONCopied\n\n\
+        ```\n{\n    \"id\": \"sentry.rules.conditions.first_seen_event.FirstSeenEventCondition\"\
+        \n}\n\n ```\n\n**The issue changes state from resolved to unresolved**\n\n\
+        JSONCopied\n\n```\n{\n    \"id\": \"sentry.rules.conditions.regression_event.RegressionEventCondition\"\
+        \n}\n\n ```\n\n**The issue is seen more than**\_**`value`**\_**times in**\_\
+        **`interval`**\n\n- `value`\_- An integer\n    \n- `interval`\_- Valid values\
+        \ are\_`1m`,\_`5m`,\_`15m`,\_`1h`,\_`1d`,\_`1w`\_and\_`30d`\_(`m`\_for minutes,\_\
+        `h`\_for hours,\_`d`\_for days, and\_`w`\_for weeks).\n    \n\nJSONCopied\n\
+        \n```\n{\n    \"id\": \"sentry.rules.conditions.event_frequency.EventFrequencyCondition\"\
+        ,\n    \"value\": 500,\n    \"interval\": \"1h\"\n}\n\n ```\n\n**The issue\
+        \ is seen by more than**\_**`value`**\_**users in**\_**`interval`**\n\n- `value`\_\
+        - An integer\n    \n- `interval`\_- Valid values are\_`1m`,\_`5m`,\_`15m`,\_\
+        `1h`,\_`1d`,\_`1w`\_and\_`30d`\_(`m`\_for minutes,\_`h`\_for hours,\_`d`\_\
+        for days, and\_`w`\_for weeks).\n    \n\nJSONCopied\n\n```\n{\n    \"id\"\
+        : \"sentry.rules.conditions.event_frequency.EventUniqueUserFrequencyCondition\"\
+        ,\n    \"value\": 1000,\n    \"interval\": \"15m\"\n}\n\n ```\n\n**The issue\
+        \ affects more than**\_**`value`**\_**percent of sessions in**\_**`interval`**\n\
+        \n- `value`\_- An integer from 0 to 100\n    \n- `interval`\_- Valid values\
+        \ are\_`5m`,\_`10m`,\_`30m`, and\_`1h`\_(`m`\_for minutes,\_`h`\_for hours).\n\
+        \    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.rules.conditions.event_frequency.EventFrequencyPercentCondition\"\
+        ,\n    \"value\": 50,\n    \"interval\": \"10m\"\n}\n\n ```\n\n`actions`\_\
+        _(array(object))_REQUIRED\n\nA list of actions that take place when all required\
+        \ conditions and filters for the rule are met. See below for a list of possible\
+        \ actions.\n\n**Send a notification to Suggested Assignees**\n\n- `fallthroughType`\_\
+        - Who the notification should be sent to if there are no suggested assignees.\
+        \ Valid values are\_`ActiveMembers`,\_`AllMembers`, and\_`NoOne`.\n    \n\n\
+        JSONCopied\n\n```\n{\n    \"id\" - \"sentry.mail.actions.NotifyEmailAction\"\
+        ,\n    \"targetType\" - \"IssueOwners\",\n    \"fallthroughType\" - \"ActiveMembers\"\
+        \n}\n\n ```\n\n**Send a notification to a Member or a Team**\n\n- `targetType`\_\
+        - One of\_`Member`\_or\_`Team`.\n    \n- `fallthroughType`\_- Who the notification\
+        \ should be sent to if it cannot be sent to the original target. Valid values\
+        \ are\_`ActiveMembers`,\_`AllMembers`, and\_`NoOne`.\n    \n- `targetIdentifier`\_\
+        - The ID of the Member or Team the notification should be sent to.\n    \n\
+        \nJSONCopied\n\n```\n{\n    \"id\": \"sentry.mail.actions.NotifyEmailAction\"\
+        ,\n    \"targetType\": \"Team\"\n    \"fallthroughType\": \"AllMembers\"\n\
+        \    \"targetIdentifier\": 4524986223\n}\n\n ```\n\n**Send a Slack notification**\n\
+        \n- `workspace`\_- The integration ID associated with the Slack workspace.\n\
+        \    \n- `channel`\_- The name of the channel to send the notification to\
+        \ (e.g., #critical, Jane Schmidt).\n    \n- `channel_id`\_(optional) - The\
+        \ ID of the channel to send the notification to.\n    \n- `tags`\_- A string\
+        \ of tags to show in the notification, separated by commas (e.g., \"environment,\
+        \ user, my_tag\").\n    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.integrations.slack.notify_action.SlackNotifyServiceAction\"\
+        ,\n    \"workspace\": 293854098,\n    \"channel\": \"#warning\",\n    \"tags\"\
+        : \"environment,level\"\n}\n\n ```\n\n**Send a Microsoft Teams notification**\n\
+        \n- `team`\_- The integration ID associated with the Microsoft Teams team.\n\
+        \    \n- `channel`\_- The name of the channel to send the notification to.\n\
+        \    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.integrations.msteams.notify_action.MsTeamsNotifyServiceAction\"\
+        ,\n    \"team\": 23465424,\n    \"channel\": \"General\"\n}\n\n ```\n\n**Send\
+        \ a Discord notification**\n\n- `server`\_- The integration ID associated\
+        \ with the Discord server.\n    \n- `channel_id`\_- The ID of the channel\
+        \ to send the notification to.\n    \n- `tags`\_- A string of tags to show\
+        \ in the notification, separated by commas (e.g., \"environment, user, my_tag\"\
+        ).\n    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.integrations.discord.notify_action.DiscordNotifyServiceAction\"\
+        ,\n    \"server\": 63408298,\n    \"channel_id\": 94732897,\n    \"tags\"\
+        : \"browser,user\"\n}\n\n ```\n\n**Create a Jira Ticket**\n\n- `integration`\_\
+        - The integration ID associated with Jira.\n    \n- `project`\_- The ID of\
+        \ the Jira project.\n    \n- `issuetype`\_- The ID of the type of issue that\
+        \ the ticket should be created as.\n    \n- `dynamic_form_fields`\_(optional)\
+        \ - A list of any custom fields you want to include in the ticket as objects.\n\
+        \    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.integrations.jira.notify_action.JiraCreateTicketAction\"\
+        ,\n    \"integration\": 321424,\n    \"project\": \"349719\"\n    \"issueType\"\
+        : \"1\"\n}\n\n ```\n\n**Create a Jira Server Ticket**\n\n- `integration`\_\
+        - The integration ID associated with Jira Server.\n    \n- `project`\_- The\
+        \ ID of the Jira Server project.\n    \n- `issuetype`\_- The ID of the type\
+        \ of issue that the ticket should be created as.\n    \n- `dynamic_form_fields`\_\
+        (optional) - A list of any custom fields you want to include in the ticket\
+        \ as objects.\n    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.integrations.jira_server.notify_action.JiraServerCreateTicketAction\"\
+        ,\n    \"integration\": 321424,\n    \"project\": \"349719\"\n    \"issueType\"\
+        : \"1\"\n}\n\n ```\n\n**Create a GitHub Issue**\n\n- `integration`\_- The\
+        \ integration ID associated with GitHub.\n    \n- `repo`\_- The name of the\
+        \ repository to create the issue in.\n    \n- `title`\_- The title of the\
+        \ issue.\n    \n- `body`\_(optional) - The contents of the issue.\n    \n\
+        - `assignee`\_(optional) - The GitHub user to assign the issue to.\n    \n\
+        - `labels`\_(optional) - A list of labels to assign to the issue.\n    \n\n\
+        JSONCopied\n\n```\n{\n    \"id\": \"sentry.integrations.github.notify_action.GitHubCreateTicketAction\"\
+        ,\n    \"integration\": 93749,\n    \"repo\": default,\n    \"title\": \"\
+        My Test Issue\",\n    \"assignee\": \"Baxter the Hacker\",\n    \"labels\"\
+        : [\"bug\", \"p1\"]\n    \"\"\n}\n\n ```\n\n**Create an Azure DevOps work\
+        \ item**\n\n- `integration`\_- The integration ID.\n    \n- `project`\_- The\
+        \ ID of the Azure DevOps project.\n    \n- `work_item_type`\_- The type of\
+        \ work item to create.\n    \n- `dynamic_form_fields`\_(optional) - A list\
+        \ of any custom fields you want to include in the work item as objects.\n\
+        \    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.integrations.vsts.notify_action.AzureDevopsCreateTicketAction\"\
+        ,\n    \"integration\": 294838,\n    \"project\": \"0389485\",\n    \"work_item_type\"\
+        : \"Microsoft.VSTS.WorkItemTypes.Task\",\n}\n\n ```\n\n**Send a PagerDuty\
+        \ notification**\n\n- `account`\_- The integration ID associated with the\
+        \ PagerDuty account.\n    \n- `service`\_- The ID of the service to send the\
+        \ notification to.\n    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.integrations.pagerduty.notify_action.PagerDutyNotifyServiceAction\"\
+        ,\n    \"account\": 92385907,\n    \"service\": 9823924\n}\n\n ```\n\n**Send\
+        \ an Opsgenie notification**\n\n- `account`\_- The integration ID associated\
+        \ with the Opsgenie account.\n    \n- `team`\_- The ID of the Opsgenie team\
+        \ to send the notification to.\n    \n\nJSONCopied\n\n```\n{\n    \"id\":\
+        \ \"sentry.integrations.opsgenie.notify_action.OpsgenieNotifyTeamAction\"\
+        ,\n    \"account\": 8723897589,\n    \"team\": \"9438930258-fairy\"\n}\n\n\
+        \ ```\n\n**Send a notification to a service**\n\n- `service`\_- The plugin\
+        \ slug.\n    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.rules.actions.notify_event_service.NotifyEventServiceAction\"\
+        ,\n    \"service\": \"mail\"\n}\n\n ```\n\n**Send a notification to a Sentry\
+        \ app with a custom webhook payload**\n\n- `settings`\_- A list of objects\
+        \ denoting the settings each action will be created with. All required fields\
+        \ must be included.\n    \n- `sentryAppInstallationUuid`\_- The ID for the\
+        \ Sentry app\n    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.rules.actions.notify_event_sentry_app.NotifyEventSentryAppAction\"\
+        ,\n    \"settings\": [\n        {\"name\": \"title\", \"value\": \"Team Rocket\"\
+        },\n        {\"name\": \"summary\", \"value\": \"We're blasting off again.\"\
+        },\n    ],\n    \"sentryAppInstallationUuid\": 643522\n    \"hasSchemaFormConfig\"\
+        : true\n}\n\n ```\n\n**Send a notification (for all legacy integrations)**\n\
+        \nJSONCopied\n\n```\n{\n    \"id\": \"sentry.rules.actions.notify_event.NotifyEventAction\"\
+        \n}\n\n ```\n\n`frequency`\__(integer)_REQUIRED\n\nHow often to perform the\
+        \ actions once for an issue, in minutes. The valid range is\_`5`\_to\_`43200`.\n\
+        \n`environment`\__(string)_\n\nThe name of the environment to filter by.\n\
+        \n`filterMatch`\__(string)_\n\nA string determining which filters need to\
+        \ be true before any actions take place. Required when a value is provided\
+        \ for\_`filters`.\n\n- `all`\_- All filters must evaluate to true.\n    \n\
+        - `any`\_- At least one of the filters must evaluate to true.\n    \n- `none`\_\
+        - All filters must evaluate to false.\n    \n\n`filters`\__(array(object))_\n\
+        \nA list of filters that determine if a rule fires after the necessary conditions\
+        \ have been met. See below for a list of possible filters.\n\n**The issue\
+        \ is**\_**`comparison_type`**\_**than**\_**`value`**\_**`time`**\n\n- `comparison_type`\_\
+        - One of\_`older`\_or\_`newer`\n    \n- `value`\_- An integer\n    \n- `time`\_\
+        - The unit of time. Valid values are\_`minute`,\_`hour`,\_`day`, and\_`week`.\n\
+        \    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.rules.filters.age_comparison.AgeComparisonFilter\"\
+        ,\n    \"comparison_type\": \"older\",\n    \"value\": 3,\n    \"time\": \"\
+        week\"\n}\n\n ```\n\n**The issue has happened at least**\_**`value`**\_**times**\n\
+        \n- `value`\_- An integer\n    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.rules.filters.issue_occurrences.IssueOccurrencesFilter\"\
+        ,\n    \"value\": 120\n}\n\n ```\n\n**The issue is assigned to No One**\n\n\
+        JSONCopied\n\n```\n{\n    \"id\": \"sentry.rules.filters.assigned_to.AssignedToFilter\"\
+        ,\n    \"targetType\": \"Unassigned\"\n}\n\n ```\n\n**The issue is assigned\
+        \ to**\_**`targetType`**\n\n- `targetType`\_- One of\_`Team`\_or\_`Member`\n\
+        \    \n- `targetIdentifier`\_- The target's ID\n    \n\nJSONCopied\n\n```\n\
+        {\n    \"id\": \"sentry.rules.filters.assigned_to.AssignedToFilter\",\n  \
+        \  \"targetType\": \"Member\",\n    \"targetIdentifier\": 895329789\n}\n\n\
+        \ ```\n\n**The event is from the latest release**\n\nJSONCopied\n\n```\n{\n\
+        \    \"id\": \"sentry.rules.filters.latest_release.LatestReleaseFilter\"\n\
+        }\n\n ```\n\n**The issue's category is equal to**\_**`value`**\n\n- `value`\_\
+        - An integer correlated with a category. Valid values are\_`1`\_(Error),\_\
+        `2`\_(Performance),\_`3`\_(Profile),\_`4`\_(Cron), and\_`5`\_(Replay).\n \
+        \   \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.rules.filters.issue_category.IssueCategoryFilter\"\
+        ,\n    \"value\": 2\n}\n\n ```\n\n**The event's**\_**`attribute`**\_**value**\_\
+        **`match`**\_**`value`**\n\n- `attribute`\_- Valid values are\_`message`,\_\
+        `platform`,\_`environment`,\_`type`,\_`error.handled`,\_`error.unhandled`,\_\
+        `error.main_thread`,\_`exception.type`,\_`exception.value`,\_`user.id`,\_\
+        `user.email`,\_`user.username`,\_`user.ip_address`,\_`http.method`,\_`http.url`,\_\
+        `http.status_code`,\_`sdk.name`,\_`stacktrace.code`,\_`stacktrace.module`,\_\
+        `stacktrace.filename`,\_`stacktrace.abs_path`,\_`stacktrace.package`,\_`unreal.crashtype`,\
+        \ and\_`app.in_foreground`.\n    \n- `match`\_- The comparison operator. Valid\
+        \ values are\_`eq`\_(equals),\_`ne`\_(does not equal),\_`sw`\_(starts with),\_\
+        `ew`\_(ends with),\_`co`\_(contains),\_`nc`\_(does not contain),\_`is`\_(is\
+        \ set), and\_`ns`\_(is not set).\n    \n- `value`\_- A string. Not required\
+        \ when\_`match`\_is\_`is`\_or\_`ns`.\n    \n\nJSONCopied\n\n```\n{\n    \"\
+        id\": \"sentry.rules.conditions.event_attribute.EventAttributeCondition\"\
+        ,\n    \"attribute\": \"http.url\",\n    \"match\": \"nc\",\n    \"value\"\
+        : \"localhost\"\n}\n\n ```\n\n**The event's tags match**\_**`key`**\_**`match`**\_\
+        **`value`**\n\n- `key`\_- The tag\n    \n- `match`\_- The comparison operator.\
+        \ Valid values are\_`eq`\_(equals),\_`ne`\_(does not equal),\_`sw`\_(starts\
+        \ with),\_`ew`\_(ends with),\_`co`\_(contains),\_`nc`\_(does not contain),\_\
+        `is`\_(is set), and\_`ns`\_(is not set).\n    \n- `value`\_- A string. Not\
+        \ required when\_`match`\_is\_`is`\_or\_`ns`.\n    \n\nJSONCopied\n\n```\n\
+        {\n    \"id\": \"sentry.rules.filters.tagged_event.TaggedEventFilter\",\n\
+        \    \"key\": \"level\",\n    \"match\": \"eq\"\n    \"value\": \"error\"\n\
+        }\n\n ```\n\n**The event's level is**\_**`match`**\_**`level`**\n\n- `match`\_\
+        - Valid values are\_`eq`,\_`gte`, and\_`lte`.\n    \n- `level`\_- Valid values\
+        \ are\_`50`\_(fatal),\_`40`\_(error),\_`30`\_(warning),\_`20`\_(info),\_`10`\_\
+        (debug),\_`0`\_(sample).\n    \n\nJSONCopied\n\n```\n{\n    \"id\": \"sentry.rules.filters.level.LevelFilter\"\
+        ,\n    \"match\": \"gte\"\n    \"level\": \"50\"\n}\n\n ```\n\n`owner`\__(string)_\n\
+        \nThe ID of the team or user that owns the rule.\n\n### Scopes\n\nYou need\
+        \ to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth/)\_\
+        requires one of the following scopes:\n\n- `alerts:write`\n    \n- `project:admin`\n\
+        \    \n- `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: List Project Issue Alert Rules
+      description: "# List a Project's Issue Alert Rules\n\n[https://docs.sentry.io/api/alerts/list-a-projects-issue-alert-rules/](https://docs.sentry.io/api/alerts/list-a-projects-issue-alert-rules/)\n\
+        \n  \nGET/api/0/projects/{organization_slug}/{project_slug}/rules/\n\nReturn\
+        \ a list of active issue alert rules bound to a project.\n\nAn issue alert\
+        \ rule triggers whenever a new event is received for any issue in a project\
+        \ that matches the specified alert conditions. These conditions can include\
+        \ a resolved issue re-appearing or an issue affecting many users. Alert conditions\
+        \ have three parts:\n\n- Triggers: specify what type of activity you'd like\
+        \ monitored or when an alert should be triggered.\n    \n- Filters: help control\
+        \ noise by triggering an alert only if the issue matches the specified criteria.\n\
+        \    \n- Actions: specify what should happen when the trigger conditions are\
+        \ met and the filters match.\n    \n\n### Path Parameters\n\n`organization_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n`project_slug`\__(string)_REQUIRED\n\nThe slug of the project the resource\
+        \ belongs to.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://docs.sentry.io/api/auth/)\_requires one of the following\
+        \ scopes:\n\n- `alerts:read`\n    \n- `alerts:write`\n    \n- `project:admin`\n\
+        \    \n- `project:read`\n    \n- `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/alert-rules/:
+    post:
+      summary: Create Org Metric Alert Rule
+      description: "# Create a Metric Alert Rule for an Organization\n\n[https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/<br>](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/)\
+        \  \nPOST/api/0/organizations/{organization_slug}/alert-rules/\n\nCreate a\
+        \ new metric alert rule for the given organization.\n\nA metric alert rule\
+        \ is a configuration that defines the conditions for triggering an alert.\
+        \ It specifies the metric type, function, time interval, and threshold values\
+        \ that determine when an alert should be triggered. Metric alert rules are\
+        \ used to monitor and notify you when certain metrics, like error count, latency,\
+        \ or failure rate, cross a predefined threshold. These rules help you proactively\
+        \ identify and address issues in your project.\n\n## Metric Alert Rule Types\n\
+        \nBelow are the types of metric alert rules you can create and the parameter\
+        \ values required to set them up. All other parameters can be customized based\
+        \ on how you want the alert rule to work. Scroll down to Body Parameters for\
+        \ more information. Visit the\_[Alert Types](https://docs.sentry.io/product/alerts/alert-types/#metric-alerts)\_\
+        docs for more details on each metric alert rule type.\n\n### [Number of Errors](https://docs.sentry.io/product/alerts/alert-types/#number-of-errors)\n\
+        \n- `eventTypes`: Any of\_`error`\_or\_`default`.\n    \n\nJSONCopied\n\n\
+        ```\n{\n    \"queryType\": 0,\n    \"dataset\": \"events\",\n    \"aggregate\"\
+        : \"count()\",\n    \"eventTypes\": [\"error\", \"default\"]\n}\n\n ```\n\n\
+        ### [Users Experiencing Errors](https://docs.sentry.io/product/alerts/alert-types/#users-experiencing-errors)\n\
+        \n- `eventTypes`: Any of\_`error`\_or\_`default`.\n    \n\nJSONCopied\n\n\
+        ```\n{\n    \"queryType\": 0,\n    \"dataset\": \"events\",\n    \"aggregate\"\
+        : \"count_unique(user)\"\n}\n\n ```\n\n### [Crash Free Session Rate](https://docs.sentry.io/product/alerts/alert-types/#crash-free-session-rate)\n\
+        \nJSONCopied\n\n```\n{\n    \"queryType\": 2,\n    \"dataset\": \"metrics\"\
+        ,\n    \"aggregate\": \"percentage(sessions_crashed, sessions) AS _crash_rate_alert_aggregate\"\
+        \n}\n\n ```\n\n### [Crash Free User Rate](https://docs.sentry.io/product/alerts/alert-types/#crash-free-user-rate)\n\
+        \nJSONCopied\n\n```\n{\n    \"queryType\": 2,\n    \"dataset\": \"metrics\"\
+        ,\n    \"aggregate\": \"percentage(users_crashed, users) AS _crash_rate_alert_aggregate\"\
+        \n}\n\n ```\n\n### [Throughput](https://docs.sentry.io/product/alerts/alert-types/#throughput)\n\
+        \nJSONCopied\n\n```\n{\n    \"queryType\": 1,\n    \"dataset\": \"transactions\"\
+        ,\n    \"aggregate\": \"count()\"\n}\n\n ```\n\n### [Transaction Duration](https://docs.sentry.io/product/alerts/alert-types/#transaction-duration)\n\
+        \n- `dataset`: If a custom percentile is used,\_`dataset`\_is\_`transactions`.\
+        \ Otherwise,\_`dataset`\_is\_`generic_metrics`.\n    \n- `aggregate`: Valid\
+        \ values are\_`avg(transaction.duration)`,\_`p50(transaction.duration)`,\_\
+        `p75(transaction.duration)`,\_`p95(transaction.duration)`,\_`p99(transaction.duration)`,\_\
+        `p100(transaction.duration)`, and\_`percentile(transaction.duration,x)`, where\_\
+        `x`\_is your custom percentile.\n    \n\nJSONCopied\n\n```\n{\n    \"queryType\"\
+        : 1,\n    \"dataset\": \"generic_metrics\",\n    \"aggregate\": \"avg(transaction.duration)\"\
+        \n}\n\n ```\n\n### [Apdex](https://docs.sentry.io/product/alerts/alert-types/#apdex)\n\
+        \n- `aggregate`:\_`apdex(x)`\_where\_`x`\_is the value of the Apdex score.\n\
+        \    \n\nJSONCopied\n\n```\n{\n    \"queryType\": 1,\n    \"dataset\": \"\
+        transactions\",\n    \"aggregate\": \"apdex(300)\"\n}\n\n ```\n\n### [Failure\
+        \ Rate](https://docs.sentry.io/product/alerts/alert-types/#failure-rate)\n\
+        \nJSONCopied\n\n```\n{\n    \"queryType\": 1,\n    \"dataset\": \"transactions\"\
+        ,\n    \"aggregate\": \"failure_rate()\"\n}\n\n ```\n\n### [Largest Contentful\
+        \ Paint](https://docs.sentry.io/product/alerts/alert-types/#largest-contentful-display)\n\
+        \n- `dataset`: If a custom percentile is used,\_`dataset`\_is\_`transactions`.\
+        \ Otherwise,\_`dataset`\_is\_`generic_metrics`.\n    \n- `aggregate`: Valid\
+        \ values are\_`avg(measurements.lcp)`,\_`p50(measurements.lcp)`,\_`p75(measurements.lcp)`,\_\
+        `p95(measurements.lcp)`,\_`p99(measurements.lcp)`,\_`p100(measurements.lcp)`,\
+        \ and\_`percentile(measurements.lcp,x)`, where\_`x`\_is your custom percentile.\n\
+        \    \n\nJSONCopied\n\n```\n{\n    \"queryType\": 1,\n    \"dataset\": \"\
+        generic_metrics\",\n    \"aggregate\": \"p50(measurements.lcp)\"\n}\n\n ```\n\
+        \n### [First Input Delay](https://docs.sentry.io/product/alerts/alert-types/#first-input-delay)\n\
+        \n- `dataset`: If a custom percentile is used,\_`dataset`\_is\_`transactions`.\
+        \ Otherwise,\_`dataset`\_is\_`generic_metrics`.\n    \n- `aggregate`: Valid\
+        \ values are\_`avg(measurements.fid)`,\_`p50(measurements.fid)`,\_`p75(measurements.fid)`,\_\
+        `p95(measurements.fid)`,\_`p99(measurements.fid)`,\_`p100(measurements.fid)`,\
+        \ and\_`percentile(measurements.fid,x)`, where\_`x`\_is your custom percentile.\n\
+        \    \n\nJSONCopied\n\n```\n{\n    \"queryType\": 1,\n    \"dataset\": \"\
+        generic_metrics\",\n    \"aggregate\": \"p100(measurements.fid)\"\n}\n\n ```\n\
+        \n### [Cumulative Layout Shift](https://docs.sentry.io/product/alerts/alert-types/#cumulative-layout-shift)\n\
+        \n- `dataset`: If a custom percentile is used,\_`dataset`\_is\_`transactions`.\
+        \ Otherwise,\_`dataset`\_is\_`generic_metrics`.\n    \n- `aggregate`: Valid\
+        \ values are\_`avg(measurements.cls)`,\_`p50(measurements.cls)`,\_`p75(measurements.cls)`,\_\
+        `p95(measurements.cls)`,\_`p99(measurements.cls)`,\_`p100(measurements.cls)`,\
+        \ and\_`percentile(measurements.cls,x)`, where\_`x`\_is your custom percentile.\n\
+        \    \n\nJSONCopied\n\n```\n{\n    \"queryType\": 1,\n    \"dataset\": \"\
+        transactions\",\n    \"aggregate\": \"percentile(measurements.cls,0.2)\"\n\
+        }\n\n ```\n\n### [Custom Metric](https://docs.sentry.io/product/alerts/alert-types/#custom-metric)\n\
+        \n- `dataset`: If a custom percentile is used,\_`dataset`\_is\_`transactions`.\
+        \ Otherwise,\_`dataset`\_is\_`generic_metrics`.\n    \n- `aggregate`: Valid\
+        \ values are:\n    \n    - `avg(x)`, where\_`x`\_is\_`transaction.duration`,\_\
+        `measurements.cls`,\_`measurements.fcp`,\_`measurements.fid`,\_`measurements.fp`,\_\
+        `measurements.lcp`,\_`measurements.ttfb`, or\_`measurements.ttfb.requesttime`.\n\
+        \        \n    - `p50(x)`, where\_`x`\_is\_`transaction.duration`,\_`measurements.cls`,\_\
+        `measurements.fcp`,\_`measurements.fid`,\_`measurements.fp`,\_`measurements.lcp`,\_\
+        `measurements.ttfb`, or\_`measurements.ttfb.requesttime`.\n        \n    -\
+        \ `p75(x)`, where\_`x`\_is\_`transaction.duration`,\_`measurements.cls`,\_\
+        `measurements.fcp`,\_`measurements.fid`,\_`measurements.fp`,\_`measurements.lcp`,\_\
+        `measurements.ttfb`, or\_`measurements.ttfb.requesttime`.\n        \n    -\
+        \ `p95(x)`, where\_`x`\_is\_`transaction.duration`,\_`measurements.cls`,\_\
+        `measurements.fcp`,\_`measurements.fid`,\_`measurements.fp`,\_`measurements.lcp`,\_\
+        `measurements.ttfb`, or\_`measurements.ttfb.requesttime`.\n        \n    -\
+        \ `p99(x)`, where\_`x`\_is\_`transaction.duration`,\_`measurements.cls`,\_\
+        `measurements.fcp`,\_`measurements.fid`,\_`measurements.fp`,\_`measurements.lcp`,\_\
+        `measurements.ttfb`, or\_`measurements.ttfb.requesttime`.\n        \n    -\
+        \ `p100(x)`, where\_`x`\_is\_`transaction.duration`,\_`measurements.cls`,\_\
+        `measurements.fcp`,\_`measurements.fid`,\_`measurements.fp`,\_`measurements.lcp`,\_\
+        `measurements.ttfb`, or\_`measurements.ttfb.requesttime`.\n        \n    -\
+        \ `percentile(x,y)`, where\_`x`\_is\_`transaction.duration`,\_`measurements.cls`,\_\
+        `measurements.fcp`,\_`measurements.fid`,\_`measurements.fp`,\_`measurements.lcp`,\_\
+        `measurements.ttfb`, or\_`measurements.ttfb.requesttime`, and\_`y`\_is the\
+        \ custom percentile.\n        \n    - `failure_rate()`\n        \n    - `apdex(x)`,\
+        \ where\_`x`\_is the value of the Apdex score.\n        \n    - `count()`\n\
+        \        \n\nJSONCopied\n\n```\n{\n    \"queryType\": 1,\n    \"dataset\"\
+        : \"generic_metrics\",\n    \"aggregate\": \"p75(measurements.ttfb)\"\n}\n\
+        \n ```\n\n### Path Parameters\n\n`organization_slug`\__(string)_REQUIRED\n\
+        \nThe slug of the organization the resource belongs to.\n\n### Body Parameters\n\
+        \n`name`\__(string)_REQUIRED\n\nThe name for the rule, which has a maximimum\
+        \ length of 256 characters.\n\n`aggregate`\__(string)_REQUIRED\n\nA string\
+        \ representing the aggregate function used in this alert rule. Valid aggregate\
+        \ functions are\_`count`,\_`count_unique`,\_`percentage`,\_`avg`,\_`apdex`,\_\
+        `failure_rate`,\_`p50`,\_`p75`,\_`p95`,\_`p99`,\_`p100`, and\_`percentile`.\
+        \ See\_[Metric Alert Rule Types](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/#metric-alert-rule-types)\_\
+        for valid configurations.\n\n`timeWindow`\__(integer)_REQUIRED\n\nThe time\
+        \ period to aggregate over.\n\n- `1`\_- 1 minute\n    \n- `5`\_- 5 minutes\n\
+        \    \n- `10`\_- 10 minutes\n    \n- `15`\_- 15 minutes\n    \n- `30`\_- 30\
+        \ minutes\n    \n- `60`\_- 1 hour\n    \n- `120`\_- 2 hours\n    \n- `240`\_\
+        - 4 hours\n    \n- `1440`\_- 24 hours\n    \n\n`projects`\__(array(string))_REQUIRED\n\
+        \nMetric alerts are currently limited to one project. The array should contain\
+        \ a single slug, representing the project to filter by.\n\n`query`\__(string)_REQUIRED\n\
+        \nAn event search query to subscribe to and monitor for alerts. For example,\
+        \ to filter transactions so that only those with status code 400 are included,\
+        \ you could use\_`\"query\": \"http.status_code:400\"`. Use an empty string\
+        \ for no filter.\n\n`thresholdType`\__(integer)_REQUIRED\n\nThe comparison\
+        \ operator for the critical and warning thresholds. The comparison operator\
+        \ for the resolved threshold is automatically set to the opposite operator.\
+        \ When a percentage change threshold is used,\_`0`\_is equivalent to \"Higher\
+        \ than\" and\_`1`\_is equivalent to \"Lower than\".\n\n- `0`\_- Above\n  \
+        \  \n- `1`\_- Below\n    \n\n`triggers`\__(array(undefined))_REQUIRED\n\n\
+        A list of triggers, where each trigger is an object with the following fields:\n\
+        \n- `label`: One of\_`critical`\_or\_`warning`. A\_`critical`\_trigger is\
+        \ always required.\n    \n- `alertThreshold`: The value that the subscription\
+        \ needs to reach to trigger the alert rule.\n    \n- `actions`: A list of\
+        \ actions that take place when the threshold is met. Set as an empty list\
+        \ if no actions are to take place.\n    \n\nJSONCopied\n\n```\ntriggers: [\n\
+        \    {\n        \"label\": \"critical\",\n        \"alertThreshold\": 50,\n\
+        \        \"actions\": [\n            {\n                \"type\": \"slack\"\
+        ,\n                \"targetType\": \"specific\",\n                \"targetIdentifier\"\
+        : \"#get-crit\",\n                \"inputChannelId\": 2454362\n          \
+        \      \"integrationId\": 653532,\n            }\n        ]\n    },\n    {\n\
+        \        \"label\": \"warning\",\n        \"alertThreshold\": 25,\n      \
+        \  \"actions\": []\n    }\n]\n\n ```\n\nMetric alert rule trigger actions\
+        \ follow the following structure:\n\n- `type`: The type of trigger action.\
+        \ Valid values are\_`email`,\_`slack`,\_`msteams`,\_`pagerduty`,\_`sentry_app`,\_\
+        `sentry_notification`, and\_`opsgenie`.\n    \n- `targetType`: The type of\
+        \ target the notification will be sent to. Valid values are\_`specific`\_\
+        (`targetIdentifier`\_is a direct reference used by the service, like an email\
+        \ address or a Slack channel ID),\_`user`\_(`targetIdentifier`\_is a Sentry\
+        \ user ID),\_`team`\_(`targetIdentifier`\_is a Sentry team ID), and\_`sentry_app`\_\
+        (`targetIdentifier`\_is a SentryApp ID).\n    \n- `targetIdentifier`: The\
+        \ ID of the target. This must be an integer for PagerDuty and Sentry apps,\
+        \ and a string for all others. Examples of appropriate values include a Slack\
+        \ channel name (`#my-channel`), a user ID, a team ID, a Sentry app ID, etc.\n\
+        \    \n- `inputChannelId`: The ID of the Slack channel. This is only used\
+        \ for the Slack action, and can be used as an alternative to providing the\_\
+        `targetIdentifier`.\n    \n- `integrationId`: The integration ID. This is\
+        \ required for every action type excluding\_`email`\_and\_`sentry_app.`\n\
+        \    \n- `sentryAppId`: The ID of the Sentry app. This is required when\_\
+        `type`\_is\_`sentry_app`.\n    \n\n`environment`\__(string)_\n\nThe name of\
+        \ the environment to filter by. Defaults to all environments.\n\n`dataset`\_\
+        _(string)_\n\nThe name of the dataset that this query will be executed on.\
+        \ Valid values are\_`events`,\_`transactions`,\_`metrics`,\_`sessions`, and\_\
+        `generic-metrics`. Defaults to\_`events`. See\_[Metric Alert Rule Types](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/#metric-alert-rule-types)\_\
+        for valid configurations.\n\n`queryType`\__(integer)_\n\nThe type of query.\
+        \ If no value is provided,\_`queryType`\_is set to the default for the specified\_\
+        `dataset.`\_See\_[Metric Alert Rule Types](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/#metric-alert-rule-types)\_\
+        for valid configurations.\n\n- `0`\_- event.type:error\n    \n- `1`\_- event.type:transaction\n\
+        \    \n- `2`\_- None\n    \n\n`eventTypes`\__(array(string))_\n\nList of event\
+        \ types that this alert will be related to. Valid values are\_`default`\_\
+        (events captured using\_[Capture Message](https://docs.sentry.io/product/sentry-basics/integrate-backend/capturing-errors/#capture-message)),\_\
+        `error`\_and\_`transaction`.\n\n`comparisonDelta`\__(integer)_\n\nAn optional\
+        \ int representing the time delta to use as the comparison period, in minutes.\
+        \ Required when using a percentage change threshold (\"x%\" higher or lower\
+        \ compared to\_`comparisonDelta`\_minutes ago). A percentage change threshold\
+        \ cannot be used for\_[Crash Free Session Rate](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/#crash-free-session-rate)\_\
+        or\_[Crash Free User Rate](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/#crash-free-user-rate).\n\
+        \n`resolveThreshold`\__(number)_\n\nOptional value that the metric needs to\
+        \ reach to resolve the alert. If no value is provided, this is set automatically\
+        \ based on the lowest severity trigger's\_`alertThreshold`. For example, if\
+        \ the alert is set to trigger at the warning level when the number of errors\
+        \ is above 50, then the alert would be set to resolve when there are less\
+        \ than 50 errors. If\_`thresholdType`\_is\_`0`,\_`resolveThreshold`\_must\
+        \ be greater than the critical threshold, otherwise, it must be less than\
+        \ the critical threshold.\n\n`owner`\__(string)_\n\nThe ID of the team or\
+        \ user that owns the rule.\n\n### Scopes\n\nYou need to\_[authenticate via\
+        \ bearer auth token.](https://docs.sentry.io/api/auth/)\_requires one of the\
+        \ following scopes:\n\n- `alert_rule:write`\n    \n- `alerts:write`\n    \n\
+        - `org:admin`\n    \n- `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: List Org Metric Alert Rules
+      description: "# List an Organization's Metric Alert Rules\n\n[https://docs.sentry.io/api/alerts/list-an-organizations-metric-alert-rules/](https://docs.sentry.io/api/alerts/list-an-organizations-metric-alert-rules/)\n\
+        \nGET/api/0/organizations/{organization_slug}/alert-rules/\n\nReturn a list\
+        \ of active metric alert rules bound to an organization.\n\nA metric alert\
+        \ rule is a configuration that defines the conditions for triggering an alert.\
+        \ It specifies the metric type, function, time interval, and threshold values\
+        \ that determine when an alert should be triggered. Metric alert rules are\
+        \ used to monitor and notify you when certain metrics, like error count, latency,\
+        \ or failure rate, cross a predefined threshold. These rules help you proactively\
+        \ identify and address issues in your project.\n\n### Path Parameters\n\n\
+        `organization_slug`\__(string)_REQUIRED\n\nThe slug of the organization the\
+        \ resource belongs to.\n\n### Scopes\n\nYou need to\_[authenticate via bearer\
+        \ auth token.](https://docs.sentry.io/api/auth/)\_requires one of the following\
+        \ scopes:\n\n- `alert_rule:read`\n    \n- `alerts:read`\n    \n- `org:admin`\n\
+        \    \n- `org:read`\n    \n- `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/notifications/actions/:
+    post:
+      summary: Create Spike Protection Notification
+      description: "# Create a Spike Protection Notification Action\n\n[https://docs.sentry.io/api/alerts/create-a-spike-protection-notification-action/](https://docs.sentry.io/api/alerts/create-a-spike-protection-notification-action/)\n\
+        \nPOST/api/0/organizations/{organization_slug}/notifications/actions/\n\n\
+        Creates a new Notification Action for Spike Protection.\n\nNotification Actions\
+        \ notify a set of members when an action has been triggered through a notification\
+        \ service such as Slack or Sentry. For example, organization owners and managers\
+        \ can receive an email when a spike occurs.\n\n### Path Parameters\n\n`organization_slug`\
+        \ _(string)_REQUIRED\n\nThe slug of the organization the resource belongs\
+        \ to.\n\n### Body Parameters\n\n`trigger_type` _(string)_REQUIRED\n\nType\
+        \ of the trigger that causes the notification. The only supported trigger\
+        \ right now is: `spike-protection`.\n\n`service_type` _(string)_REQUIRED\n\
+        \nService that is used for sending the notification.\n\n- `email`\n- `slack`\n\
+        - `sentry_notification`\n- `pagerduty`\n- `opsgenie`\n    \n\n`integration_id`\
+        \ _(integer)_\n\nID of the integration used as the notification service. See\
+        \ [List Integrations](https://docs.sentry.io/api/integrations/list-an-organizations-available-integrations/)\
+        \ to retrieve a full list of integrations.\n\nRequired if **service_type**\
+        \ is `slack`, `pagerduty` or `opsgenie`.\n\n`target_identifier` _(string)_\n\
+        \nID of the notification target, like a Slack channel ID.\n\nRequired if **service_type**\
+        \ is `slack` or `opsgenie`.\n\n`target_display` _(string)_\n\nName of the\
+        \ notification target, like a Slack channel name.\n\nRequired if **service_type**\
+        \ is `slack` or `opsgenie`.\n\n`projects` _(array(string))_\n\nList of projects\
+        \ slugs that the Notification Action is created for.\n\n### Scopes\n\nYou\
+        \ need to [authenticate via bearer auth token.](https://docs.sentry.io/api/auth/)\
+        \ requires one of the following scopes:\n\n- `org:admin`\n- `org:read`\n-\
+        \ `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: List Spike Protection Notifications
+      description: "# List Spike Protection Notifications\n\n[https://docs.sentry.io/api/alerts/list-spike-protection-notifications/](https://docs.sentry.io/api/alerts/list-spike-protection-notifications/)\n\
+        \n  \nGET/api/0/organizations/{organization_slug}/notifications/actions/\n\
+        \nReturns all Spike Protection Notification Actions for an organization.\n\
+        \nNotification Actions notify a set of members when an action has been triggered\
+        \ through a notification service such as Slack or Sentry. For example, organization\
+        \ owners and managers can receive an email when a spike occurs.\n\nYou can\
+        \ use either the\_`project`\_or\_`projectSlug`\_query parameter to filter\
+        \ for certain projects. Note that if both are present,\_`projectSlug`\_takes\
+        \ priority.\n\n### Path Parameters\n\n`organization_slug`\__(string)_REQUIRED\n\
+        \nThe slug of the organization the resource belongs to.\n\n### Query Parameters:\n\
+        \n`project`\__(array(integer))_\n\nThe IDs of projects to filter by.\_`-1`\_\
+        means all available projects. For example the following are valid parameters:\n\
+        \n- `/?project=1234&project=56789`\n    \n- `/?project=-1`\n    \n\n`project_slug`\_\
+        _(array(string))_\n\nThe project slugs to filter by. Use\_`$all`\_to include\
+        \ all available projects. For example the following are valid parameters:\n\
+        \n- `/?projectSlug=$all`\n    \n- `/?projectSlug=android&projectSlug=javascript-react`\n\
+        \    \n\n`triggerType`\__(string)_\n\nType of the trigger that causes the\
+        \ notification. The only supported value right now is:\_`spike-protection`\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth/)\_\
+        requires one of the following scopes:\n\n- `org:admin`\n    \n- `org:read`\n\
+        \    \n- `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/rules/{rule_id}/:
+    delete:
+      summary: Delete Project Issue Alert Rule
+      description: "# Delete an Issue Alert Rule\n\n[https://docs.sentry.io/api/alerts/delete-an-issue-alert-rule/](https://docs.sentry.io/api/alerts/delete-an-issue-alert-rule/)\n\
+        \n  \nDELETE/api/0/projects/{organization_slug}/{project_slug}/rules/{rule_id}/\n\
+        \nDelete a specific issue alert rule.\n\nAn issue alert rule triggers whenever\
+        \ a new event is received for any issue in a project that matches the specified\
+        \ alert conditions. These conditions can include a resolved issue re-appearing\
+        \ or an issue affecting many users. Alert conditions have three parts:\n\n\
+        - Triggers: specify what type of activity you'd like monitored or when an\
+        \ alert should be triggered.\n    \n- Filters: help control noise by triggering\
+        \ an alert only if the issue matches the specified criteria.\n    \n- Actions:\
+        \ specify what should happen when the trigger conditions are met and the filters\
+        \ match.\n    \n\n### Path Parameters\n\n`organization_slug`\__(string)_REQUIRED\n\
+        \nThe slug of the organization the resource belongs to.\n\n`project_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the project the resource belongs to.\n\n\
+        `rule_id`\__(integer)_REQUIRED\n\nThe ID of the rule you'd like to query.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth/)\_\
+        requires one of the following scopes:\n\n- `alerts:write`\n    \n- `project:admin`\n\
+        \    \n- `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: Retrieve Project Issue Alert Rule
+      description: "# Retrieve an Issue Alert Rule for a Project\n\n[https://docs.sentry.io/api/alerts/retrieve-an-issue-alert-rule-for-a-project/](https://docs.sentry.io/api/alerts/retrieve-an-issue-alert-rule-for-a-project/)\n\
+        \nGET/api/0/projects/{organization_slug}/{project_slug}/rules/{rule_id}/\n\
+        \nReturn details on an individual issue alert rule.\n\nAn issue alert rule\
+        \ triggers whenever a new event is received for any issue in a project that\
+        \ matches the specified alert conditions. These conditions can include a resolved\
+        \ issue re-appearing or an issue affecting many users. Alert conditions have\
+        \ three parts:\n\n- Triggers - specify what type of activity you'd like monitored\
+        \ or when an alert should be triggered.\n    \n- Filters - help control noise\
+        \ by triggering an alert only if the issue matches the specified criteria.\n\
+        \    \n- Actions - specify what should happen when the trigger conditions\
+        \ are met and the filters match.\n    \n\n### Path Parameters\n\n`organization_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n`project_slug`\__(string)_REQUIRED\n\nThe slug of the project the resource\
+        \ belongs to.\n\n`rule_id`\__(integer)_REQUIRED\n\nThe ID of the rule you'd\
+        \ like to query.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://docs.sentry.io/api/auth/)\_requires one of the following\
+        \ scopes:\n\n- `alerts:read`\n    \n- `alerts:write`\n    \n- `project:admin`\n\
+        \    \n- `project:read`\n    \n- `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    put:
+      summary: Update Project Issue Alert Rule
+      description: "# Update an Issue Alert Rule\n\n[https://docs.sentry.io/api/alerts/update-an-issue-alert-rule/](https://docs.sentry.io/api/alerts/update-an-issue-alert-rule/)\n\
+        \nPUT/api/0/projects/{organization_slug}/{project_slug}/rules/{rule_id}/\n\
+        \nUpdates an issue alert rule.\n\n> &lt;p &gt;Warning: Calling this endpoint\
+        \ fully overwrites the specified issue alert.&lt;/p&gt; \n  \n\nAn issue alert\
+        \ rule triggers whenever a new event is received for any issue in a project\
+        \ that matches the specified alert conditions. These conditions can include\
+        \ a resolved issue re-appearing or an issue affecting many users. Alert conditions\
+        \ have three parts:\n\n- Triggers - specify what type of activity you'd like\
+        \ monitored or when an alert should be triggered.\n    \n- Filters - help\
+        \ control noise by triggering an alert only if the issue matches the specified\
+        \ criteria.\n    \n- Actions - specify what should happen when the trigger\
+        \ conditions are met and the filters match.\n    \n\n### Path Parameters\n\
+        \n`organization_slug`\__(string)_REQUIRED\n\nThe slug of the organization\
+        \ the resource belongs to.\n\n`project_slug`\__(string)_REQUIRED\n\nThe slug\
+        \ of the project the resource belongs to.\n\n`rule_id`\__(integer)_REQUIRED\n\
+        \nThe ID of the rule you'd like to query.\n\n### Body Parameters\n\n`name`\_\
+        _(string)_REQUIRED\n\nThe name for the rule.\n\n`actionMatch`\__(string)_REQUIRED\n\
+        \nA string determining which of the conditions need to be true before any\
+        \ filters are evaluated.\n\n- `all`\_- All conditions must evaluate to true.\n\
+        \    \n- `any`\_- At least one of the conditions must evaluate to true.\n\
+        \    \n- `none`\_- All conditions must evaluate to false.\n    \n\n`conditions`\_\
+        _(array(object))_REQUIRED\n\nA list of triggers that determine when the rule\
+        \ fires. See\_[Create an Issue Alert Rule](https://docs.sentry.io/api/alerts/create-an-issue-alert-rule-for-a-project/)\_\
+        for valid conditions.\n\n`actions`\__(array(object))_REQUIRED\n\nA list of\
+        \ actions that take place when all required conditions and filters for the\
+        \ rule are met. See\_[Create an Issue Alert Rule](https://docs.sentry.io/api/alerts/create-an-issue-alert-rule-for-a-project/)\_\
+        for valid actions.\n\n`frequency`\__(integer)_REQUIRED\n\nHow often to perform\
+        \ the actions once for an issue, in minutes. The valid range is\_`5`\_to\_\
+        `43200`.\n\n`environment`\__(string)_\n\nThe name of the environment to filter\
+        \ by.\n\n`filterMatch`\__(string)_\n\nA string determining which filters need\
+        \ to be true before any actions take place.\n\n- `all`\_- All filters must\
+        \ evaluate to true.\n    \n- `any`\_- At least one of the filters must evaluate\
+        \ to true.\n    \n- `none`\_- All filters must evaluate to false.\n    \n\n\
+        `filters`\__(array(object))_\n\nA list of filters that determine if a rule\
+        \ fires after the necessary conditions have been met. See\_[Create an Issue\
+        \ Alert Rule](https://docs.sentry.io/api/alerts/create-an-issue-alert-rule-for-a-project/)\_\
+        for valid filters.\n\n`owner`\__(string)_\n\nThe ID of the team or user that\
+        \ owns the rule.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://docs.sentry.io/api/auth/)\_requires one of the following\
+        \ scopes:\n\n- `alerts:write`\n    \n- `project:admin`\n    \n- `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/notifications/actions/{action_id}/:
+    delete:
+      summary: Delete Spike Protection Notification
+      description: "# Delete a Spike Protection Notification Action\n\n[https://docs.sentry.io/api/alerts/delete-a-spike-protection-notification-action/](https://docs.sentry.io/api/alerts/delete-a-spike-protection-notification-action/)\
+        \  \n  \nDELETE/api/0/organizations/{organization_slug}/notifications/actions/{action_id}/\n\
+        \nDeletes a Spike Protection Notification Action.\n\nNotification Actions\
+        \ notify a set of members when an action has been triggered through a notification\
+        \ service such as Slack or Sentry. For example, organization owners and managers\
+        \ can receive an email when a spike occurs.\n\n### Path Parameters\n\n`organization_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n`action_id`\__(integer)_REQUIRED\n\nID of the notification action to retrieve\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth/)\_\
+        requires one of the following scopes:\n\n- `org:admin`\n    \n- `org:read`\n\
+        \    \n- `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: Retrieve Spike Protection Notification
+      description: "# Retrieve a Spike Protection Notification Action\n\n[https://docs.sentry.io/api/alerts/retrieve-a-spike-protection-notification-action/](https://docs.sentry.io/api/alerts/retrieve-a-spike-protection-notification-action/)\n\
+        \nGET/api/0/organizations/{organization_slug}/notifications/actions/{action_id}/\n\
+        \nReturns a serialized Spike Protection Notification Action object.\n\nNotification\
+        \ Actions notify a set of members when an action has been triggered through\
+        \ a notification service such as Slack or Sentry. For example, organization\
+        \ owners and managers can receive an email when a spike occurs.\n\n### Path\
+        \ Parameters\n\n`organization_slug`\__(string)_REQUIRED\n\nThe slug of the\
+        \ organization the resource belongs to.\n\n`action_id`\__(integer)_REQUIRED\n\
+        \nID of the notification action to retrieve\n\n### Scopes\n\nYou need to\_\
+        [authenticate via bearer auth token.](https://docs.sentry.io/api/auth/)\_\
+        requires one of the following scopes:\n\n- `org:admin`\n    \n- `org:read`\n\
+        \    \n- `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    put:
+      summary: Create Spike Protection Notification Copy
+      description: "# Update a Spike Protection Notification Action\n\n[https://docs.sentry.io/api/alerts/update-a-spike-protection-notification-action/](https://docs.sentry.io/api/alerts/update-a-spike-protection-notification-action/)\n\
+        \nPUT/api/0/organizations/{organization_slug}/notifications/actions/{action_id}/\n\
+        \nUpdates a Spike Protection Notification Action.\n\nNotification Actions\
+        \ notify a set of members when an action has been triggered through a notification\
+        \ service such as Slack or Sentry. For example, organization owners and managers\
+        \ can receive an email when a spike occurs.\n\n### Path Parameters\n\n`organization_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n`action_id`\__(integer)_REQUIRED\n\nID of the notification action to retrieve\n\
+        \n### Body Parameters\n\n`trigger_type`\__(string)_REQUIRED\n\nType of the\
+        \ trigger that causes the notification. The only supported trigger right now\
+        \ is:\_`spike-protection`.\n\n`service_type`\__(string)_REQUIRED\n\nService\
+        \ that is used for sending the notification.\n\n- `email`\n    \n- `slack`\n\
+        \    \n- `sentry_notification`\n    \n- `pagerduty`\n    \n- `opsgenie`\n\
+        \    \n\n`integration_id`\__(integer)_\n\nID of the integration used as the\
+        \ notification service. See\_[List Integrations](https://docs.sentry.io/api/integrations/list-an-organizations-available-integrations/)\_\
+        to retrieve a full list of integrations.\n\nRequired if\_**service_type**\_\
+        is\_`slack`,\_`pagerduty`\_or\_`opsgenie`.\n\n`target_identifier`\__(string)_\n\
+        \nID of the notification target, like a Slack channel ID.\n\nRequired if\_\
+        **service_type**\_is\_`slack`\_or\_`opsgenie`.\n\n`target_display`\__(string)_\n\
+        \nName of the notification target, like a Slack channel name.\n\nRequired\
+        \ if\_**service_type**\_is\_`slack`\_or\_`opsgenie`.\n\n`projects`\__(array(string))_\n\
+        \nList of projects slugs that the Notification Action is created for.\n\n\
+        ### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth/)\_\
+        requires one of the following scopes:\n\n- `org:admin`\n    \n- `org:read`\n\
+        \    \n- `org:write`\n    \n\n```\ncurl https://sentry.io/api/0/organizations/{organization_slug}/notifications/actions/{action_id}/\
+        \ \\\n -H &#x27;Authorization: Bearer <auth_token>&#x27; \\\n -X PUT \\\n\
+        \ -H 'Content-Type: application/json' \\\n -d '{}'\n\n ```\n\nRESPONSESCHEMA202400\n\
+        \n```\n{\n  \"id\": \"836501735\",\n  \"organizationId\": \"62848264\",\n\
+        \  \"serviceType\": \"sentry_notification\",\n  \"targetDisplay\": \"default\"\
+        ,\n  \"targetIdentifier\": \"default\",\n  \"targetType\": \"specific\",\n\
+        \  \"triggerType\": \"spike-protection\",\n  \"projects\": [\n    4505321021243392\n\
+        \  ]\n}\n\n ```"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/alert-rules/{alert_rule_id}/:
+    delete:
+      summary: Delete Metric Alert Rule for Organization
+      description: "# Delete a Metric Alert Rule\n\n[https://docs.sentry.io/api/alerts/delete-a-metric-alert-rule/](https://docs.sentry.io/api/alerts/delete-a-metric-alert-rule/)\
+        \  \n  \nDELETE/api/0/organizations/{organization_slug}/alert-rules/{alert_rule_id}/\n\
+        \nDelete a specific metric alert rule.\n\nA metric alert rule is a configuration\
+        \ that defines the conditions for triggering an alert. It specifies the metric\
+        \ type, function, time interval, and threshold values that determine when\
+        \ an alert should be triggered. Metric alert rules are used to monitor and\
+        \ notify you when certain metrics, like error count, latency, or failure rate,\
+        \ cross a predefined threshold. These rules help you proactively identify\
+        \ and address issues in your project.\n\n### Path Parameters\n\n`organization_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n`alert_rule_id`\__(integer)_REQUIRED\n\nThe ID of the rule you'd like to\
+        \ query.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth/)\_\
+        requires one of the following scopes:\n\n- `alert_rule:write`\n    \n- `alerts:write`\n\
+        \    \n- `org:admin`\n    \n- `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: Retrieve Metric Alert Rule for Organization
+      description: "# Retrieve a Metric Alert Rule for an Organization\n\n[https://docs.sentry.io/api/alerts/retrieve-a-metric-alert-rule-for-an-organization/](https://docs.sentry.io/api/alerts/retrieve-a-metric-alert-rule-for-an-organization/)\n\
+        \nGET/api/0/organizations/{organization_slug}/alert-rules/{alert_rule_id}/\n\
+        \nReturn details on an individual metric alert rule.\n\nA metric alert rule\
+        \ is a configuration that defines the conditions for triggering an alert.\
+        \ It specifies the metric type, function, time interval, and threshold values\
+        \ that determine when an alert should be triggered. Metric alert rules are\
+        \ used to monitor and notify you when certain metrics, like error count, latency,\
+        \ or failure rate, cross a predefined threshold. These rules help you proactively\
+        \ identify and address issues in your project.\n\n### Path Parameters\n\n\
+        `organization_slug`\__(string)_REQUIRED\n\nThe slug of the organization the\
+        \ resource belongs to.\n\n`alert_rule_id`\__(integer)_REQUIRED\n\nThe ID of\
+        \ the rule you'd like to query.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth/)\_requires one\
+        \ of the following scopes:\n\n- `alert_rule:read`\n    \n- `alerts:read`\n\
+        \    \n- `org:admin`\n    \n- `org:read`\n    \n- `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    put:
+      summary: Update Org Metric Alert Rule
+      description: "# Update a Metric Alert Rule\n\n[https://docs.sentry.io/api/alerts/update-a-metric-alert-rule/](https://docs.sentry.io/api/alerts/update-a-metric-alert-rule/)\n\
+        \nPUT/api/0/organizations/{organization_slug}/alert-rules/{alert_rule_id}/\n\
+        \nUpdates a metric alert rule. See\_**Metric Alert Rule Types**\_under\_[Create\
+        \ a Metric Alert Rule for an Organization](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/#metric-alert-rule-types)\_\
+        to see valid request body configurations for different types of metric alert\
+        \ rule types.\n\n> &lt;p &gt;Warning: Calling this endpoint fully overwrites\
+        \ the specified metric alert.&lt;/p&gt; \n  \n\nA metric alert rule is a configuration\
+        \ that defines the conditions for triggering an alert. It specifies the metric\
+        \ type, function, time interval, and threshold values that determine when\
+        \ an alert should be triggered. Metric alert rules are used to monitor and\
+        \ notify you when certain metrics, like error count, latency, or failure rate,\
+        \ cross a predefined threshold. These rules help you proactively identify\
+        \ and address issues in your project.\n\n### Path Parameters\n\n`organization_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n`alert_rule_id`\__(integer)_REQUIRED\n\nThe ID of the rule you'd like to\
+        \ query.\n\n### Body Parameters\n\n`name`\__(string)_REQUIRED\n\nThe name\
+        \ for the rule.\n\n`aggregate`\__(string)_REQUIRED\n\nA string representing\
+        \ the aggregate function used in this alert rule. Valid aggregate functions\
+        \ are\_`count`,\_`count_unique`,\_`percentage`,\_`avg`,\_`apdex`,\_`failure_rate`,\_\
+        `p50`,\_`p75`,\_`p95`,\_`p99`,\_`p100`, and\_`percentile`. See\_**Metric Alert\
+        \ Rule Types**\_under\_[Create a Metric Alert Rule](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/#metric-alert-rule-types)\_\
+        for valid configurations.\n\n`timeWindow`\__(integer)_REQUIRED\n\nThe time\
+        \ period to aggregate over.\n\n- `1`\_- 1 minute\n    \n- `5`\_- 5 minutes\n\
+        \    \n- `10`\_- 10 minutes\n    \n- `15`\_- 15 minutes\n    \n- `30`\_- 30\
+        \ minutes\n    \n- `60`\_- 1 hour\n    \n- `120`\_- 2 hours\n    \n- `240`\_\
+        - 4 hours\n    \n- `1440`\_- 24 hours\n    \n\n`projects`\__(array(string))_REQUIRED\n\
+        \nThe names of the projects to filter by.\n\n`query`\__(string)_REQUIRED\n\
+        \nAn event search query to subscribe to and monitor for alerts. For example,\
+        \ to filter transactions so that only those with status code 400 are included,\
+        \ you could use\_`\"query\": \"http.status_code:400\"`. Use an empty string\
+        \ for no filter.\n\n`thresholdType`\__(integer)_REQUIRED\n\nThe comparison\
+        \ operator for the critical and warning thresholds. The comparison operator\
+        \ for the resolved threshold is automatically set to the opposite operator.\
+        \ When a percentage change threshold is used,\_`0`\_is equivalent to \"Higher\
+        \ than\" and\_`1`\_is equivalent to \"Lower than\".\n\n- `0`\_- Above\n  \
+        \  \n- `1`\_- Below\n    \n\n`triggers`\__(array(undefined))_REQUIRED\n\n\
+        A list of triggers, where each trigger is an object with the following fields:\n\
+        \n- `label`: One of\_`critical`\_or\_`warning`. A\_`critical`\_trigger is\
+        \ always required.\n    \n- `alertThreshold`: The value that the subscription\
+        \ needs to reach to trigger the alert rule.\n    \n- `actions`: A list of\
+        \ actions that take place when the threshold is met. Set as an empty list\
+        \ if no actions are to take place.\n    \n\nJSONCopied\n\n```\ntriggers: [\n\
+        \    {\n        \"label\": \"critical\",\n        \"alertThreshold\": 100,\n\
+        \        \"actions\": [\n            {\n                \"type\": \"email\"\
+        ,\n                \"targetType\": \"user\",\n                \"targetIdentifier\"\
+        : \"23489853\",\n                \"inputChannelId\": None\n              \
+        \  \"integrationId\": None,\n                \"sentryAppId\": None\n     \
+        \       }\n        ]\n    },\n    {\n        \"label\": \"warning\",\n   \
+        \     \"alertThreshold\": 75,\n        \"actions\": []\n    }\n]\n\n ```\n\
+        \nMetric alert rule trigger actions follow the following structure:\n\n- `type`:\
+        \ The type of trigger action. Valid values are\_`email`,\_`slack`,\_`msteams`,\_\
+        `pagerduty`,\_`sentry_app`,\_`sentry_notification`, and\_`opsgenie`.\n   \
+        \ \n- `targetType`: The type of target the notification will be sent to. Valid\
+        \ values are\_`specific`,\_`user`,\_`team`, and\_`sentry_app`.\n    \n- `targetIdentifier`:\
+        \ The ID of the target. This must be an integer for PagerDuty and Sentry apps,\
+        \ and a string for all others. Examples of appropriate values include a Slack\
+        \ channel name (`#my-channel`), a user ID, a team ID, a Sentry app ID, etc.\n\
+        \    \n- `inputChannelId`: The ID of the Slack channel. This is only used\
+        \ for the Slack action, and can be used as an alternative to providing the\_\
+        `targetIdentifier`.\n    \n- `integrationId`: The integration ID. This is\
+        \ required for every action type except\_`email`\_and\_`sentry_app.`\n   \
+        \ \n- `sentryAppId`: The ID of the Sentry app. This is required when\_`type`\_\
+        is\_`sentry_app`.\n    \n\n`environment`\__(string)_\n\nThe name of the environment\
+        \ to filter by. Defaults to all environments.\n\n`dataset`\__(string)_\n\n\
+        The name of the dataset that this query will be executed on. Valid values\
+        \ are\_`events`,\_`transactions`,\_`metrics`,\_`sessions`, and\_`generic-metrics`.\
+        \ Defaults to\_`events`. See\_**Metric Alert Rule Types**\_under\_[Create\
+        \ a Metric Alert Rule](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/#metric-alert-rule-types)\_\
+        for valid configurations.\n\n`queryType`\__(integer)_\n\nThe type of query.\
+        \ If no value is provided,\_`queryType`\_is set to the default for the specified\_\
+        `dataset.`\_See\_**Metric Alert Rule Types**\_under\_[Create a Metric Alert\
+        \ Rule](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/#metric-alert-rule-types)\_\
+        for valid configurations.\n\n- `0`\_- event.type:error\n    \n- `1`\_- event.type:transaction\n\
+        \    \n- `2`\_- None\n    \n\n`eventTypes`\__(array(string))_\n\nList of event\
+        \ types that this alert will be related to. Valid values are\_`default`\_\
+        (events captured using\_[Capture Message](https://docs.sentry.io/product/sentry-basics/integrate-backend/capturing-errors/#capture-message)),\_\
+        `error`\_and\_`transaction`.\n\n`comparisonDelta`\__(integer)_\n\nAn optional\
+        \ int representing the time delta to use as the comparison period, in minutes.\
+        \ Required when using a percentage change threshold (\"x%\" higher or lower\
+        \ compared to\_`comparisonDelta`\_minutes ago). A percentage change threshold\
+        \ cannot be used for\_[Crash Free Session Rate](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/#crash-free-session-rate)\_\
+        or\_[Crash Free User Rate](https://docs.sentry.io/api/alerts/create-a-metric-alert-rule-for-an-organization/#crash-free-user-rate).\n\
+        \n`resolveThreshold`\__(number)_\n\nOptional value that the metric needs to\
+        \ reach to resolve the alert. If no value is provided, this is set automatically\
+        \ based on the lowest severity trigger's\_`alertThreshold`. For example, if\
+        \ the alert is set to trigger at the warning level when the number of errors\
+        \ is above 50, then the alert would be set to resolve when there are less\
+        \ than 50 errors. If\_`thresholdType`\_is\_`0`,\_`resolveThreshold`\_must\
+        \ be greater than the critical threshold. Otherwise, it must be less than\
+        \ the critical threshold.\n\n`owner`\__(string)_\n\nThe ID of the team or\
+        \ user that owns the rule.\n\n### Scopes\n\nYou need to\_[authenticate via\
+        \ bearer auth token.](https://docs.sentry.io/api/auth/)\_requires one of the\
+        \ following scopes:\n\n- `alert_rule:write`\n    \n- `alerts:write`\n    \n\
+        - `org:admin`\n    \n- `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /envelope/:
+    post:
+      summary: Create Sentry Error
+      description: ''
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/events/:
+    get:
+      summary: Query Discover Events
+      description: "[https://docs.sentry.io/api/discover/query-discover-events-in-table-format/](https://docs.sentry.io/api/discover/query-discover-events-in-table-format/)\n\
+        \nRetrieves discover (also known as events) data for a given organization.\n\
+        \n**Note**: This endpoint is intended to get a table of results, and is not\
+        \ for doing a full export of data sent to Sentry.\n\nThe `field` query parameter\
+        \ determines what fields will be selected in the `data` and `meta` keys of\
+        \ the endpoint response.\n\n*   The `data` key contains a list of results\
+        \ row by row that match the `query` made\n*   The `meta` key contains information\
+        \ about the response, including the unit or type of the fields requested\n\
+        \    \n\n### Path Parameters\n\n`organization_slug` *(string)*REQUIRED\n\n\
+        The slug of the organization the resource belongs to.\n\n### Query Parameters:\n\
+        \n`end` *(string)*\n\nThe end of the period of time for the query, expected\
+        \ in ISO-8601 format. For example `2001-12-14T12:34:56.7890`\n\n`environment`\
+        \ *(array(string))*\n\nThe name of environments to filter by.\n\n`project`\
+        \ *(array(integer))*\n\nThe ids of projects to filter by. `-1` means all available\
+        \ projects. If this parameter is omitted, the request will default to using\
+        \ 'My Projects'\n\n`start` *(string)*\n\nThe start of the period of time for\
+        \ the query, expected in ISO-8601 format. For example `2001-12-14T12:34:56.7890`\n\
+        \n`statsPeriod` *(string)*\n\nThe period of time for the query, will override\
+        \ the start & end parameters, a number followed by one of:\n\n*   `d` for\
+        \ days\n*   `h` for hours\n*   `m` for minutes\n*   `s` for seconds\n*   `w`\
+        \ for weeks\n    \n\nFor example `24h`, to mean query data starting from 24\
+        \ hours ago to now.\n\n`field` *(array(string))*REQUIRED\n\nThe fields, functions,\
+        \ or equations to request for the query. At most 20 fields can be selected\
+        \ per request. Each field can be one of the following types:\n\n*   A built-in\
+        \ key field. See possible fields in the [properties table](https://docs.sentry.io/product/sentry-basics/search/searchable-properties/#properties-table),\
+        \ under any field that is an event property\n    *   example: `field=transaction`\n\
+        *   A tag. Tags should use the `tag[]` formatting to avoid ambiguity with\
+        \ any fields\n    *   example: `field=tag[isEnterprise]`\n*   A function which\
+        \ will be in the format of `function_name(parameters,...)`. See possible functions\
+        \ in the [query builder documentation](https://docs.sentry.io/product/discover-queries/query-builder/#stacking-functions)\n\
+        \    *   when a function is included, Discover will group by any tags or fields\n\
+        \    *   example: `field=count_if(transaction.duration,greater,300)`\n*  \
+        \ An equation when prefixed with `equation|`. Read more about [equations here](https://docs.sentry.io/product/discover-queries/query-builder/query-equations/)\n\
+        \    *   example: `field=equation|count_if(transaction.duration,greater,300)\
+        \ / count() * 100`\n\n`per_page` *(integer)*\n\nLimit the number of rows to\
+        \ return in the result. Default and maximum allowed is 100.\n\n`query` *(string)*\n\
+        \nThe search filter for your query, read more about query syntax [here](https://docs.sentry.io/product/sentry-basics/search/)\n\
+        \nexample: `query=(transaction:foo AND release:abc) OR (transaction:[bar,baz]\
+        \ AND release:def)`\n\n`sort` *(string)*\n\nWhat to order the results of the\
+        \ query by. Must be something in the `field` list, excluding equations.\n\n\
+        ### Scopes\n\nYou need to [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\
+        \ requires one of the following scopes:\n\n*   `org:admin`\n*   `org:read`\n\
+        *   `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/issues/:
+    put:
+      summary: Bulk Mutate List of Issues
+      description: "[https://docs.sentry.io/api/events/bulk-mutate-a-list-of-issues/](https://docs.sentry.io/api/events/bulk-mutate-a-list-of-issues/)\n\
+        \nBulk mutate various attributes on issues. The list of issues to modify is\
+        \ given through the `id` query parameter. It is repeated for each issue that\
+        \ should be modified.\n\n*   For non-status updates, the `id` query parameter\
+        \ is required.\n*   For status updates, the `id` query parameter may be omitted\
+        \ for a batch \"update all\" query.\n*   An optional `status` query parameter\
+        \ may be used to restrict mutations to only events with the given status.\n\
+        \    \n\nThe following attributes can be modified and are supplied as JSON\
+        \ object in the body:\n\nIf any ids are out of scope this operation will succeed\
+        \ without any data mutation.\n\n### Path Parameters\n\n`organization_slug`\
+        \ *(string)*REQUIRED\n\nThe slug of the organization the issues belong to.\n\
+        \n`project_slug` *(string)*REQUIRED\n\nThe slug of the project the issues\
+        \ belong to.\n\n### Query Parameters:\n\n`id` *(integer)*\n\nA list of IDs\
+        \ of the issues to be mutated. This parameter shall be repeated for each issue.\
+        \ It is optional only if a status is mutated in which case an implicit update\
+        \ all is assumed.\n\n`status` *(string)*\n\nOptionally limits the query to\
+        \ issues of the specified status. Valid values are `\"resolved\"`, `\"unresolved\"\
+        `, and `\"ignored\"`.\n\n### Body Parameters\n\n`status` *(string)*\n\nThe\
+        \ new status for the issues. Valid values are `\"resolved\"`, `\"resolvedInNextRelease\"\
+        `, `\"unresolved\"`, and `\"ignored\"`.\n\n`statusDetails` *(object)*\n\n\
+        Additional details about the resolution. Valid values are `\"inRelease\"`,\
+        \ `\"inNextRelease\"`, `\"inCommit\"`, `\"ignoreDuration\"`, `\"ignoreCount\"\
+        `, `\"ignoreWindow\"`, `\"ignoreUserCount\"`, and `\"ignoreUserWindow\"`.\n\
+        \n`ignoreDuration` *(integer)*\n\nThe number of minutes to ignore this issue.\n\
+        \n`isPublic` *(boolean)*\n\nSets the issue to public or private.\n\n`merge`\
+        \ *(boolean)*\n\nAllows to merge or unmerge different issues.\n\n`assignedTo`\
+        \ *(string)*\n\nThe actor id (or username) of the user or team that should\
+        \ be assigned to this issue.\n\n`hasSeen` *(boolean)*\n\nIn case this API\
+        \ call is invoked with a user context this allows changing of the flag that\
+        \ indicates if the user has seen the event.\n\n`isBookmarked` *(boolean)*\n\
+        \nIn case this API call is invoked with a user context this allows changing\
+        \ of the bookmark flag.\n\n### Scopes\n\nYou need to [authenticate via bearer\
+        \ auth token.](https://docs.sentry.io/api/auth) requires one of the following\
+        \ scopes:\n\n*   `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    delete:
+      summary: Bulk Remove List of Issues
+      description: "[https://docs.sentry.io/api/events/bulk-remove-a-list-of-issues/](https://docs.sentry.io/api/events/bulk-remove-a-list-of-issues/)\n\
+        \nPermanently remove the given issues. The list of issues to modify is given\
+        \ through the\_`id`\_query parameter. It is repeated for each issue that should\
+        \ be removed.\n\nOnly queries by 'id' are accepted.\n\nIf any ids are out\
+        \ of scope this operation will succeed without any data mutation.\n\n### Path\
+        \ Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\nThe slug of the\
+        \ organization the issues belong to.\n\n`project_slug`\_*(string)*REQUIRED\n\
+        \nThe slug of the project the issues belong to.\n\n### Query Parameters:\n\
+        \n`id`\_*(integer)*\n\nA list of IDs of the issues to be removed. This parameter\
+        \ shall be repeated for each issue.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of\
+        \ the following scopes:\n\n*   `project:admin`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: List Project Issues
+      description: "[https://docs.sentry.io/api/events/list-a-projects-issues/](https://docs.sentry.io/api/events/list-a-projects-issues/)\n\
+        \nReturn a list of issues (groups) bound to a project. All parameters are\
+        \ supplied as query string parameters.\n\nA default query of\_`is:unresolved`\_\
+        is applied. To return results with other statuses send an new query value\
+        \ (i.e.\_`?query=`\_for all results).\n\nThe\_`statsPeriod`\_parameter can\
+        \ be used to select the timeline stats which should be present. Possible values\
+        \ are:\_`\"\"`\_(disable),`\"24h\"`,\_`\"14d\"`\n\n### Path Parameters\n\n\
+        `organization_slug`\_*(string)*REQUIRED\n\nThe slug of the organization the\
+        \ issues belong to.\n\n`project_slug`\_*(string)*REQUIRED\n\nThe slug of the\
+        \ project the issues belong to.\n\n### Query Parameters:\n\n`statsPeriod`\_\
+        *(string)*\n\nAn optional stat period (can be one of\_`\"24h\"`,\_`\"14d\"\
+        `, and\_`\"\"`).\n\n`shortIdLookup`\_*(boolean)*\n\nIf this is set to true\
+        \ then short IDs are looked up by this function as well. This can cause the\
+        \ return value of the function to return an event issue of a different project\
+        \ which is why this is an opt-in. Set to 1 to enable.\n\n`query`\_*(string)*\n\
+        \nAn optional Sentry structured search query. If not provided an implied\_\
+        `\"is:unresolved\"`\_is assumed.\n\n`cursor`\_*(string)*\n\nA pointer to the\
+        \ last object fetched and its sort order; used to retrieve the next or previous\
+        \ results.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `event:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/events/:
+    get:
+      summary: List Project Events
+      description: '[https://docs.sentry.io/api/events/list-a-projects-events/](https://docs.sentry.io/api/events/list-a-projects-events/)
+
+
+        Return a list of events bound to a project.
+
+
+        ### Path Parameters
+
+
+        `organization_slug` *(string)* REQUIRED
+
+
+        The slug of the organization the groups belong to.
+
+
+        `project_slug` *(string)*REQUIRED
+
+
+        The slug of the project the groups belong to.
+
+
+        ### Query Parameters:
+
+
+        `full` *(boolean)*
+
+
+        If this is set to true then the event payload will include the full event
+        body, including the stacktrace. Set to true to enable.
+
+
+        `cursor` *(string)*
+
+
+        A pointer to the last object fetched and its sort order; used to retrieve
+        the next or previous results.
+
+
+        ### Scopes
+
+
+        You need to [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)
+        requires one of the following scopes:
+
+
+        *   `project:read`'
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/issues/:issue_id/tags/:key/values/:
+    get:
+      summary: List Tag Values for Issue
+      description: "[https://docs.sentry.io/api/events/list-a-tags-values-related-to-an-issue/](https://docs.sentry.io/api/events/list-a-tags-values-related-to-an-issue/)\n\
+        \nReturns details for given tag key related to an issue.\n\nWhen\_[paginated](https://docs.sentry.io/api/pagination)\_\
+        can return at most 1000 values.\n\n### Path Parameters\n\n`issue_id`\_*(string)*\
+        \ REQUIRED\n\nThe ID of the issue to retrieve.\n\n`key`\_*(string)* REQUIRED\n\
+        \nThe tag key to look the values up for.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of\
+        \ the following scopes:\n\n*   `event:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/issues/:issue_id/events/:
+    get:
+      summary: List Issue Events
+      description: "[https://docs.sentry.io/api/events/list-an-issues-events/](https://docs.sentry.io/api/events/list-an-issues-events/)\n\
+        \nThis endpoint lists an issue's events.\n\n### Path Parameters\n\n`issue_id`\_\
+        *(string)*REQUIRED\n\nThe ID of the issue to retrieve.\n\n### Query Parameters:\n\
+        \n`full`\_*(boolean)*\n\nIf this is set to true then the event payload will\
+        \ include the full event body, including the stacktrace. Set to true to enable.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `event:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/issues/:issue_id/hashes/:
+    get:
+      summary: Get Issue Hashes
+      description: "[https://docs.sentry.io/api/events/list-an-issues-hashes/](https://docs.sentry.io/api/events/list-an-issues-hashes/)\n\
+        \nThis endpoint lists an issue's hashes, which are the generated checksums\
+        \ used to aggregate individual events.\n\n### Path Parameters\n\n`issue_id`\_\
+        *(string)* REQUIRED\n\nThe ID of the issue to retrieve.\n\n### Query Parameters:\n\
+        \n`cursor`\_*(string)*\n\nA pointer to the last object fetched and its sort\
+        \ order; used to retrieve the next or previous results.\n\n### Scopes\n\n\
+        You need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `event:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/issues/:issue_id/:
+    delete:
+      summary: Delete Issue
+      description: "[https://docs.sentry.io/api/events/remove-an-issue/](https://docs.sentry.io/api/events/remove-an-issue/)\n\
+        \nRemoves an individual issue.\n\n### Path Parameters\n\n`issue_id`\_*(string)*REQUIRED\n\
+        \nThe ID of the issue to delete.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of\
+        \ the following scopes:\n\n*   `event:admin`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: Get Issue
+      description: "[https://docs.sentry.io/api/events/retrieve-an-issue/](https://docs.sentry.io/api/events/retrieve-an-issue/)\n\
+        \nReturn details on an individual issue. This returns the basic stats for\
+        \ the issue (title, last seen, first seen), some overall numbers (number of\
+        \ comments, user reports) as well as the summarized event data.\n\n### Path\
+        \ Parameters\n\n`issue_id`\_*(string)*REQUIRED\n\nThe ID of the issue to retrieve.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `event:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    put:
+      summary: Update Issue
+      description: '[https://docs.sentry.io/api/events/update-an-issue/](https://docs.sentry.io/api/events/update-an-issue/)
+
+
+        Updates an individual issue''s attributes. Only the attributes submitted are
+        modified.
+
+
+        ### Path Parameters
+
+
+        `issue_id` *(string)* REQUIRED
+
+
+        The ID of the group to retrieve.
+
+
+        ### Body Parameters
+
+
+        `status` *(string)*
+
+
+        The new status for the issues. Valid values are `"resolved"`, `"resolvedInNextRelease"`,
+        `"unresolved"`, and `"ignored"`.
+
+
+        `assignedTo` *(string)*
+
+
+        The actor id (or username) of the user or team that should be assigned to
+        this issue.
+
+
+        `hasSeen` *(boolean)*
+
+
+        In case this API call is invoked with a user context this allows changing
+        of the flag that indicates if the user has seen the event.
+
+
+        `isBookmarked` *(boolean)*
+
+
+        In case this API call is invoked with a user context this allows changing
+        of the bookmark flag.
+
+
+        `isPublic` *(boolean)*
+
+
+        Sets the issue to public or private.
+
+
+        ### Scopes
+
+
+        You need to [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)
+        requires one of the following scopes:
+
+
+        *   `event:write`'
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/events/:event_id/:
+    get:
+      summary: Retrieve Event for Project
+      description: "[https://docs.sentry.io/api/events/retrieve-an-event-for-a-project/](https://docs.sentry.io/api/events/retrieve-an-event-for-a-project/)\n\
+        \nReturn details on an individual event.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the organization the event belongs to.\n\
+        \n`project_slug`\_*(string)*REQUIRED\n\nThe slug of the project the event\
+        \ belongs to.\n\n`event_id`\_*(string)*REQUIRED\n\nThe ID of the event to\
+        \ retrieve. It is the hexadecimal ID as reported by the client.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/issues/:issue_id/tags/:key/:
+    get:
+      summary: Retrieve Tag Details
+      description: "[https://docs.sentry.io/api/events/retrieve-tag-details/](https://docs.sentry.io/api/events/retrieve-tag-details/)\n\
+        \nReturns details for given tag key related to an issue.\n\n### Path Parameters\n\
+        \n`issue_id`\_*(string)*REQUIRED\n\nThe ID of the issue to retrieve.\n\n`key`\_\
+        *(string)*REQUIRED\n\nThe tag key to look the values up for.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `event:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/issues/:issue_id/events/latest/:
+    get:
+      summary: Retrieve Latest Event for Issue
+      description: "[https://docs.sentry.io/api/events/retrieve-the-latest-event-for-an-issue/](https://docs.sentry.io/api/events/retrieve-the-latest-event-for-an-issue/)\n\
+        \nRetrieves the details of the latest event for an issue.\n\n### Path Parameters\n\
+        \n`issue_id`\_*(string)*REQUIRED\n\nThe ID of the issue.\n\n### Scopes\n\n\
+        You need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `event:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/issues/:issue_id/events/oldest/:
+    get:
+      summary: Retrieve Oldest Event for Issue
+      description: "[https://docs.sentry.io/api/events/retrieve-the-oldest-event-for-an-issue/](https://docs.sentry.io/api/events/retrieve-the-oldest-event-for-an-issue/)\n\
+        \nRetrieves the details of the oldest event for an issue.\n\n### Path Parameters\n\
+        \n`issue_id`\_*(string)*REQUIRED\n\nThe ID of the issue.\n\n### Scopes\n\n\
+        You need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `event:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/integrations/:
+    get:
+      summary: List Organization's Available Integrations
+      description: "# List an Organization's Available Integrations\n\n[https://docs.sentry.io/api/integrations/list-an-organizations-available-integrations/](https://docs.sentry.io/api/integrations/list-an-organizations-available-integrations/)\n\
+        \nGET/api/0/organizations/{organization_slug}/integrations/\n\nLists all the\
+        \ available Integrations for an Organization.\n\n### Path Parameters\n\n`organization_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n### Query Parameters:\n\n`providerKey`\__(string)_\n\nSpecific integration\
+        \ provider to filter by such as\_`slack`. See our\_[Integrations Documentation](https://docs.sentry.io/product/integrations/)\_\
+        for an updated list of providers.\n\n`features`\__(array(string))_\n\nIntegration\
+        \ features to filter by. See our\_[Integrations Documentation](https://docs.sentry.io/product/integrations/)\_\
+        for an updated list of features. Current available ones are:\n\n- alert-rule\n\
+        \    \n- chat-unfurl\n    \n- codeowners\n    \n- commits\n    \n- data-forwarding\n\
+        \    \n- deployment\n    \n- enterprise-alert-rule\n    \n- enterprise-incident-management\n\
+        \    \n- incident-management\n    \n- issue-basic\n    \n- issue-sync\n  \
+        \  \n- mobile\n    \n- serverless\n    \n- session-replay\n    \n- stacktrace-link\n\
+        \    \n- ticket-rules\n    \n\n`includeConfig`\__(boolean)_\n\nSpecify\_`True`\_\
+        to fetch third-party integration configurations. Note that this can add several\
+        \ seconds to the response time.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth/)\_requires one\
+        \ of the following scopes:\n\n- `org:admin`\n    \n- `org:integrations`\n\
+        \    \n- `org:read`\n    \n- `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/sentry-app-installations/:uuid/external-issues/:
+    post:
+      summary: Create External Issue
+      description: "[https://docs.sentry.io/api/integration/create-an-external-issue/](https://docs.sentry.io/api/integration/create-an-external-issue/)\n\
+        \nCreate an external issue from an integration platform integration.\n\n###\
+        \ Path Parameters\n\n`uuid`\_*(string)*REQUIRED\n\nThe uuid of the integration\
+        \ platform integration.\n\n### Body Parameters\n\n`issueId`\_*(integer)*REQUIRED\n\
+        \nThe ID of the Sentry issue to link the external issue to.\n\n`webUrl`\_\
+        *(string)*REQUIRED\n\nThe URL of the external service to link the issue to.\n\
+        \n`project`\_*(string)*REQUIRED\n\nThe external service's project.\n\n`identifier`\_\
+        *(string)*REQUIRED\n\nA unique identifier of the external issue.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `event:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/sentry-app-installations/:uuid/external-issues/:external_issue_id:
+    delete:
+      summary: Delete External Issue
+      description: "[https://docs.sentry.io/api/integration/create-an-external-issue/](https://docs.sentry.io/api/integration/create-an-external-issue/)\n\
+        \nCreate an external issue from an integration platform integration.\n\n###\
+        \ Path Parameters\n\n`uuid`\_*(string)*REQUIRED\n\nThe uuid of the integration\
+        \ platform integration.\n\n### Body Parameters\n\n`issueId`\_*(integer)*REQUIRED\n\
+        \nThe ID of the Sentry issue to link the external issue to.\n\n`webUrl`\_\
+        *(string)*REQUIRED\n\nThe URL of the external service to link the issue to.\n\
+        \n`project`\_*(string)*REQUIRED\n\nThe external service's project.\n\n`identifier`\_\
+        *(string)*REQUIRED\n\nA unique identifier of the external issue.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `event:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/sentry-app-installations/:
+    get:
+      summary: List Organization Integration Platforms
+      description: "[https://docs.sentry.io/api/integration/create-an-external-issue/](https://docs.sentry.io/api/integration/create-an-external-issue/)\n\
+        \nCreate an external issue from an integration platform integration.\n\n###\
+        \ Path Parameters\n\n`uuid`\_*(string)*REQUIRED\n\nThe uuid of the integration\
+        \ platform integration.\n\n### Body Parameters\n\n`issueId`\_*(integer)*REQUIRED\n\
+        \nThe ID of the Sentry issue to link the external issue to.\n\n`webUrl`\_\
+        *(string)*REQUIRED\n\nThe URL of the external service to link the issue to.\n\
+        \n`project`\_*(string)*REQUIRED\n\nThe external service's project.\n\n`identifier`\_\
+        *(string)*REQUIRED\n\nA unique identifier of the external issue.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `event:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/members/:member_id/:
+    delete:
+      summary: Delete Organization Member
+      description: '[https://docs.sentry.io/api/organizations/delete-an-organization-member/](https://docs.sentry.io/api/organizations/delete-an-organization-member/)
+
+
+        Remove an organization member.
+
+
+        ### Path Parameters
+
+
+        `organization_slug` *(string)* REQUIRED
+
+
+        The slug of the organization the resource belongs to.
+
+
+        `member_id` *(string)* REQUIRED
+
+
+        The member ID.
+
+
+        ### Scopes
+
+
+        You need to [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)
+        requires one of the following scopes:
+
+
+        *   `member:admin`
+
+        *   `member:read`
+
+        *   `member:write`'
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: Retrieve Organization Member
+      description: "[https://docs.sentry.io/api/organizations/retrieve-an-organization-member/](https://docs.sentry.io/api/organizations/retrieve-an-organization-member/)\n\
+        \nRetrieve an organization member's details.\n\nWill return a pending invite\
+        \ as long as it's already approved.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n`member_id`\_*(string)*REQUIRED\n\nThe member ID.\n\n### Scopes\n\nYou need\
+        \ to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `member:admin`\n*   `member:read`\n\
+        *   `member:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/repos/:repo_id/commits/:
+    get:
+      summary: List Repository Commits
+      description: "[https://docs.sentry.io/api/organizations/list-a-repositorys-commits/](https://docs.sentry.io/api/organizations/list-a-repositorys-commits/)\n\
+        \nReturn a list of commits for a given repository.\n\n### Path Parameters\n\
+        \n`organization_slug`\_*(string)*REQUIRED\n\nThe organization short name.\n\
+        \n`repo_id`\_*(string)*REQUIRED\n\nThe repository ID.\n\n### Scopes\n\nYou\
+        \ need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `org: read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/projects/:
+    get:
+      summary: List Organizations Projects
+      description: "[https://docs.sentry.io/api/organizations/list-an-organizations-projects/](https://docs.sentry.io/api/organizations/list-an-organizations-projects/)\n\
+        \n### Path Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\nThe slug\
+        \ of the organization the resource belongs to.\n\n### Query Parameters:\n\n\
+        `cursor`\_*(string)*\n\nA pointer to the last object fetched and its sort\
+        \ order; used to retrieve the next or previous results.\n\n### Scopes\n\n\
+        You need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `org:admin`\n*   `org:read`\n\
+        *   `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/repos/:
+    get:
+      summary: List Organizations Repositories
+      description: "[https://docs.sentry.io/api/organizations/list-an-organizations-repositories/](https://docs.sentry.io/api/organizations/list-an-organizations-repositories/)\n\
+        \nReturn a list of version control repositories for a given organization.\n\
+        \n### Path Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\nThe organization\
+        \ short name.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://docs.sentry.io/api/auth)\_requires one of the following\
+        \ scopes:\n\n*   `org: read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/users/:
+    get:
+      summary: List Organizations Users
+      description: "[https://docs.sentry.io/api/organizations/list-an-organizations-users/](https://docs.sentry.io/api/organizations/list-an-organizations-users/)\n\
+        \nReturn a list of users that belong to a given organization.\n\n### Path\
+        \ Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\nThe slug of the\
+        \ organization the event ID should be looked up in.\n\n### Query Parameters:\n\
+        \n`project`\_*(string)*\n\nRestrict results to users who have access to a\
+        \ given project ID\n\n### Scopes\n\nYou need to\_[authenticate via bearer\
+        \ auth token.](https://docs.sentry.io/api/auth)\_requires one of the following\
+        \ scopes:\n\n*   `org: read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/:
+    get:
+      summary: List Organizations
+      description: "[https://docs.sentry.io/api/organizations/list-your-organizations/](https://docs.sentry.io/api/organizations/list-your-organizations/)\n\
+        \nReturn a list of organizations available to the authenticated session. This\
+        \ is particularly useful for requests with an user bound context. For API\
+        \ key based requests this will only return the organization that belongs to\
+        \ the key.\n\n### Query Parameters:\n\n`owner`\_*(boolean)*\n\nRestrict results\
+        \ to organizations in which you are an organization owner.\n\n`cursor`\_*(string)*\n\
+        \nA pointer to the last object fetched and its sort order; used to retrieve\
+        \ the next or previous results.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of\
+        \ the following scopes:\n\n*   `org: read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/shortids/:short_id/:
+    get:
+      summary: Resolve Short ID
+      description: '[https://docs.sentry.io/api/organizations/resolve-a-short-id/](https://docs.sentry.io/api/organizations/resolve-a-short-id/)
+
+
+        This resolves a short ID to the project slug and internal issue ID.
+
+
+        ### Path Parameters
+
+
+        `organization_slug` *(string)*REQUIRED
+
+
+        The slug of the organization the short ID should be looked up in.
+
+
+        `short_id` *(string)*REQUIRED
+
+
+        The short ID to look up.
+
+
+        ### Scopes
+
+
+        You need to [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)
+        requires one of the following scopes:
+
+
+        *   `org: read`'
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/eventids/:event_id/:
+    get:
+      summary: Resolve Event ID
+      description: "[https://docs.sentry.io/api/organizations/resolve-an-event-id/](https://docs.sentry.io/api/organizations/resolve-an-event-id/)\n\
+        \nThis resolves an event ID to the project slug and internal issue ID and\
+        \ internal event ID.\n\n### Path Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\
+        \nThe slug of the organization the event ID should be looked up in.\n\n`event_id`\_\
+        *(string)*REQUIRED\n\nThe event ID to look up.\n\n### Scopes\n\nYou need to\_\
+        [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_requires\
+        \ one of the following scopes:\n\n*   `org: read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/:
+    get:
+      summary: Retrieve Organization
+      description: "[https://docs.sentry.io/api/organizations/retrieve-an-organization/](https://docs.sentry.io/api/organizations/retrieve-an-organization/)\n\
+        \nReturn details on an individual organization including various details such\
+        \ as membership access, features, and teams.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the organization to look up.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `org: read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    put:
+      summary: Update Organization
+      description: "[https://docs.sentry.io/api/organizations/update-an-organization/](https://docs.sentry.io/api/organizations/update-an-organization/)\n\
+        \nUpdate various attributes and configurable settings for the given organization.\n\
+        \n### Path Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\nThe slug\
+        \ of the organization to update.\n\n### Body Parameters\n\n`name`\_*(string)*REQUIRED\n\
+        \nAn optional new name for the organization.\n\n`slug`\_*(string)*\n\nAn optional\
+        \ new slug for the organization. Needs to be available and unique.\n\n###\
+        \ Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/stats_v2/:
+    get:
+      summary: Retrieve Organization Events Counts
+      description: "[https://docs.sentry.io/api/organizations/retrieve-event-counts-for-an-organization-v2/](https://docs.sentry.io/api/organizations/retrieve-event-counts-for-an-organization-v2/)\n\
+        \nQuery event counts for your Organization. Select a field, define a date\
+        \ range, and group or filter by columns.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n### Query Parameters:\n\n`statsPeriod`\_*(string)*\n\nThis defines the range\
+        \ of the time series, relative to now. The range is given in a\_\_format.\
+        \ For example\_`1d`\_for a one day range. Possible units are\_`m`\_for minutes,\_\
+        `h`\_for hours,\_`d`\_for days and\_`w`\_for weeks.You must either provide\
+        \ a\_`statsPeriod`, or a\_`start`\_and\_`end`.\n\n`interval`\_*(string)*\n\
+        \nThis is the resolution of the time series, given in the same format as\_\
+        `statsPeriod`. The default resolution is\_`1h`\_and the minimum resolution\
+        \ is currently restricted to\_`1h`\_as well. Intervals larger than\_`1d`\_\
+        are not supported, and the interval has to cleanly divide one day.\n\n`start`\_\
+        *(string)*\n\nThis defines the start of the time series range as an explicit\
+        \ datetime, either in UTC ISO8601 or epoch seconds.Use along with\_`end`\_\
+        instead of\_`statsPeriod`.\n\n`end`\_*(string)*\n\nThis defines the inclusive\
+        \ end of the time series range as an explicit datetime, either in UTC ISO8601\
+        \ or epoch seconds.Use along with\_`start`\_instead of\_`statsPeriod`.\n\n\
+        `groupBy`\_*(array(string))*REQUIREDchoices:\n\n*   `outcome`\n*   `category`\n\
+        *   `reason`\n*   `project`\n    \n\ncan pass multiple groupBy parameters\
+        \ to group by multiple, e.g.\_`groupBy=project&groupBy=outcome`\_to group\
+        \ by multiple dimensions. Note that grouping by project can cause missing\
+        \ rows if the number of projects / interval is large. If you have a large\
+        \ number of projects, we recommend filtering and querying by them individually.Also\
+        \ note that grouping by projects does not currently support timeseries interval\
+        \ responses and will instead be a sum of the projectover the entire period\
+        \ specified.\n\n`field`\_*(string)*REQUIREDchoices:\n\n*   `sum(quantity)`\n\
+        *   `sum(times_seen)`\n    \n\nthe\_`sum(quantity)`\_field is bytes for attachments,\
+        \ and all others the 'event' count for those types of events.\n\n`sum(times_seen)`\_\
+        sums the number of times an event has been seen. For 'normal' event types,\
+        \ this will be equal to\_`sum(quantity)`\_for now. For sessions, quantity\
+        \ will sum the total number of events seen in a session, while\_`times_seen`\_\
+        will be the unique number of sessions. and for attachments,\_`times_seen`\_\
+        will be the total number of attachments, while quantity will be the total\
+        \ sum of attachment bytes.\n\n`project`\_*(array(null))*\n\nThe ID of the\
+        \ projects to filter by.\n\nUse\_`-1`\_to include all accessible projects.\n\
+        \n`category`\_*(string)*choices:\n\n*   `error`\n*   `transaction`\n*   `attachment`\n\
+        \    \n\nIf filtering by attachments, you cannot filter by any other category\
+        \ due to quantity values becoming nonsensical (combining bytes and event counts).\n\
+        \nIf filtering by\_`error`, it will automatically add\_`default`\_and\_`security`\_\
+        as we currently roll those two categories into\_`error`\_for displaying.\n\
+        \n`outcome`\_*(string)*choices:\n\n*   `accepted`\n*   `filtered`\n*   `rate_limited`\n\
+        *   `invalid`\n*   `abuse`\n*   `client_discard`\n    \n\nSee\_[https://docs.sentry.io/product/stats/](https://docs.sentry.io/product/stats/)\_\
+        for more information on outcome statuses.\n\n`reason`\_*(string)*\n\nThe reason\
+        \ field will contain why an event was filtered/dropped.\n\n### Scopes\n\n\
+        You need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `org:admin`\n*   `org:read`\n\
+        *   `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/keys/:
+    post:
+      summary: Create New Client Key
+      description: "[https://docs.sentry.io/api/projects/create-a-new-client-key/](https://docs.sentry.io/api/projects/create-a-new-client-key/)\n\
+        \nCreate a new client key bound to a project. The key's secret and public\
+        \ key are generated by the server.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the organization the client keys belong\
+        \ to.\n\n`project_slug`\_*(string)*REQUIRED\n\nThe slug of the project the\
+        \ client keys belong to.\n\n### Body Parameters\n\n`name`\_*(string)*REQUIRED\n\
+        \nThe name for the new key.\n\n### Scopes\n\nYou need to\_[authenticate via\
+        \ bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of the\
+        \ following scopes:\n\n*   `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: List Project Client Keys
+      description: "[https://docs.sentry.io/api/projects/list-a-projects-client-keys/](https://docs.sentry.io/api/projects/list-a-projects-client-keys/)\n\
+        \nReturn a list of client keys bound to a project.\n\n### Path Parameters\n\
+        \n`organization_slug`\_*(string)*REQUIRED\n\nThe slug of the organization\
+        \ the client keys belong to.\n\n`project_slug`\_*(string)*REQUIRED\n\nThe\
+        \ slug of the project the client keys belong to.\n\n### Query Parameters:\n\
+        \n`cursor`\_*(string)*\n\nA pointer to the last object fetched and its sort\
+        \ order; used to retrieve the next or previous results.\n\n### Scopes\n\n\
+        You need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/keys/:key_id:
+    delete:
+      summary: Delete Client Key
+      description: "[https://docs.sentry.io/api/projects/delete-a-client-key/](https://docs.sentry.io/api/projects/delete-a-client-key/)\n\
+        \nDelete a client key.\n\n### Path Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\
+        \nThe slug of the organization the client keys belong to.\n\n`project_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the project the client keys belong to.\n\
+        \n`key_id`\_*(string)*REQUIRED\n\nThe ID of the key to delete.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:admin`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/:
+    delete:
+      summary: Delete Project
+      description: "[https://docs.sentry.io/api/projects/delete-a-project/](https://docs.sentry.io/api/projects/delete-a-project/)\n\
+        \nSchedules a project for deletion.\n\nDeletion happens asynchronously and\
+        \ therefore is not immediate. However once deletion has begun the state of\
+        \ a project changes and will be hidden from most public views.\n\n### Path\
+        \ Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\nThe slug of the\
+        \ organization the project belongs to.\n\n`project_slug`\_*(string)*REQUIRED\n\
+        \nThe slug of the project to delete.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of\
+        \ the following scopes:\n\n*   `project:admin`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: Retrieve Project
+      description: "[https://docs.sentry.io/api/projects/retrieve-a-project/](https://docs.sentry.io/api/projects/retrieve-a-project/)\n\
+        \nReturn details on an individual project.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the organization the project belongs to.\n\
+        \n`project_slug`\_*(string)*REQUIRED\n\nThe slug of the project to retrieve.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    put:
+      summary: Update Project
+      description: "[https://docs.sentry.io/api/projects/update-a-project/](https://docs.sentry.io/api/projects/update-a-project/)\n\
+        \nUpdate various attributes and configurable settings for the given project.\
+        \ Only supplied values are updated.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the organization the project belongs to.\n\
+        \n`project_slug`\_*(string)*REQUIRED\n\nThe slug of the project to update.\n\
+        \n### Body Parameters\n\n`name`\_*(string)*\n\nThe new name for the project.\n\
+        \n`slug`\_*(string)*\n\nThe new slug for the project.\n\n`platform`\_*(string)*\n\
+        \nThe new platform for the project.\n\n`isBookmarked`\_*(boolean)*\n\nIn case\
+        \ this API call is invoked with a user context this allows changing of the\
+        \ bookmark flag.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://docs.sentry.io/api/auth)\_requires one of the following\
+        \ scopes:\n\n*   `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/files/dsyms/:
+    delete:
+      summary: Delete Project Debug Info File
+      description: "[https://docs.sentry.io/api/projects/delete-a-specific-projects-debug-information-file/](https://docs.sentry.io/api/projects/delete-a-specific-projects-debug-information-file/)\n\
+        \nDelete a debug information file for a given project.\n\n### Path Parameters\n\
+        \n`organization_slug`\_*(string)*REQUIRED\n\nThe slug of the organization\
+        \ the file belongs to.\n\n`project_slug`\_*(string)*REQUIRED\n\nThe slug of\
+        \ the project to delete the DIF.\n\n### Query Parameters:\n\n`id`\_*(string)*REQUIRED\n\
+        \nThe ID of the DIF to delete.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of\
+        \ the following scopes:\n\n*   `project:admin`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: List Project Debug Info Files
+      description: "[https://docs.sentry.io/api/projects/list-a-projects-debug-information-files/](https://docs.sentry.io/api/projects/list-a-projects-debug-information-files/)\n\
+        \nRetrieve a list of debug information files for a given project.\n\n### Path\
+        \ Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\nThe slug of the\
+        \ organization the file belongs to.\n\n`project_slug`\_*(string)*REQUIRED\n\
+        \nThe slug of the project to list the DIFs of.\n\n### Scopes\n\nYou need to\_\
+        [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_requires\
+        \ one of the following scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    post:
+      summary: Upload New File
+      description: "[https://docs.sentry.io/api/projects/upload-a-new-file/](https://docs.sentry.io/api/projects/upload-a-new-file/)\n\
+        \nUpload a new debug information file for the given release.\n\nUnlike other\
+        \ API requests, files must be uploaded using the traditional multipart/form-data\
+        \ content-type.\n\nThe file uploaded is a zip archive of an Apple .dSYM folder\
+        \ which contains the individual debug images. Uploading through this endpoint\
+        \ will create different files for the contained images.\n\n### Path Parameters\n\
+        \n`organization_slug`\_*(string)*REQUIRED\n\nThe slug of the organization\
+        \ the project belongs to.\n\n`project_slug`\_*(string)*REQUIRED\n\nThe slug\
+        \ of the project to upload a file to.\n\n### Body Parameters\n\n`file`\_*(string)*REQUIRED\n\
+        \nThe multipart encoded file.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of\
+        \ the following scopes:\n\n*   `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/hooks/:
+    get:
+      summary: List Project Service Hooks
+      description: "[https://docs.sentry.io/api/projects/list-a-projects-service-hooks/](https://docs.sentry.io/api/projects/list-a-projects-service-hooks/)\n\
+        \nReturn a list of service hooks bound to a project.\n\n### Path Parameters\n\
+        \n`organization_slug`\_*(string)*REQUIRED\n\nThe slug of the organization\
+        \ the client keys belong to.\n\n`project_slug`\_*(string)*REQUIRED\n\nThe\
+        \ slug of the project the client keys belong to.\n\n### Query Parameters:\n\
+        \n`cursor`\_*(string)*\n\nA pointer to the last object fetched and its sort\
+        \ order; used to retrieve the next or previous results.\n\n### Scopes\n\n\
+        You need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    post:
+      summary: Register Service Hook
+      description: "[https://docs.sentry.io/api/projects/register-a-new-service-hook/](https://docs.sentry.io/api/projects/register-a-new-service-hook/)\n\
+        \nRegister a new service hook on a project.\n\nEvents include:\n\n*   event.alert:\
+        \ An alert is generated for an event (via rules).\n*   event.created: A new\
+        \ event has been processed.\n    \n\nThis endpoint requires the 'servicehooks'\
+        \ feature to be enabled for your project.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the organization the client keys belong\
+        \ to.\n\n`project_slug`\_*(string)*REQUIRED\n\nThe slug of the project the\
+        \ client keys belong to.\n\n### Body Parameters\n\n`url`\_*(string)*REQUIRED\n\
+        \nThe URL for the webhook.\n\n`events`\_*(array)*REQUIRED\n\nThe events to\
+        \ subscribe to.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://docs.sentry.io/api/auth)\_requires one of the following\
+        \ scopes:\n\n*   `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/user-feedback/:
+    get:
+      summary: List Project User Feedback
+      description: "[https://docs.sentry.io/api/projects/list-a-projects-user-feedback/](https://docs.sentry.io/api/projects/list-a-projects-user-feedback/)\n\
+        \nReturn a list of user feedback items within this project.\n\n### Path Parameters\n\
+        \n`organization_slug`\_*(string)*REQUIRED\n\nThe slug of the organization.\n\
+        \n`project_slug`\_*(string)*REQUIRED\n\nThe slug of the project.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    post:
+      summary: Submit User Feedback
+      description: "[https://docs.sentry.io/api/projects/submit-user-feedback/](https://docs.sentry.io/api/projects/submit-user-feedback/)\n\
+        \nSubmit and associate user feedback with an issue.\n\nFeedback must be received\
+        \ by the server no more than 30 minutes after the event was saved.\n\nAdditionally,\
+        \ within 5 minutes of submitting feedback it may also be overwritten. This\
+        \ is useful in situations where you may need to retry sending a request due\
+        \ to network failures.\n\nIf feedback is rejected due to a mutability threshold,\
+        \ a 409 status code will be returned.\n\nNote: Feedback may be submitted with\
+        \ DSN authentication (see auth documentation).\n\n### Path Parameters\n\n\
+        `organization_slug`\_*(string)*REQUIRED\n\nThe slug of the organization.\n\
+        \n`project_slug`\_*(string)*REQUIRED\n\nThe slug of the project.\n\n### Body\
+        \ Parameters\n\n`event_id`\_*(string)*REQUIRED\n\nThe event ID. This can be\
+        \ retrieved from the\_[beforeSend callback](https://docs.sentry.io/platforms/javascript/configuration/filtering/#using-beforesend).\n\
+        \n`name`\_*(string)*REQUIRED\n\nUser's name.\n\n`email`\_*(string)*REQUIRED\n\
+        \nUser's email address.\n\n`comments`\_*(string)*REQUIRED\n\nComments supplied\
+        \ by user.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/users/:
+    get:
+      summary: Get Project Users
+      description: "[https://docs.sentry.io/api/projects/list-a-projects-users/](https://docs.sentry.io/api/projects/list-a-projects-users/)\n\
+        \nReturn a list of users seen within this project.\n\n### Path Parameters\n\
+        \n`organization_slug`\_*(string)*REQUIRED\n\nThe slug of the organization.\n\
+        \n`project_slug`\_*(string)*REQUIRED\n\nThe slug of the project.\n\n### Query\
+        \ Parameters:\n\n`query`\_*(string)*\n\nLimit results to users matching the\
+        \ given query. Prefixes should be used to suggest the field to match on:\_\
+        `id`,\_`email`,\_`username`,\_`ip`. For example,\_`query=email:foo@example.com`\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/tags/:key/values/:
+    get:
+      summary: Get Tag Values
+      description: "[https://docs.sentry.io/api/projects/list-a-tags-values/](https://docs.sentry.io/api/projects/list-a-tags-values/)\n\
+        \nReturn a list of values associated with this key. The\_`query`\_parameter\
+        \ can be used to to perform a \"contains\" match on values.\n\nWhen\_[paginated](https://docs.sentry.io/api/pagination)\_\
+        can return at most 1000 values.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the organization.\n\n`project_slug`\_*(string)*REQUIRED\n\
+        \nThe slug of the project.\n\n`key`\_*(string)*REQUIRED\n\nThe tag key to\
+        \ look up.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/:
+    get:
+      summary: List Projects
+      description: "[https://docs.sentry.io/api/projects/list-your-projects/](https://docs.sentry.io/api/projects/list-your-projects/)\n\
+        \nReturn a list of projects available to the authenticated session.\n\n###\
+        \ Query Parameters:\n\n`cursor`\_*(string)*\n\nA pointer to the last object\
+        \ fetched and its sort order; used to retrieve the next or previous results.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/hooks/:hook_id:
+    delete:
+      summary: Delete Service Hook
+      description: "[https://docs.sentry.io/api/projects/remove-a-service-hook/](https://docs.sentry.io/api/projects/remove-a-service-hook/)\n\
+        \nRemove a service hook.\n\n### Path Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\
+        \nThe slug of the organization the client keys belong to.\n\n`project_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the project the client keys belong to.\n\
+        \n`hook_id`\_*(string)*REQUIRED\n\nThe GUID of the service hook.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:admin`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/hooks/:hook_id/:
+    get:
+      summary: Retrieve Service Hook
+      description: "[https://docs.sentry.io/api/projects/retrieve-a-service-hook/](https://docs.sentry.io/api/projects/retrieve-a-service-hook/)\n\
+        \nReturn a service hook bound to a project.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the organization the client keys belong\
+        \ to.\n\n`project_slug`\_*(string)*REQUIRED\n\nThe slug of the project the\
+        \ client keys belong to.\n\n`hook_id`\_*(string)*REQUIRED\n\nThe GUID of the\
+        \ service hook.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://docs.sentry.io/api/auth)\_requires one of the following\
+        \ scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    put:
+      summary: Update Service Hook
+      description: "[https://docs.sentry.io/api/projects/update-a-service-hook/](https://docs.sentry.io/api/projects/update-a-service-hook/)\n\
+        \nUpdate a service hook.\n\n### Path Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\
+        \nThe slug of the organization the client keys belong to.\n\n`project_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the project the client keys belong to.\n\
+        \n`hook_id`\_*(string)*REQUIRED\n\nThe GUID of the service hook.\n\n### Body\
+        \ Parameters\n\n`url`\_*(string)*REQUIRED\n\nThe URL for the webhook.\n\n\
+        `events`\_*(array)*REQUIRED\n\nThe events to subscribe to.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/stats/:
+    get:
+      summary: Retrieve Project Event Counts
+      description: "[https://docs.sentry.io/api/projects/retrieve-event-counts-for-a-project/](https://docs.sentry.io/api/projects/retrieve-event-counts-for-a-project/)\n\
+        \nCaution This endpoint may change in the future without notice.\n\nReturn\
+        \ a set of points representing a normalized timestamp and the number of events\
+        \ seen in the period.\n\nQuery ranges are limited to Sentry's configured time-series\
+        \ resolutions.\n\n### Path Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\
+        \nThe slug of the organization.\n\n`project_slug`\_*(string)*REQUIRED\n\n\
+        The slug of the project.\n\n### Query Parameters:\n\n`stat`\_*(string)*choices:\n\
+        \n*   `received`\n*   `rejected`\n*   `blacklisted`\n*   `generated`\n   \
+        \ \n\nThe name of the stat to query\_`(\"received\", \"rejected\", \"blacklisted\"\
+        , \"generated\")`.\n\n`since`\_*(string)*\n\nA timestamp to set the start\
+        \ of the query in seconds since UNIX epoch.\n\n`until`\_*(string)*\n\nA timestamp\
+        \ to set the end of the query in seconds since UNIX epoch.\n\n`resolution`\_\
+        *(string)*choices:\n\n*   `10s`\n*   `1h`\n*   `1d`\n    \n\nAn explicit resolution\
+        \ to search for (one of\_`10s`,\_`1h`, and\_`1d`).\n\n### Scopes\n\nYou need\
+        \ to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/keys/:key_id/:
+    put:
+      summary: Update Client Key
+      description: "[https://docs.sentry.io/api/projects/update-a-client-key/](https://docs.sentry.io/api/projects/update-a-client-key/)\n\
+        \nUpdate a client key. This can be used to rename a key.\n\n### Path Parameters\n\
+        \n`organization_slug`\_*(string)*REQUIRED\n\nThe slug of the organization\
+        \ the client keys belong to.\n\n`project_slug`\_*(string)*REQUIRED\n\nThe\
+        \ slug of the project the client keys belong to.\n\n`key_id`\_*(string)*REQUIRED\n\
+        \nThe ID of the key to update.\n\n### Body Parameters\n\n`name`\_*(string)*\n\
+        \nThe new name for the client key.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of\
+        \ the following scopes:\n\n*   `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/releases/{{version}}/deploys/:
+    post:
+      summary: Create a Deploy
+      description: '[https://docs.sentry.io/api/releases/create-a-new-deploy-for-an-organization/](https://docs.sentry.io/api/releases/create-a-new-deploy-for-an-organization/)
+
+
+        Create a deploy.
+
+
+        ### Path Parameters
+
+
+        `organization_slug` *(string)* REQUIRED
+
+
+        The slug of the organization.
+
+
+        `version` *(string)* REQUIRED
+
+
+        The version identifier of the release.
+
+
+        ### Body Parameters
+
+
+        `environment` *(string)* REQUIRED
+
+
+        The environment you''re deploying to.
+
+
+        `url` *(string)*
+
+
+        The optional URL that points to the deploy.
+
+
+        `name` *(string)*
+
+
+        The optional name of the deploy.
+
+
+        `projects` *(array)*
+
+
+        The optional list of projects to deploy.
+
+
+        `dateStarted` *(string)*
+
+
+        An optional date that indicates when the deploy started.
+
+
+        `dateFinished` *(string)*
+
+
+        An optional date that indicates when the deploy ended. If not provided, the
+        current time is used.
+
+
+        ### Scopes
+
+
+        You need to [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)
+        requires one of the following scopes:
+
+
+        *   `project:releases`'
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/releases/:
+    post:
+      summary: Create a Release
+      description: "[https://docs.sentry.io/api/releases/create-a-new-release-for-an-organization/](https://docs.sentry.io/api/releases/create-a-new-release-for-an-organization/)\n\
+        \nCreate a new release for the given organization. Releases are used by Sentry\
+        \ to improve its error reporting abilities by correlating first seen events\
+        \ with the release that might have introduced the problem. Releases are also\
+        \ necessary for source maps and other debug features that require manual upload\
+        \ for functioning well.\n\n### Path Parameters\n\n`organization_slug`\_*(string)*\
+        \ REQUIRED\n\nThe slug of the organization.\n\n### Body Parameters\n\n`version`\_\
+        *(string)* REQUIRED\n\nA version identifier for this release. Can be a version\
+        \ number, a commit hash, etc.\n\n`ref`\_*(string)*\n\nAn optional commit reference.\
+        \ This is useful if a tagged version has been provided.\n\n`url`\_*(string)*\n\
+        \nA URL that points to the release. This can be the path to an online interface\
+        \ to the source code for instance\n\n`projects`\_*(array)* REQUIRED\n\nA list\
+        \ of project slugs that are involved in this release.\n\n`dateReleased`\_\
+        *(string)*\n\nAn optional date that indicates when the release went live.\
+        \ If not provided the current time is assumed.\n\n`commits`\_*(array)*\n\n\
+        An optional list of commit data to be associated with the release. Commits\
+        \ must include parameters\_`id`\_(the SHA of the commit), and can optionally\
+        \ include\_`repository`,\_`message`,\_`patch_set`,\_`author_name`,\_`author_email`,\
+        \ and\_`timestamp`.\n\n`refs`\_*(array)*\n\nAn optional way to indicate the\
+        \ start and end commits for each repository included in a release. Head commits\
+        \ must include parameters\_`repository`\_and\_`commit`\_(the HEAD sha). They\
+        \ can optionally include\_`previousCommit`\_(the sha of the HEAD of the previous\
+        \ release), which should be specified if this is the first time you've sent\
+        \ commit data.\_`commit`\_may contain a range in the form of\_`previousCommit..commit`.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: List Organization Releases
+      description: "[https://docs.sentry.io/api/releases/list-an-organizations-releases/](https://docs.sentry.io/api/releases/list-an-organizations-releases/)\n\
+        \nReturn a list of releases for a given organization.\n\n### Path Parameters\n\
+        \n`organization_slug`\_*(string)* REQUIRED\n\nThe slug of the organization.\n\
+        \n### Query Parameters:\n\n`query`\_*(string)*\n\nThis parameter can be used\
+        \ to create a \"starts with\" filter for the version.\n\n### Scopes\n\nYou\
+        \ need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/{project_slug}/releases/:version/files/:file_id/:
+    delete:
+      summary: Delete Project Release File
+      description: "[https://docs.sentry.io/api/releases/delete-a-project-releases-file/](https://docs.sentry.io/api/releases/delete-a-project-releases-file/)\n\
+        \nDelete a file for a given release.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization the release belongs to.\n\
+        \n`project_slug`\_*(string)* REQUIRED\n\nThe slug of the project.\n\n`version`\_\
+        *(string)* REQUIRED\n\nThe version identifier of the release.\n\n`file_id`\_\
+        *(string)* REQUIRED\n\nThe ID of the file to delete.\n\n### Scopes\n\nYou\
+        \ need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/releases/:version/files/:file_id/:
+    delete:
+      summary: Delete Organization Release File
+      description: "[https://docs.sentry.io/api/releases/delete-an-organization-releases-file/](https://docs.sentry.io/api/releases/delete-an-organization-releases-file/)\n\
+        \nDelete a file for a given release.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization the release belongs to.\n\
+        \n`version`\_*(string)* REQUIRED\n\nThe version identifier of the release.\n\
+        \n`file_id`\_*(string)* REQUIRED\n\nThe ID of the file to delete.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/releases/:version/:
+    delete:
+      summary: Delete Organization Release
+      description: "[https://docs.sentry.io/api/releases/delete-an-organizations-release/](https://docs.sentry.io/api/releases/delete-an-organizations-release/)\n\
+        \nDelete a release for a given organization.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization the release belongs to.\n\
+        \n`version`\_*(string)* REQUIRED\n\nThe version identifier of the release.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: Retrieve Organization Releases
+      description: "[https://docs.sentry.io/api/releases/retrieve-an-organizations-releases/](https://docs.sentry.io/api/releases/retrieve-an-organizations-releases/)\n\
+        \nReturn a release for a given organization.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization the release belongs to.\n\
+        \n`version`\_*(string)* REQUIRED\n\nThe version identifier of the release.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    put:
+      summary: Update Organization Release
+      description: "[https://docs.sentry.io/api/releases/update-an-organizations-release/](https://docs.sentry.io/api/releases/update-an-organizations-release/)\n\
+        \nUpdate a release for a given organization.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)*REQUIRED\n\nThe slug of the organization the release belongs to.\n\
+        \n`version`\_*(string)*REQUIRED\n\nThe version identifier of the release.\n\
+        \n### Body Parameters\n\n`ref`\_*(string)*\n\nAn optional commit reference.\
+        \ This is useful if a tagged version has been provided.\n\n`url`\_*(string)*\n\
+        \nA URL that points to the release. This can be the path to an online interface\
+        \ to the source code for instance.\n\n`dateReleased`\_*(string)*\n\nAn optional\
+        \ date that indicates when the release went live. If not provided the current\
+        \ time is assumed.\n\n`commits`\_*(array)*\n\nAn optional list of commit data\
+        \ to be associated with the release. Commits must include parameters\_`id`\_\
+        (the sha of the commit), and can optionally include\_`repository`,\_`message`,\_\
+        `author_name`,\_`author_email`, and\_`timestamp`.\n\n`refs`\_*(array)*\n\n\
+        An optional way to indicate the start and end commits for each repository\
+        \ included in a release. Head commits must include parameters\_`repository`\_\
+        and\_`commit`\_(the HEAD sha). They can optionally include\_`previousCommit`\_\
+        (the sha of the HEAD of the previous release), which should be specified if\
+        \ this is the first time you've sent commit data.\n\n### Scopes\n\nYou need\
+        \ to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/releases/:version/commits/:
+    get:
+      summary: List Project Release Commits
+      description: "[https://docs.sentry.io/api/releases/list-a-project-releases-commits/](https://docs.sentry.io/api/releases/list-a-project-releases-commits/)\n\
+        \nList a project release's commits.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization the release belongs to.\n\
+        \n`project_slug`\_*(string)* REQUIRED\n\nThe slug of the project the release\
+        \ belongs to.\n\n`version`\_*(string)* REQUIRED\n\nThe version identifier\
+        \ of the release.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://docs.sentry.io/api/auth)\_requires one of the following\
+        \ scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/releases/:version/files/:
+    get:
+      summary: List Project Release Files
+      description: "[https://docs.sentry.io/api/releases/list-a-projects-release-files/](https://docs.sentry.io/api/releases/list-a-projects-release-files/)\n\
+        \nReturn a list of files for a given release.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization.\n\n`project_slug`\_*(string)*\
+        \ REQUIRED\n\nThe slug of the project.\n\n`version`\_*(string)* REQUIRED\n\
+        \nThe version identifier of the release.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of\
+        \ the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/releases/:version/deploys/:
+    get:
+      summary: List Release Deploys
+      description: "[https://docs.sentry.io/api/releases/list-a-releases-deploys/](https://docs.sentry.io/api/releases/list-a-releases-deploys/)\n\
+        \nReturn a list of deploys for a given release.\n\n### Path Parameters\n\n\
+        `organization_slug`\_*(string)* REQUIRED\n\nThe slug of the organization.\n\
+        \n`version`\_*(string)* REQUIRED\n\nThe version identifier of the release.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/releases/:version/commits/:
+    get:
+      summary: List Organization Release's Commits
+      description: "[https://docs.sentry.io/api/releases/list-an-organization-releases-commits/](https://docs.sentry.io/api/releases/list-an-organization-releases-commits/)\n\
+        \nList an organization release's commits.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization the release belongs to.\n\
+        \n`version`\_*(string)* REQUIRED\n\nThe version identifier of the release.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/releases/:version/files/:
+    get:
+      summary: List Organization Release's Files
+      description: "[https://docs.sentry.io/api/releases/list-an-organizations-release-files/](https://docs.sentry.io/api/releases/list-an-organizations-release-files/)\n\
+        \nReturn a list of files for a given release.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization.\n\n`version`\_*(string)*\
+        \ REQUIRED\n\nThe version identifier of the release.\n\n### Scopes\n\nYou\
+        \ need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    post:
+      summary: Upload Organization Release File
+      description: '[https://docs.sentry.io/api/releases/upload-a-new-organization-release-file/](https://docs.sentry.io/api/releases/upload-a-new-organization-release-file/)
+
+
+        Upload a new organization release file.
+
+
+        ### Path Parameters
+
+
+        `organization_slug` *(string)* REQUIRED
+
+
+        The slug of the organization.
+
+
+        `version` *(string)* REQUIRED
+
+
+        The version identifier of the release.
+
+
+        ### Body Parameters
+
+
+        `name` *(string)*
+
+
+        The name (full path) of the file.
+
+
+        `file` *(string)* REQUIRED
+
+
+        The multipart encoded file.
+
+
+        `dist` *(string)*
+
+
+        The name of the dist.
+
+
+        `header` *(string)*
+
+
+        This parameter can be supplied multiple times to attach headers to the file.
+        Each header is a string in the format `key:value`. For instance it can be
+        used to define a content type.
+
+
+        ### Scopes
+
+
+        You need to [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)
+        requires one of the following scopes:
+
+
+        *   `project:releases`'
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/releases/:version/resolved/:
+    get:
+      summary: List Issues Resolved in a Release
+      description: "[https://docs.sentry.io/api/releases/list-issues-to-be-resolved-in-a-particular-release/](https://docs.sentry.io/api/releases/list-issues-to-be-resolved-in-a-particular-release/)\n\
+        \nNote: This API is intended to pull Issues designated to be fixed in a release\
+        \ as per the Issue dropdown.\n\n![](https://content.pstmn.io/b9753157-9d9c-4efd-a93d-c23fa529684d/UmVzb2x2ZSBpbiBOZXh0IFJlbGVhc2UuZ2lm)\n\
+        \nList issues to be resolved in a particular release.\n\n### Path Parameters\n\
+        \n`organization_slug`\_*(string)* REQUIRED\n\nThe slug of the organization.\n\
+        \n`project_slug`\_*(string)* REQUIRED\n\nThe slug of the project.\n\n`version`\_\
+        *(string)* REQUIRED\n\nThe version identifier of the release.\n\n### Scopes\n\
+        \nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/releases/:version/files/:file_id:
+    get:
+      summary: Retrieve Project Release File
+      description: "[https://docs.sentry.io/api/releases/retrieve-a-project-releases-file/](https://docs.sentry.io/api/releases/retrieve-a-project-releases-file/)\n\
+        \nRetrieve a file for a given release.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization.\n\n`project_slug`\_*(string)*\
+        \ REQUIRED\n\nThe slug of the project.\n\n`version`\_*(string)* REQUIRED\n\
+        \nThe version identifier of the release.\n\n`file_id`\_*(string)* REQUIRED\n\
+        \nThe ID of the file to retrieve.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of\
+        \ the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/releases/:version/files/:file_id:
+    get:
+      summary: Retrieve Organization Release File
+      description: "[https://docs.sentry.io/api/releases/retrieve-an-organization-releases-file/](https://docs.sentry.io/api/releases/retrieve-an-organization-releases-file/)\n\
+        \nRetrieve a file for a given release.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization.\n\n`version`\_*(string)*\
+        \ REQUIRED\n\nThe version identifier of the release.\n\n`file_id`\_*(string)*\
+        \ REQUIRED\n\nThe ID of the file to retrieve.\n\n### Scopes\n\nYou need to\_\
+        [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_requires\
+        \ one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/releases/:version/commitfiles/:
+    get:
+      summary: Retrieve Files Changed in Release Commit
+      description: "[https://docs.sentry.io/api/releases/retrieve-files-changed-in-a-releases-commits/](https://docs.sentry.io/api/releases/retrieve-files-changed-in-a-releases-commits/)\n\
+        \nRetrieve files changed in a release's commits\n\n### Path Parameters\n\n\
+        `organization_slug`\_*(string)* REQUIRED\n\nThe slug of the organization the\
+        \ release belongs to.\n\n`version`\_*(string)* REQUIRED\n\nThe version identifier\
+        \ of the release.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://docs.sentry.io/api/auth)\_requires one of the following\
+        \ scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/sessions/:
+    get:
+      summary: Retrieve Release Health Session Statistics
+      description: "[https://docs.sentry.io/api/releases/retrieve-release-health-session-statistics/](https://docs.sentry.io/api/releases/retrieve-release-health-session-statistics/)\n\
+        \nReturns a time series of release health session statistics for projects\
+        \ bound to an organization.\n\nThe interval and date range are subject to\
+        \ certain restrictions and rounding rules.\n\nThe date range is rounded to\
+        \ align with the interval, and is rounded to at least one hour. The interval\
+        \ can at most be one day and at least one hour currently. It has to cleanly\
+        \ divide one day, for rounding reasons.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization.\n\n### Query Parameters:\n\
+        \n`project`\_*(array(integer))* REQUIRED\n\nThe ID of the projects to filter\
+        \ by.\n\nUse\_`-1`\_to include all accessible projects.\n\n`field`\_*(array(string))*\
+        \ REQUIRED\n\nThe list of fields to query.\n\nThe available fields are\_`sum(session)`,\_\
+        `count_unique(user)`, and the following functions applied to the\_`session.duration`\_\
+        metric:\_`avg`,\_`p50`,\_`p75`,\_`p90`,\_`p95`,\_`p99`\_and\_`max`.\n\nFor\
+        \ example,\_`p99(session.duration)`.\n\n`environment`\_*(array(string))*\n\
+        \nThe name of environments to filter by.\n\n`groupBy`\_*(array(string))*\n\
+        \nThe list of properties to group by.\n\nThe available groupBy conditions\
+        \ are\_`project`,\_`release`,\_`environment`\_and\_`session.status`.\n\n`query`\_\
+        *(string)*\n\nA free-form query that is applied as a filter.\n\nAn example\
+        \ query could be\_`release:\"1.1.0\" or release:\"1.2.0\"`.\n\n`statsPeriod`\_\
+        *(string)*\n\nThis defines the range of the time series, relative to now.\n\
+        \nThe range is given in a\_`\"\"`\_format.\n\nFor example\_`1d`\_for a one\
+        \ day range. Possible units are\_`m`\_for minutes,\_`h`\_for hours,\_`d`\_\
+        for days and\_`w`\_for weeks.\n\nIt defaults to\_`90d`.\n\n`interval`\_*(string)*\n\
+        \nThis is the resolution of the time series, given in the same format as\_\
+        `statsPeriod`.\n\nThe default resolution is\_`1h`\_and the minimum resolution\
+        \ is currently restricted to\_`1h`\_as well.\n\nIntervals larger than\_`1d`\_\
+        are not supported, and the interval has to cleanly divide one day.\n\n`statsPeriodStart`\_\
+        *(string)*\n\nThis defines the start of the time series range, in the same\
+        \ format as the\_`interval`, relative to now.\n\n`statsPeriodEnd`\_*(string)*\n\
+        \nThis defines the end of the time series range, in the same format as the\_\
+        `interval`, relative to now.\n\n`start`\_*(string)*\n\nThis defines the start\
+        \ of the time series range as an explicit datetime.\n\n`end`\_*(string)*\n\
+        \nThis defines the inclusive end of the time series range as an explicit datetime.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `org: read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/releases/:version/files/:file_id/:
+    put:
+      summary: Update Project Release File
+      description: "[https://docs.sentry.io/api/releases/update-a-project-release-file/](https://docs.sentry.io/api/releases/update-a-project-release-file/)\n\
+        \nUpdate a project release file.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization.\n\n`project_slug`\_*(string)*\
+        \ REQUIRED\n\nThe slug of the project.\n\n`version`\_*(string)* REQUIRED\n\
+        \nThe version identifier of the release.\n\n`file_id`\_*(string)* REQUIRED\n\
+        \nThe ID of the file to retrieve.\n\n### Body Parameters\n\n`name`\_*(string)*\n\
+        \nThe new name (full path) of the file.\n\n`dist`\_*(string)*\n\nThe new name\
+        \ of the dist.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://docs.sentry.io/api/auth)\_requires one of the following\
+        \ scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/releases/:version/files/:file_id/:
+    put:
+      summary: Update Organization Release File
+      description: "[https://docs.sentry.io/api/releases/update-an-organization-release-file/](https://docs.sentry.io/api/releases/update-an-organization-release-file/)\n\
+        \nUpdate an organization release file.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization.\n\n`version`\_*(string)*\
+        \ REQUIRED\n\nThe version identifier of the release.\n\n`file_id`\_*(string)*\
+        \ REQUIRED\n\nThe ID of the file to retrieve.\n\n### Body Parameters\n\n`name`\_\
+        *(string)*\n\nThe new name (full path) of the file.\n\n`dist`\_*(string)*\n\
+        \nThe new name of the dist.\n\n### Scopes\n\nYou need to\_[authenticate via\
+        \ bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of the\
+        \ following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/{project_slug}/releases/:version/files/:
+    post:
+      summary: Upload Project Release File
+      description: "[https://docs.sentry.io/api/releases/upload-a-new-project-release-file/](https://docs.sentry.io/api/releases/upload-a-new-project-release-file/)\n\
+        \nUpload a new project release file.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization.\n\n`project_slug`\_*(string)*\
+        \ REQUIRED\n\nThe slug of the project.\n\n`version`\_*(string)* REQUIRED\n\
+        \nThe version identifier of the release.\n\n### Body Parameters\n\n`name`\_\
+        *(string)*\n\nThe name (full path) of the file.\n\n`file`\_*(string)* REQUIRED\n\
+        \nThe multipart encoded file.\n\n`dist`\_*(string)*\n\nThe name of the dist.\n\
+        \n`header`\_*(string)*\n\nThis parameter can be supplied multiple times to\
+        \ attach headers to the file. Each header is a string in the format\_`key:value`.\
+        \ For instance it can be used to define a content type.\n\n### Scopes\n\n\
+        You need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:releases`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/replays/:replay_id/:
+    delete:
+      summary: Delete a Replay Instance
+      description: "# Delete a Replay Instance\n\n[https://docs.sentry.io/api/replays/delete-a-replay-instance/](https://docs.sentry.io/api/replays/delete-a-replay-instance/)\n\
+        \nDELETE/api/0/projects/{organization_slug}/{project_slug}/replays/{replay_id}/\n\
+        \nDelete a replay\n\n### Path Parameters\n\n`organization_slug`\__(string)_REQUIRED\n\
+        \nThe slug of the organization the resource belongs to.\n\n`project_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the project the resource belongs to.\n\n\
+        `replay_id`\__(string)_REQUIRED\n\nThe ID of the replay you'd like to retrieve.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth/)\_\
+        requires one of the following scopes:\n\n- `project:admin`\n    \n- `project:read`\n\
+        \    \n- `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: Retrieve a Replay Instance
+      description: "# Retrieve a Replay Instance\n\n[https://docs.sentry.io/api/replays/retrieve-a-replay-instance/](https://docs.sentry.io/api/replays/retrieve-a-replay-instance/)\n\
+        \nGET/api/0/organizations/{organization_slug}/replays/{replay_id}/\n\nReturn\
+        \ details on an individual replay.\n\n### Path Parameters\n\n`organization_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n`replay_id`\__(string)_REQUIRED\n\nThe ID of the replay you'd like to retrieve.\n\
+        \n### Query Parameters:\n\n`statsPeriod`\__(string)_\n\nThis defines the range\
+        \ of the time series, relative to now. The range is given in a\_\_format.\
+        \ For example\_`1d`\_for a one day range. Possible units are\_`m`\_for minutes,\_\
+        `h`\_for hours,\_`d`\_for days and\_`w`\_for weeks. You must either provide\
+        \ a\_`statsPeriod`, or a\_`start`\_and\_`end`.\n\n`start`\__(string)_\n\n\
+        This defines the start of the time series range as an explicit datetime, either\
+        \ in UTC ISO8601 or epoch seconds. Use along with\_`end`\_instead of\_`statsPeriod`.\n\
+        \n`end`\__(string)_\n\nThis defines the inclusive end of the time series range\
+        \ as an explicit datetime, either in UTC ISO8601 or epoch seconds. Use along\
+        \ with\_`start`\_instead of\_`statsPeriod`.\n\n`field`\__(array(string))_**choices**:\n\
+        \n- `activity`\n    \n- `browser`\n    \n- `count_dead_clicks`\n    \n- `count_errors`\n\
+        \    \n- `count_rage_clicks`\n    \n- `count_segments`\n    \n- `count_urls`\n\
+        \    \n- `device`\n    \n- `dist`\n    \n- `duration`\n    \n- `environment`\n\
+        \    \n- `error_ids`\n    \n- `finished_at`\n    \n- `id`\n    \n- `is_archived`\n\
+        \    \n- `os`\n    \n- `platform`\n    \n- `project_id`\n    \n- `releases`\n\
+        \    \n- `sdk`\n    \n- `started_at`\n    \n- `tags`\n    \n- `trace_ids`\n\
+        \    \n- `urls`\n    \n- `user`\n    \n- `clicks`\n    \n- `info_ids`\n  \
+        \  \n- `warning_ids`\n    \n- `count_warnings`\n    \n- `count_infos`\n  \
+        \  \n\nSpecifies a field that should be marshaled in the output. Invalid fields\
+        \ will be rejected.\n\n`project`\__(array(integer))_\n\nThe ID of the projects\
+        \ to filter by.\n\n`environment`\__(string)_\n\nThe environment to filter\
+        \ by.\n\n`sort`\__(string)_\n\nThe field to sort the output by.\n\n`query`\_\
+        _(string)_\n\nA structured query string to filter the output by.\n\n`per_page`\_\
+        _(integer)_\n\nLimit the number of rows to return in the result.\n\n`cursor`\_\
+        _(string)_\n\nThe cursor parameter is used to paginate results. See\_[here](https://docs.sentry.io/api/pagination/)\_\
+        for how to use this query parameter\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth/)\_requires one\
+        \ of the following scopes:\n\n- `org:admin`\n    \n- `org:read`\n    \n- `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/replays/:replay_id/recording-segments/:segment_id/:
+    get:
+      summary: Fetch Recording Segment
+      description: "# Fetch Recording Segment\n\n[https://docs.sentry.io/api/replays/fetch-recording-segment/](https://docs.sentry.io/api/replays/fetch-recording-segment/)\n\
+        \nGET/api/0/projects/{organization_slug}/{project_slug}/replays/{replay_id}/recording-segments/{segment_id}/\n\
+        \nReturn a replay recording segment.\n\n### Path Parameters\n\n`organization_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n`project_slug`\__(string)_REQUIRED\n\nThe slug of the project the resource\
+        \ belongs to.\n\n`replay_id`\__(string)_REQUIRED\n\nThe ID of the replay you'd\
+        \ like to retrieve.\n\n`segment_id`\__(integer)_REQUIRED\n\nThe ID of the\
+        \ segment you'd like to retrieve.\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth/)\_requires one\
+        \ of the following scopes:\n\n- `project:admin`\n    \n- `project:read`\n\
+        \    \n- `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/replays/:
+    get:
+      summary: List an Org Replays
+      description: "# List an Organization's Replays\n\n[https://docs.sentry.io/api/replays/list-an-organizations-replays/](https://docs.sentry.io/api/replays/list-an-organizations-replays/)\n\
+        \nGET/api/0/organizations/{organization_slug}/replays/\n\nReturn a list of\
+        \ replays belonging to an organization.\n\n### Path Parameters\n\n`organization_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the organization the resource belongs to.\n\
+        \n### Query Parameters:\n\n`statsPeriod`\__(string)_\n\nThis defines the range\
+        \ of the time series, relative to now. The range is given in a\_\_format.\
+        \ For example\_`1d`\_for a one day range. Possible units are\_`m`\_for minutes,\_\
+        `h`\_for hours,\_`d`\_for days and\_`w`\_for weeks. You must either provide\
+        \ a\_`statsPeriod`, or a\_`start`\_and\_`end`.\n\n`start`\__(string)_\n\n\
+        This defines the start of the time series range as an explicit datetime, either\
+        \ in UTC ISO8601 or epoch seconds. Use along with\_`end`\_instead of\_`statsPeriod`.\n\
+        \n`end`\__(string)_\n\nThis defines the inclusive end of the time series range\
+        \ as an explicit datetime, either in UTC ISO8601 or epoch seconds. Use along\
+        \ with\_`start`\_instead of\_`statsPeriod`.\n\n`field`\__(array(string))_**choices**:\n\
+        \n- `activity`\n    \n- `browser`\n    \n- `count_dead_clicks`\n    \n- `count_errors`\n\
+        \    \n- `count_rage_clicks`\n    \n- `count_segments`\n    \n- `count_urls`\n\
+        \    \n- `device`\n    \n- `dist`\n    \n- `duration`\n    \n- `environment`\n\
+        \    \n- `error_ids`\n    \n- `finished_at`\n    \n- `id`\n    \n- `is_archived`\n\
+        \    \n- `os`\n    \n- `platform`\n    \n- `project_id`\n    \n- `releases`\n\
+        \    \n- `sdk`\n    \n- `started_at`\n    \n- `tags`\n    \n- `trace_ids`\n\
+        \    \n- `urls`\n    \n- `user`\n    \n- `clicks`\n    \n- `info_ids`\n  \
+        \  \n- `warning_ids`\n    \n- `count_warnings`\n    \n- `count_infos`\n  \
+        \  \n\nSpecifies a field that should be marshaled in the output. Invalid fields\
+        \ will be rejected.\n\n`project`\__(array(integer))_\n\nThe ID of the projects\
+        \ to filter by.\n\n`environment`\__(string)_\n\nThe environment to filter\
+        \ by.\n\n`sort`\__(string)_\n\nThe field to sort the output by.\n\n`query`\_\
+        _(string)_\n\nA structured query string to filter the output by.\n\n`per_page`\_\
+        _(integer)_\n\nLimit the number of rows to return in the result.\n\n`cursor`\_\
+        _(string)_\n\nThe cursor parameter is used to paginate results. See\_[here](https://docs.sentry.io/api/pagination/)\_\
+        for how to use this query parameter\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth/)\_requires one\
+        \ of the following scopes:\n\n- `org:admin`\n    \n- `org:read`\n    \n- `org:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/replay-selectors/:
+    get:
+      summary: List an Orgs Selectors
+      description: "# List an Organization's Selectors\n\n[https://docs.sentry.io/api/replays/list-an-organizations-selectors/](https://docs.sentry.io/api/replays/list-an-organizations-selectors/)\n\
+        \nGET/api/0/organizations/{organization_slug}/replay-selectors/\n\nReturn\
+        \ a list of selectors for a given organization.\n\n### Path Parameters\n\n\
+        `organization_slug`\__(string)_REQUIRED\n\nThe slug of the organization the\
+        \ resource belongs to.\n\n### Query Parameters:\n\n`environment`\__(array(string))_\n\
+        \nThe name of environments to filter by.\n\n`statsPeriod`\__(string)_\n\n\
+        This defines the range of the time series, relative to now. The range is given\
+        \ in a\_\_format. For example\_`1d`\_for a one day range. Possible units are\_\
+        `m`\_for minutes,\_`h`\_for hours,\_`d`\_for days and\_`w`\_for weeks.You\
+        \ must either provide a\_`statsPeriod`, or a\_`start`\_and\_`end`.\n\n`start`\_\
+        _(string)_\n\nThis defines the start of the time series range as an explicit\
+        \ datetime, either in UTC ISO8601 or epoch seconds.Use along with\_`end`\_\
+        instead of\_`statsPeriod`.\n\n`end`\__(string)_\n\nThis defines the inclusive\
+        \ end of the time series range as an explicit datetime, either in UTC ISO8601\
+        \ or epoch seconds.Use along with\_`start`\_instead of\_`statsPeriod`.\n\n\
+        `project`\__(array(undefined))_\n\nThe ID of the projects to filter by.\n\n\
+        `sort`\__(string)_\n\nThe field to sort the output by.\n\n`cursor`\__(string)_\n\
+        \nA pointer to the last object fetched and its sort order; used to retrieve\
+        \ the next or previous results.\n\n`per_page`\__(integer)_\n\nLimit the number\
+        \ of rows to return in the result. Default and maximum allowed is 100.\n\n\
+        `query`\__(string)_\n\nThe search filter for your query, read more about query\
+        \ syntax\_[here](https://docs.sentry.io/product/sentry-basics/search/).\n\n\
+        example:\_`query=(transaction:foo AND release:abc) OR (transaction:[bar,baz]\
+        \ AND release:def)`\n\n### Scopes\n\nYou need to\_[authenticate via bearer\
+        \ auth token.](https://docs.sentry.io/api/auth/)\_requires one of the following\
+        \ scopes:\n\n- `org:admin`\n    \n- `org:read`\n    \n- `org:write`\n    \n\
+        \n```\ncurl https://sentry.io/api/0/organizations/{organization_slug}/replay-selectors/\
+        \ \\\n -H &#x27;Authorization: Bearer <auth_token>&#x27;\n\n ```\n\nRESPONSESCHEMA200400403\n\
+        \n```\n{\n  \"data\": [\n    {\n      \"count_dead_clicks\": 2,\n      \"\
+        count_rage_clicks\": 1,\n      \"dom_element\": \"div#myid.class1.class2\"\
+        ,\n      \"element\": {\n        \"alt\": \"\",\n        \"aria_label\": \"\
+        \",\n        \"class\": [\n          \"class1\",\n          \"class2\"\n \
+        \       ],\n        \"id\": \"myid\",\n        \"role\": \"\",\n        \"\
+        tag\": \"div\",\n        \"testid\": \"\",\n        \"title\": \"\"\n    \
+        \  },\n      \"project_id\": \"1\"\n    }\n  ]\n}\n\n ```"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/replays/:replay_id/clicks/:
+    get:
+      summary: List Clicked Nodes
+      description: "# List Clicked Nodes\n\n[https://docs.sentry.io/api/replays/list-clicked-nodes/](https://docs.sentry.io/api/replays/list-clicked-nodes/)\n\
+        \nGET/api/0/projects/{organization_slug}/{project_slug}/replays/{replay_id}/clicks/\n\
+        \nRetrieve a collection of RRWeb DOM node-ids and the timestamp they were\
+        \ clicked.\n\n### Path Parameters\n\n`organization_slug`\__(string)_REQUIRED\n\
+        \nThe slug of the organization the resource belongs to.\n\n`project_slug`\_\
+        _(string)_REQUIRED\n\nThe slug of the project the resource belongs to.\n\n\
+        `replay_id`\__(string)_REQUIRED\n\nThe ID of the replay you'd like to retrieve.\n\
+        \n### Query Parameters:\n\n`cursor`\__(string)_\n\nA pointer to the last object\
+        \ fetched and its sort order; used to retrieve the next or previous results.\n\
+        \n`environment`\__(array(string))_\n\nThe name of environments to filter by.\n\
+        \n`per_page`\__(integer)_\n\nLimit the number of rows to return in the result.\
+        \ Default and maximum allowed is 100.\n\n`query`\__(string)_\n\nThe search\
+        \ filter for your query, read more about query syntax\_[here](https://docs.sentry.io/product/sentry-basics/search/).\n\
+        \nexample:\_`query=(transaction:foo AND release:abc) OR (transaction:[bar,baz]\
+        \ AND release:def)`\n\n### Scopes\n\nYou need to\_[authenticate via bearer\
+        \ auth token.](https://docs.sentry.io/api/auth/)\_requires one of the following\
+        \ scopes:\n\n- `project:admin`\n    \n- `project:read`\n    \n- `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/replays/:replay_id/recording-segments/:
+    get:
+      summary: List Recording Segments
+      description: "# List Recording Segments\n\n[https://docs.sentry.io/api/replays/list-recording-segments/](https://docs.sentry.io/api/replays/list-recording-segments/)\n\
+        \nGET/api/0/projects/{organization_slug}/{project_slug}/replays/{replay_id}/recording-segments/\n\
+        \nReturn a collection of replay recording segments.\n\n### Path Parameters\n\
+        \n`organization_slug`\__(string)_REQUIRED\n\nThe slug of the organization\
+        \ the resource belongs to.\n\n`project_slug`\__(string)_REQUIRED\n\nThe slug\
+        \ of the project the resource belongs to.\n\n`replay_id`\__(string)_REQUIRED\n\
+        \nThe ID of the replay you'd like to retrieve.\n\n### Query Parameters:\n\n\
+        `cursor`\__(string)_\n\nA pointer to the last object fetched and its sort\
+        \ order; used to retrieve the next or previous results.\n\n`per_page`\__(integer)_\n\
+        \nLimit the number of rows to return in the result. Default and maximum allowed\
+        \ is 100.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth/)\_\
+        requires one of the following scopes:\n\n- `project:admin`\n    \n- `project:read`\n\
+        \    \n- `project:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/replay-count/:
+    get:
+      summary: Return Org Replay Count
+      description: "# Return a Count of Replays\n\n[https://docs.sentry.io/api/replays/return-a-count-of-replays/](https://docs.sentry.io/api/replays/return-a-count-of-replays/)\n\
+        \nGET/api/0/organizations/{organization_slug}/replay-count/\n\nReturn a count\
+        \ of replays for the given issue or transaction id.\n\n### Path Parameters\n\
+        \n`organization_slug` _(string)_REQUIRED\n\nThe slug of the organization the\
+        \ resource belongs to.\n\n### Query Parameters:\n\n`end` _(string)_\n\nThe\
+        \ end of the period of time for the query, expected in ISO-8601 format. For\
+        \ example `2001-12-14T12:34:56.7890`.\n\n`environment` _(array(string))_\n\
+        \nThe name of environments to filter by.\n\n`start` _(string)_\n\nThe start\
+        \ of the period of time for the query, expected in ISO-8601 format. For example\
+        \ `2001-12-14T12:34:56.7890`.\n\n`statsPeriod` _(string)_\n\nThe period of\
+        \ time for the query, will override the start & end parameters, a number followed\
+        \ by one of:\n\n- `d` for days\n- `h` for hours\n- `m` for minutes\n- `s`\
+        \ for seconds\n- `w` for weeks\n    \n\nFor example `24h`, to mean query data\
+        \ starting from 24 hours ago to now.\n\n`project` _(array(integer))_\n\nThe\
+        \ IDs of projects to filter by. `-1` means all available projects. For example\
+        \ the following are valid parameters:\n\n- `/?project=1234&project=56789`\n\
+        - `/?project=-1`\n    \n\n`query` _(string)_\n\nThe search filter for your\
+        \ query, read more about query syntax [here](https://docs.sentry.io/product/sentry-basics/search/).\n\
+        \nexample: `query=(transaction:foo AND release:abc) OR (transaction:[bar,baz]\
+        \ AND release:def)`\n\n### Scopes\n\nYou need to [authenticate via bearer\
+        \ auth token.](https://docs.sentry.io/api/auth/) requires one of the following\
+        \ scopes:\n\n- `org:admin`\n- `org:read`\n- `org:write`\n    \n\n```\ncurl\
+        \ https://sentry.io/api/0/organizations/{organization_slug}/replay-count/\
+        \ \\\n -H &#x27;Authorization: Bearer <auth_token>&#x27;\n\n ```\n\nRESPONSESCHEMA200400403\n\
+        \n```\n{\n  \"1\": 9,\n  \"2\": 0,\n  \"5\": 0,\n  \"9\": 1,\n  \"10\": 29\n\
+        }\n\n ```"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/scim/v2/Groups:
+    post:
+      summary: Provision New Team
+      description: "[https://docs.sentry.io/api/scim/provision-a-new-team/](https://docs.sentry.io/api/scim/provision-a-new-team/)\n\
+        \nCreate a new team bound to an organization via a SCIM Groups POST Request.\
+        \ Note that teams are always created with an empty member set. The endpoint\
+        \ will also do a normalization of uppercase / spaces to lowercase and dashes.\n\
+        \n### Path Parameters\n\n`organization_slug`\_*(string)* REQUIRED\n\nThe slug\
+        \ of the organization.\n\n### Scopes\n\nYou need to\_[authenticate via bearer\
+        \ auth token.](https://docs.sentry.io/api/auth)\_requires one of the following\
+        \ scopes:\n\n*   `team:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: List Organizations Teams
+      description: "[https://docs.sentry.io/api/scim/list-an-organizations-paginated-teams/](https://docs.sentry.io/api/scim/list-an-organizations-paginated-teams/)\n\
+        \nReturns a paginated list of teams bound to a organization with a SCIM Groups\
+        \ GET Request.\n\n*   Note that the members field will only contain up to\
+        \ 10000 members.\n    \n\n### Path Parameters\n\n`organization_slug`\_*(string)*REQUIRED\n\
+        \nThe slug of the organization.\n\n### Query Parameters:\n\n`startIndex`\_\
+        *(integer)*\n\nSCIM 1-offset based index for pagination.\n\n`filter`\_*(string)*\n\
+        \nA SCIM filter expression. The only operator currently supported is\_`eq`.\n\
+        \n`count`\_*(integer)*\n\nThe maximum number of results the query should return,\
+        \ maximum of 100.\n\n`excludedAttributes`\_*(string)*\n\nFields that should\
+        \ be left off of return values. Right now the only supported field for this\
+        \ query is\_`members`.\n\n### Scopes\n\nYou need to\_[authenticate via bearer\
+        \ auth token.](https://docs.sentry.io/api/auth)\_requires one of the following\
+        \ scopes:\n\n*   `team:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/teams/{organization_slug}/:team_slug/projects/:
+    post:
+      summary: Create New Project
+      description: '[https://docs.sentry.io/api/teams/create-a-new-project/](https://docs.sentry.io/api/teams/create-a-new-project/)
+
+
+        Create a new project bound to a team.
+
+
+        ### Path Parameters
+
+
+        `organization_slug` *(string)* REQUIRED
+
+
+        The slug of the organization the team belongs to.
+
+
+        `team_slug` *(string)* REQUIRED
+
+
+        The slug of the team to create a new project for.
+
+
+        ### Body Parameters
+
+
+        `name` *(string)* REQUIRED
+
+
+        The name for the new project.
+
+
+        `slug` *(string)*
+
+
+        Optional slug for the new project. If not provided a slug is generated from
+        the name.
+
+
+        ### Scopes
+
+
+        You need to [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)
+        requires one of the following scopes:
+
+
+        *   `project:write`'
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: List Team Projects
+      description: "[https://docs.sentry.io/api/teams/list-a-teams-projects/](https://docs.sentry.io/api/teams/list-a-teams-projects/)\n\
+        \nReturn a list of projects bound to a team.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization the team belongs to.\n\
+        \n`team_slug`\_*(string)* REQUIRED\n\nThe slug of the team to get.\n\n###\
+        \ Query Parameters:\n\n`cursor`\_*(string)*\n\nA pointer to the last object\
+        \ fetched and its sort order; used to retrieve the next or previous results.\n\
+        \n### Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `project:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/teams/:
+    post:
+      summary: Create New Team
+      description: '[https://docs.sentry.io/api/teams/create-a-new-team/](https://docs.sentry.io/api/teams/create-a-new-team/)
+
+
+        Create a new team bound to an organization. Only the name of the team is needed
+        to create it, the slug can be auto generated.
+
+
+        ### Path Parameters
+
+
+        `organization_slug` *(string)* REQUIRED
+
+
+        The slug of the organization the team should be created for.
+
+
+        ### Body Parameters
+
+
+        `name` *(string)* REQUIRED
+
+
+        The name of the team.
+
+
+        `slug` *(string)*
+
+
+        The optional slug for this team. If not provided it will be auto generated
+        from the name.
+
+
+        ### Scopes
+
+
+        You need to [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)
+        requires one of the following scopes:
+
+
+        *   `team:write`'
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: List Organization Teams
+      description: "[https://docs.sentry.io/api/teams/list-an-organizations-teams/](https://docs.sentry.io/api/teams/list-an-organizations-teams/)\n\
+        \nReturns a list of teams bound to a organization.\n\n### Path Parameters\n\
+        \n`organization_slug`\_*(string)* REQUIRED\n\nThe slug of the organization\
+        \ for which the teams should be listed.\n\n### Query Parameters:\n\n`cursor`\_\
+        *(string)*\n\nA pointer to the last object fetched and its sort order; used\
+        \ to retrieve the next or previous results.\n\n### Scopes\n\nYou need to\_\
+        [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_requires\
+        \ one of the following scopes:\n\n*   `team:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/teams/{organization_slug}/:team_slug/:
+    delete:
+      summary: Delete Team
+      description: '[https://docs.sentry.io/api/teams/delete-a-team/](https://docs.sentry.io/api/teams/delete-a-team/)
+
+
+        Schedules a team for deletion.
+
+
+        Note: Deletion happens asynchronously and therefore is not immediate. However
+        once deletion has begun the state of a project changes and will be hidden
+        from most public views.
+
+
+        ### Path Parameters
+
+
+        `organization_slug` *(string)* REQUIRED
+
+
+        The slug of the organization the team belongs to.
+
+
+        `team_slug` *(string)* REQUIRED
+
+
+        The slug of the team to get.
+
+
+        ### Scopes
+
+
+        You need to [authenticate via bearer auth token.](https://docs.sentry.io/api/auth)
+        requires one of the following scopes:
+
+
+        *   `team:admin`'
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    get:
+      summary: Retrieve Team
+      description: "[https://docs.sentry.io/api/teams/retrieve-a-team/](https://docs.sentry.io/api/teams/retrieve-a-team/)\n\
+        \nReturn details on an individual team.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization the team belongs to.\n\
+        \n`team_slug`\_*(string)* REQUIRED\n\nThe slug of the team to get.\n\n###\
+        \ Scopes\n\nYou need to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `team:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    put:
+      summary: Update Team
+      description: "[https://docs.sentry.io/api/teams/update-a-team/](https://docs.sentry.io/api/teams/update-a-team/)\n\
+        \nUpdate various attributes and configurable settings for the given team.\n\
+        \n### Path Parameters\n\n`organization_slug`\_*(string)* REQUIRED\n\nThe slug\
+        \ of the organization the team belongs to.\n\n`team_slug`\_*(string)* REQUIRED\n\
+        \nThe slug of the team to get.\n\n### Body Parameters\n\n`name`\_*(string)*\
+        \ REQUIRED\n\nThe new name for the team.\n\n`slug`\_*(string)*\n\nA new slug\
+        \ for the team. It has to be unique and available.\n\n### Scopes\n\nYou need\
+        \ to\_[authenticate via bearer auth token.](https://docs.sentry.io/api/auth)\_\
+        requires one of the following scopes:\n\n*   `team:write`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/teams/{organization_slug}/:team_slug/stats/:
+    get:
+      summary: Retrieve Team Event Counts
+      description: "[https://docs.sentry.io/api/teams/retrieve-event-counts-for-a-team/](https://docs.sentry.io/api/teams/retrieve-event-counts-for-a-team/)\n\
+        \nCaution: this endpoint may change in the future without notice.\n\nReturn\
+        \ a set of points representing a normalized timestamp and the number of events\
+        \ seen in the period.\n\nQuery ranges are limited to Sentry\u2019s configured\
+        \ time-series resolutions.\n\n### Path Parameters\n\n`organization_slug`\_\
+        *(string)* REQUIRED\n\nThe slug of the organization the team belongs to.\n\
+        \n`team_slug`\_*(string)* REQUIRED\n\nThe slug of the team to get.\n\n###\
+        \ Query Parameters:\n\n`stat`\_*(string)*choices:\n\n*   `received`\n*   `rejected`\n\
+        \    \n\nThe name of the stat to query\_`(\"received\", \"rejected\")`.\n\n\
+        `since`\_*(string)*\n\nA timestamp to set the start of the query in seconds\
+        \ since UNIX epoch.\n\n`until`\_*(string)*\n\nA timestamp to set the end of\
+        \ the query in seconds since UNIX epoch.\n\n`resolution`\_*(string)*choices:\n\
+        \n*   `10s`\n*   `1h`\n*   `1d`\n    \n\nAn explicit resolution to search\
+        \ for (one of\_`10s`,\_`1h`, and\_`1d`).\n\n### Scopes\n\nYou need to\_[authenticate\
+        \ via bearer auth token.](https://docs.sentry.io/api/auth)\_requires one of\
+        \ the following scopes:\n\n*   `team:read`"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/events/:event_id/owners/:
+    get:
+      summary: Update Alert
+      description: "[https://sentry.io/api/0/projects/{org-slug}/{project-slug}/events/{event-id}/owners/](https://sentry.io/api/0/projects/{org-slug}/{project-slug}/events/{event-id}/owners/)\n\
+        \nReturn owners details for on an individual event.\n\n### Path Parameters\n\
+        \n`organization_slug`\__(string)_ REQUIRED\n\nThe slug of the organization\
+        \ the event belongs to.\n\n`project_slug`\__(string)_ REQUIRED\n\nThe slug\
+        \ of the project the event belongs to.\n\n`event_id`\__(string)_ REQUIRED\n\
+        \nThe ID of the event to retrieve. It is the hexadecimal ID as reported by\
+        \ the client.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://desktop.postman.com/?desktopVersion=9.31.0&userId=314074&teamId=0)\_\
+        requires one of the following scopes:\n\n\\*   `project:read`\n    \n\nAuthorizationBearer\
+        \ TokenThis\_request\_is using an authorization helper from\_collection\_\
+        Dirk's Sentry CollectionPath Variablesevent_id57af509826ca4a8197d4a7e5d1e18261"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/{project_slug}/ownership/:
+    get:
+      summary: Update Issue Ownership Rules
+      description: "[https://sentry.io/api/0/projects/{org-slug}/{project-slug}/events/{event-id}/owners/](https://sentry.io/api/0/projects/{org-slug}/{project-slug}/events/{event-id}/owners/)\n\
+        \nReturn owners details for on an individual event.\n\n### Path Parameters\n\
+        \n`organization_slug`\__(string)_ REQUIRED\n\nThe slug of the organization\
+        \ the event belongs to.\n\n`project_slug`\__(string)_ REQUIRED\n\nThe slug\
+        \ of the project the event belongs to.\n\n`event_id`\__(string)_ REQUIRED\n\
+        \nThe ID of the event to retrieve. It is the hexadecimal ID as reported by\
+        \ the client.\n\n### Scopes\n\nYou need to\_[authenticate via bearer auth\
+        \ token.](https://desktop.postman.com/?desktopVersion=9.31.0&userId=314074&teamId=0)\_\
+        requires one of the following scopes:\n\n\\*   `project:read`\n    \n\nAuthorizationBearer\
+        \ TokenThis\_request\_is using an authorization helper from\_collection\_\
+        Dirk's Sentry CollectionPath Variablesevent_id57af509826ca4a8197d4a7e5d1e18261"
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+    put:
+      summary: Update Issue Ownership Rules
+      description: ''
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/organizations/{organization_slug}/issues/:
+    get:
+      summary: Retrieve All Organization Issues
+      description: ''
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+  /api/0/projects/{organization_slug}/:project/teams/:team/:
+    post:
+      summary: Add Team to Project
+      description: ''
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
