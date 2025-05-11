@@ -443,7 +443,7 @@ const Visualizations: React.FC<VisualizationProps> = ({ data, query: _query }) =
                 </Card>
               </SimpleGrid>
               
-              <Group sx={{ justifyContent: 'center' }}>
+              <Group justify="center">
                 <Button variant="subtle" leftSection={<IconActivity size={16} />}>
                   View Trends
                 </Button>

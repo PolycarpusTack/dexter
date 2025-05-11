@@ -40,7 +40,7 @@ const DEFAULT_CONFIG: RealtimeConfig = {
  */
 export function useRealtimeUpdates(config: RealtimeConfig = {}) {
   const queryClient = useQueryClient();
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const [state, setState] = useState<RealtimeState>({
     status: 'disconnected',
     isConnected: false,
@@ -259,7 +259,7 @@ export function useRealtimeIssueUpdates(issueId?: string) {
  */
 export function useRealtimePresence() {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const { updatePresence, subscribe, unsubscribe } = useRealtimeUpdates();
+  const { updatePresence } = useRealtimeUpdates();
   const wsClientRef = useRef<WebSocketClient | null>(null);
 
   useEffect(() => {

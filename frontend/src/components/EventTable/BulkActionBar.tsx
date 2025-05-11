@@ -32,6 +32,15 @@ import { showSuccessNotification, showErrorNotification } from '../../utils/erro
 import { useBulkOperations } from '../../hooks/useBulkOperations';
 import { EventType } from '../../types/eventTypes';
 
+/**
+ * Interface for bulk operations
+ */
+interface BulkOperation {
+  issue_id: string;
+  operation_type: 'status' | 'tag' | 'assign';
+  data: Record<string, any>;
+}
+
 interface BulkActionBarProps {
   selectedEvents: EventType[];
   onClearSelection: () => void;
@@ -396,14 +405,13 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
             value={selectedTags}
             onChange={setSelectedTags}
             searchable
-            // Using getOptionLabel and onCreate to replace creatable prop
-            getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+            leftSection={<IconTag size={16} />}
+            // Implement creatable functionality
             onCreate={(query: string) => {
               const newTag = query.trim();
               setSelectedTags([...selectedTags, newTag]);
               return newTag;
             }}
-            leftSection={<IconTag size={16} />}
           />
           <Group justify="right">
             <Button variant="light" onClick={closeTagModal}>

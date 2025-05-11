@@ -91,7 +91,7 @@ export function getByTextContent(text: string) {
   // Import screen from testing-library
   const { screen } = require('@testing-library/react');
   
-  return screen.getByText((content: string, element: Element | null) => {
+  return screen.getByText((_, element: Element | null) => {
     const hasText = (element: Element | null): boolean => element?.textContent === text;
     const elementHasText = hasText(element);
     const childrenDontHaveText = element?.children 

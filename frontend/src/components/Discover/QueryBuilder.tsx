@@ -480,7 +480,7 @@ const QueryBuilder: React.FC<QueryBuilderProps> = ({ onExecute }) => {
               end: query.timeRange === 'custom' ? query.customTimeEnd : undefined,
             }, null, 2)}
           </Code>
-          <Group sx={{ justifyContent: "right" }}>
+          <Group justify="right">
             <Button onClick={() => setPreviewModalOpen(false)}>Close</Button>
             <Button onClick={() => {
               setPreviewModalOpen(false);
@@ -521,7 +521,7 @@ error.type:TypeError project:frontend
           
           <Card withBorder>
             <Text fw={600} mb="xs">Operators</Text>
-            <Stack sx={{ gap: 'var(--mantine-spacing-xs)' }}>
+            <Stack gap="xs">
               <Text fw={500} size="sm">Comparison Operators</Text>
               <Table>
                 <thead>

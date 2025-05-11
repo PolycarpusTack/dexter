@@ -853,7 +853,7 @@ export interface UpdateClientKeyResponse {
 
 export interface CreateaDeployRequest {
   organization_slug: string;
-  version: string;
+  {version: string;
 }
 
 export interface CreateaDeployResponse {

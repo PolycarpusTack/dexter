@@ -366,12 +366,12 @@ const ResultTable: React.FC<ResultTableProps> = ({ query, onExecute, onVisualize
                                   </ActionIcon>
                                 </Tooltip>
                               )}
-                              {type === 'string' && (
+                              {_type === 'string' && (
                                 <Badge size="xs" variant="light" color="blue">
                                   text
                                 </Badge>
                               )}
-                              {type === 'number' && (
+                              {_type === 'number' && (
                                 <Badge size="xs" variant="light" color="green">
                                   num
                                 </Badge>

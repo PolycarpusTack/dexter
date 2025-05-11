@@ -3,13 +3,13 @@ import { http, HttpResponse } from 'msw';
 // Define issue interface for type safety
 interface Issue {
   id: string;
-  title: string;
-  culprit: string;
-  status: string;
-  count: number;
-  userCount: number;
-  firstSeen: string;
-  lastSeen: string;
+  title?: string;
+  culprit?: string;
+  status?: string;
+  count?: number;
+  userCount?: number;
+  firstSeen?: string;
+  lastSeen?: string;
 }
 
 // Mock data
@@ -77,7 +77,7 @@ export const handlers = [
     const updatedIssue: Issue = { 
       ...mockIssues[issueIndex], 
       ...(typeof body === 'object' && body !== null ? body : {}),
-      id: mockIssues[issueIndex].id // Ensure ID is preserved
+      id: mockIssues[issueIndex]?.id || id as string // Ensure ID is preserved
     };
     
     // Ensure all required fields are present

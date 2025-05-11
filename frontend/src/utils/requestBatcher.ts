@@ -158,7 +158,7 @@ export class RequestBatcher {
    */
   private getBatchKey(endpoint: string, method: string): string {
     // Extract base path for batching similar requests
-    const basePath = endpoint ? endpoint.split('?')[0].split('/').slice(0, 3).join('/') : '';
+    const basePath = endpoint ? endpoint.split('?')[0]?.split('/')?.slice(0, 3)?.join('/') : '';
     return `${method}:${basePath}`;
   }
 

@@ -50,7 +50,7 @@ export class ApiErrorHandler {
         const category = categorizeError(error);
         return category === 'network';
       },
-      execute: async (error) => {
+      execute: async (_) => {
         // Wait for network to be back online
         if (!navigator.onLine) {
           await this.waitForOnline();
