@@ -403,15 +403,18 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
             placeholder="Select or enter tags"
             data={TAG_SUGGESTIONS}
             value={selectedTags}
-            onChange={setSelectedTags}
+            onChange={(value) => {
+              setSelectedTags(value);
+              // Handle new tag creation manually if needed
+              const lastValue = value[value.length - 1];
+              if (lastValue && !TAG_SUGGESTIONS.includes(lastValue)) {
+                // This is a workaround since onCreate prop is not available
+                console.log(`New tag created: ${lastValue}`);
+              }
+            }}
             searchable
             leftSection={<IconTag size={16} />}
-            // Implement creatable functionality
-            onCreate={(query: string) => {
-              const newTag = query.trim();
-              setSelectedTags([...selectedTags, newTag]);
-              return newTag;
-            }}
+            // Note: Using onChange instead of onCreate for tag creation
           />
           <Group justify="right">
             <Button variant="light" onClick={closeTagModal}>

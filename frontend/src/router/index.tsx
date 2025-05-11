@@ -2,7 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { LoadingOverlay } from '@mantine/core';
 
-const DashboardPage = lazy(() => import('../pages/DashboardPage'));
+// Use type assertion for lazy-loaded components
+const DashboardPage = lazy(() => import('../pages/DashboardPage') as any);
 const AlertRules = lazy(() => import('../components/AlertRules/AlertRules').then(module => ({ default: module.default })));
 
 export function AppRouter() {

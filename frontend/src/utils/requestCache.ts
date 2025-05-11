@@ -201,7 +201,9 @@ export class RequestCache {
 
     if (lruKey && lruEntry) {
       // Log eviction for debugging if needed
-      console.debug(`Cache: Evicting LRU entry with key ${lruKey}, hits: ${lruEntry.hits}, age: ${Date.now() - lruEntry.timestamp}ms`);
+      const hits = (lruEntry as CacheEntry<any>).hits;
+      const timestamp = (lruEntry as CacheEntry<any>).timestamp;
+      console.debug(`Cache: Evicting LRU entry with key ${lruKey}, hits: ${hits}, age: ${Date.now() - timestamp}ms`);
       this.removeEntry(lruKey);
     }
   }
@@ -331,8 +333,9 @@ export class RequestCache {
     // Remove oldest 25% of entries
     const removeCount = Math.ceil(entries.length * 0.25);
     for (let i = 0; i < removeCount; i++) {
-      if (entries[i] && entries[i][0]) {
-        this.storage.removeItem(entries[i][0]);
+      const entry = entries[i];
+      if (entry && entry[0]) {
+        this.storage.removeItem(entry[0]);
       }
     }
   }
