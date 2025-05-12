@@ -35,7 +35,7 @@ import { useDataMasking, useAuditLog } from '../../hooks';
 
 // Import API functions
 import { enhancedDeadlockApi } from '../../api';
-import errorHandling from '../../utils/errorHandling';
+import { errorHandling } from '../../utils';
 
 // Define interfaces for props and data types
 interface EventTag {

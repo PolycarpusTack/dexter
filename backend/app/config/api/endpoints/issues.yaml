@@ -1,0 +1,76 @@
+version: "1.0"
+base_url: "{sentry_base_url}"
+categories:
+  issues:
+    name: "Issues"
+    base_path: "/api/0/projects/{organization_slug}/{project_slug}"
+    endpoints:
+      list:
+        path: "/issues/"
+        method: "GET"
+        description: "List project issues"
+        cache_ttl: 300
+        params:
+          statsPeriod: "24h"
+          query: ""
+          
+      detail:
+        path: "/issues/{issue_id}/"
+        method: "GET"
+        description: "Get issue details"
+        cache_ttl: 300
+        
+      update:
+        path: "/issues/{issue_id}/"
+        method: "PUT"
+        description: "Update issue properties"
+        cache_ttl: 0
+        
+      delete:
+        path: "/issues/{issue_id}/"
+        method: "DELETE"
+        description: "Delete an issue"
+        cache_ttl: 0
+        
+      bulk:
+        path: "/issues/"
+        method: "PUT"
+        description: "Bulk update issues"
+        cache_ttl: 0
+        
+  organization_issues:
+    name: "Organization Issues"
+    base_path: "/api/0/organizations/{organization_slug}"
+    endpoints:
+      list:
+        path: "/issues/"
+        method: "GET"
+        description: "List organization issues across all projects"
+        cache_ttl: 300
+        params:
+          statsPeriod: "24h"
+          query: ""
+          
+      assign:
+        path: "/issues/{issue_id}/assignee/"
+        method: "PUT"
+        description: "Assign an issue to a user"
+        cache_ttl: 0
+        
+      comments:
+        path: "/issues/{issue_id}/comments/"
+        method: "GET"
+        description: "Get comments for an issue"
+        cache_ttl: 300
+        
+      add_comment:
+        path: "/issues/{issue_id}/comments/"
+        method: "POST"
+        description: "Add a comment to an issue"
+        cache_ttl: 0
+        
+      export:
+        path: "/projects/{project_slug}/issues/export"
+        method: "GET"
+        description: "Export issues as CSV or JSON"
+        cache_ttl: 0

@@ -39,7 +39,7 @@ def fix_file_for_pydantic_v2(file_path, dry_run=False):
     
     # Replace schema_extra with json_schema_extra
     schema_extra_pattern = r'schema_extra\s*='
-    replacement = r'json_schema_extra='
+    replacement = r'json_json_schema_extra='
     new_content, schema_extra_count = re.subn(schema_extra_pattern, replacement, content)
     if schema_extra_count > 0:
         modified = True
@@ -66,7 +66,7 @@ def pattern_field(pattern, **kwargs):
     if PYDANTIC_V2:
         return Field(pattern=pattern, **kwargs)
     else:
-        return Field(regex=pattern, **kwargs)
+        return Field(pattern=pattern, **kwargs)
 '''
         # Find import section
         import_section_end = content.find("\n\n", content.find("from pydantic import"))

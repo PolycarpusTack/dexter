@@ -10,6 +10,7 @@ from fastapi import Depends, HTTPException, status
 
 from app.services.sentry_client import SentryApiClient, get_sentry_client
 from app.core.settings import settings
+from app.utils.path_resolver import get_full_url
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,167 @@ class EnhancedSentryClient(SentryApiClient):
     Enhanced Sentry API client with additional functionality beyond the base client.
     Provides methods for Discover API, enhanced event analysis, etc.
     """
+    
+    async def call_endpoint(
+        self,
+        endpoint_name: str,
+        params: Dict[str, Any],
+        data: Optional[Dict[str, Any]] = None,
+        method: str = "GET"
+    ) -> Dict[str, Any]:
+        """
+        Generic method to call any endpoint defined in the API path configuration.
+        
+        Args:
+            endpoint_name: The logical name of the endpoint in the mapping (e.g., 'assign_issue')
+            params: Parameters for URL resolution and query params
+            data: Optional body data for POST/PUT requests
+            method: HTTP method to use (GET, POST, PUT, DELETE)
+            
+        Returns:
+            API response data
+        """
+        # Map endpoint names to category and endpoint in the config
+        # This mapping connects the logical endpoint names used in the enhanced_issues.py
+        # to the actual category and endpoint names in the YAML config
+        endpoint_mapping = {
+            # Issues endpoints
+            'list_project_issues': ('issues', 'list'),
+            'get_issue_details': ('issues', 'detail'),
+            'update_issue_status': ('issues', 'update'),
+            'assign_issue': ('issues', 'update'), # Same endpoint, different data
+            'list_issue_tags': ('issues', 'detail'), # Uses the same endpoint for now
+            'add_issue_tags': ('issues', 'update'), # Same endpoint, different data
+            'bulk_update_issues': ('organization_issues', 'bulk'),
+            
+            # Events endpoints
+            'list_issue_events': ('issue_events', 'list'),
+            'get_event_details': ('events', 'detail'),
+            
+            # Discover endpoints
+            'discover_query': ('discover', 'query'),
+            'get_discover_saved_queries': ('discover', 'saved_queries'),
+            'create_discover_saved_query': ('discover', 'create_saved_query'),
+        }
+        
+        if endpoint_name not in endpoint_mapping:
+            raise ValueError(f"Unknown endpoint name: {endpoint_name}")
+        
+        category, endpoint = endpoint_mapping[endpoint_name]
+        
+        # Extract path params and query params
+        path_params = params.copy()
+        query_params = {}
+        
+        # Some common query params that should not be used for path resolution
+        QUERY_PARAMS = ['status', 'query', 'cursor', 'id', 'environment']
+        
+        for param in QUERY_PARAMS:
+            if param in path_params:
+                query_params[param] = path_params.pop(param)
+        
+        # Add common params
+        path_params.update(self.common_params)
+        
+        # Resolve URL
+        url = get_full_url(category, endpoint, **path_params)
+        
+        # Make request
+        try:
+            logger.debug(f"Making {method} request to {url}")
+            
+            if method in ["GET", "DELETE"]:
+                response = await self._request(method, url, params=query_params)
+            else: # POST, PUT
+                response = await self._request(method, url, params=query_params, data=data)
+            
+            return response
+        except Exception as e:
+            logger.error(f"Error calling endpoint {endpoint_name}: {str(e)}")
+            raise
+    
+    async def list_project_issues(
+        self,
+        organization_slug: str,
+        project_slug: str,
+        query: Optional[str] = None,
+        cursor: Optional[str] = None,
+        status: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        List issues for a project.
+        
+        Args:
+            organization_slug: Organization slug
+            project_slug: Project slug
+            query: Optional search query
+            cursor: Optional pagination cursor
+            status: Optional status filter
+            
+        Returns:
+            List of issues with pagination info
+        """
+        params = {
+            'organization_slug': organization_slug,
+            'project_slug': project_slug,
+            'query': query,
+            'cursor': cursor,
+            'status': status
+        }
+        
+        # Remove None values
+        params = {k: v for k, v in params.items() if v is not None}
+        
+        return await self.call_endpoint('list_project_issues', params)
+    
+    async def get_issue_details(
+        self,
+        organization_slug: str,
+        issue_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get details for a specific issue.
+        
+        Args:
+            organization_slug: Organization slug
+            issue_id: Issue ID
+            
+        Returns:
+            Issue details
+        """
+        params = {
+            'organization_slug': organization_slug,
+            'issue_id': issue_id
+        }
+        
+        return await self.call_endpoint('get_issue_details', params)
+    
+    async def update_issue_status(
+        self,
+        issue_id: str,
+        status: str,
+        organization_slug: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Update the status of an issue.
+        
+        Args:
+            issue_id: Issue ID
+            status: New status
+            organization_slug: Optional organization slug (not used in API call)
+            
+        Returns:
+            Updated issue
+        """
+        params = {
+            'issue_id': issue_id
+        }
+        
+        data = {
+            'status': status
+        }
+        
+        return await self.call_endpoint('update_issue_status', params, data, method="PUT")
     
     async def discover_query(
         self,
@@ -37,26 +199,12 @@ class EnhancedSentryClient(SentryApiClient):
         """
         logger.info(f"Executing Discover query for {organization_slug}")
         
-        try:
-            url = f"{self.base_url}/organizations/{organization_slug}/eventsv2/"
-            logger.debug(f"Making GET request to {url} with params: {query_params}")
-            
-            response = await self.client.get(url, headers=self.headers, params=query_params)
-            response.raise_for_status()
-            
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error executing Discover query: {e.response.status_code} - {e.response.text}")
-            raise HTTPException(
-                status_code=e.response.status_code,
-                detail=f"Sentry API error: {e.response.text}"
-            )
-        except Exception as e:
-            logger.error(f"Error executing Discover query: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error executing query: {str(e)}"
-            )
+        params = {
+            'organization_slug': organization_slug,
+            **query_params
+        }
+        
+        return await self.call_endpoint('discover_query', params)
     
     async def get_discover_saved_queries(
         self,
@@ -73,18 +221,13 @@ class EnhancedSentryClient(SentryApiClient):
         """
         logger.info(f"Getting saved Discover queries for {organization_slug}")
         
+        params = {
+            'organization_slug': organization_slug
+        }
+        
         try:
-            url = f"{self.base_url}/organizations/{organization_slug}/discover/saved/"
-            logger.debug(f"Making GET request to {url}")
-            
-            response = await self.client.get(url, headers=self.headers)
-            response.raise_for_status()
-            
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error getting saved queries: {e.response.status_code} - {e.response.text}")
-            # Return empty list on error rather than raising exception
-            return []
+            result = await self.call_endpoint('get_discover_saved_queries', params)
+            return result
         except Exception as e:
             logger.error(f"Error getting saved queries: {str(e)}")
             return []
@@ -106,26 +249,11 @@ class EnhancedSentryClient(SentryApiClient):
         """
         logger.info(f"Creating saved Discover query for {organization_slug}")
         
-        try:
-            url = f"{self.base_url}/organizations/{organization_slug}/discover/saved/"
-            logger.debug(f"Making POST request to {url}")
-            
-            response = await self.client.post(url, headers=self.headers, json=query_data)
-            response.raise_for_status()
-            
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error creating saved query: {e.response.status_code} - {e.response.text}")
-            raise HTTPException(
-                status_code=e.response.status_code,
-                detail=f"Sentry API error: {e.response.text}"
-            )
-        except Exception as e:
-            logger.error(f"Error creating saved query: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error creating query: {str(e)}"
-            )
+        params = {
+            'organization_slug': organization_slug
+        }
+        
+        return await self.call_endpoint('create_discover_saved_query', params, query_data, method="POST")
     
     async def analyze_event(
         self,
@@ -144,8 +272,14 @@ class EnhancedSentryClient(SentryApiClient):
         Returns:
             Enhanced event analysis
         """
-        # Get basic event details first
-        event = await self.get_event_details(organization_slug, project_slug, event_id)
+        # Get basic event details
+        params = {
+            'organization_slug': organization_slug,
+            'project_slug': project_slug,
+            'event_id': event_id
+        }
+        
+        event = await self.call_endpoint('get_event_details', params)
         
         # Then add enhanced analysis
         analysis = {
@@ -166,6 +300,7 @@ async def get_enhanced_sentry_client(
 ) -> EnhancedSentryClient:
     """
     Get an instance of the enhanced Sentry client.
+    This dependency function is used in the enhanced_issues router.
     
     Args:
         sentry_client: Base Sentry client from dependency injection
@@ -173,11 +308,14 @@ async def get_enhanced_sentry_client(
     Returns:
         EnhancedSentryClient instance
     """
-    # Convert base client to enhanced client
+    # Create enhanced client with same settings as the base client
     enhanced_client = EnhancedSentryClient(
-        client=sentry_client.client,
-        base_url=sentry_client.base_url,
-        auth_token=sentry_client.auth_token
+        token=sentry_client.token,
+        timeout=sentry_client.timeout
     )
+    
+    # Copy the client to avoid creating a new connection
+    enhanced_client.client = sentry_client.client
+    enhanced_client.common_params = sentry_client.common_params
     
     return enhanced_client

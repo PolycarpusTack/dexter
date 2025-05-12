@@ -1,0 +1,18 @@
+version: "1.0"
+base_url: "{sentry_base_url}"
+categories:
+  event_analysis:
+    name: "Event Analysis"
+    base_path: "/api/0"
+    endpoints:
+      get_event_by_id:
+        path: "/events/{event_id}/"
+        method: "GET"
+        description: "Get event by ID (across all projects)"
+        cache_ttl: 300
+        
+      get_event_by_project:
+        path: "/projects/{organization_slug}/{project_slug}/events/{event_id}/"
+        method: "GET"
+        description: "Get event by ID for a specific project"
+        cache_ttl: 300

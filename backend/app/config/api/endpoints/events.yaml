@@ -1,0 +1,67 @@
+version: "1.0"
+base_url: "{sentry_base_url}"
+categories:
+  events:
+    name: "Events"
+    base_path: "/api/0/projects/{organization_slug}/{project_slug}"
+    endpoints:
+      list:
+        path: "/events/"
+        method: "GET"
+        description: "List project events"
+        cache_ttl: 60
+        params:
+          statsPeriod: "24h"
+          query: ""
+          
+      detail:
+        path: "/events/{event_id}/"
+        method: "GET"
+        description: "Get event details"
+        cache_ttl: 300
+        
+      tags:
+        path: "/tags/"
+        method: "GET"
+        description: "Get available tags"
+        cache_ttl: 3600
+        
+      tag_values:
+        path: "/tags/{key}/values/"
+        method: "GET"
+        description: "Get tag values"
+        cache_ttl: 3600
+        
+  issue_events:
+    name: "Issue Events"
+    base_path: "/api/0/issues/{issue_id}"
+    endpoints:
+      list:
+        path: "/events/"
+        method: "GET"
+        description: "List events for an issue"
+        cache_ttl: 60
+        
+      detail:
+        path: "/events/{event_id}/"
+        method: "GET"
+        description: "Get a specific event for an issue"
+        cache_ttl: 60
+        
+      latest:
+        path: "/events/latest/"
+        method: "GET"
+        description: "Get latest event for an issue"
+        cache_ttl: 60
+        
+      oldest:
+        path: "/events/oldest/"
+        method: "GET"
+        description: "Get oldest event for an issue"
+        cache_ttl: 60
+        
+      recommended:
+        path: "/events/recommended/"
+        method: "GET"
+        description: "Get recommended event for an issue"
+        cache_ttl: 60

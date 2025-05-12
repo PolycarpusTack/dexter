@@ -2,15 +2,13 @@ from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, List
 import logging
 import traceback
 from datetime import datetime
 import json
 from enum import Enum
-
-
-logger = logging.getLogger(__name__)
+from app.utils.logging_config import error_logger, log_error_with_context
 
 
 class ErrorCategory(str, Enum):
@@ -77,9 +75,18 @@ class APIError(Exception):
 class ErrorHandler:
     """Centralized error handling for the FastAPI application."""
     
-    def __init__(self):
-        self.error_log = []
-        self.max_log_size = 1000
+    def __init__(self, recent_errors_limit: int = 100):
+        """
+        Initialize the error handler with persistent logging.
+        
+        Args:
+            recent_errors_limit: Maximum number of recent errors to keep in memory
+                                for immediate access through API endpoints.
+        """
+        # We'll keep a small in-memory cache just for the API to show recent errors
+        # This is not our primary logging mechanism anymore
+        self.recent_errors_limit = recent_errors_limit
+        self.recent_errors = []
     
     def categorize_error(self, error: Exception) -> ErrorCategory:
         """Categorize an error based on its type and attributes."""
@@ -161,7 +168,7 @@ class ErrorHandler:
             response["error"]["details"] = {
                 "validation_errors": [
                     {
-                        "field": ".".join(err["loc"]),
+                        "field": ".".join(str(loc) for loc in err["loc"]),
                         "message": err["msg"],
                         "type": err["type"]
                     }
@@ -192,7 +199,8 @@ class ErrorHandler:
         return "An unexpected error occurred. Please try again later."
     
     def log_error(self, error: Exception, request: Request, status_code: int):
-        """Log error with context for debugging."""
+        """Log error with context for debugging using a persistent logger."""
+        # Create structured error data
         error_data = {
             "timestamp": datetime.utcnow().isoformat(),
             "error_type": type(error).__name__,
@@ -204,23 +212,22 @@ class ErrorHandler:
                 "method": request.method,
                 "path": request.url.path,
                 "query_params": dict(request.query_params),
-                "headers": dict(request.headers),
+                "headers": {k: v for k, v in request.headers.items() if k.lower() != "authorization"},
                 "client": request.client.host if request.client else None
             }
         }
         
-        # Add to error log
-        self.error_log.insert(0, error_data)
-        if len(self.error_log) > self.max_log_size:
-            self.error_log.pop()
-        
-        # Log to system logger
+        # Add stack trace for severe errors
         if status_code >= 500:
-            logger.error(f"Server error: {json.dumps(error_data)}", exc_info=True)
-        elif status_code >= 400:
-            logger.warning(f"Client error: {json.dumps(error_data)}")
-        else:
-            logger.info(f"Error: {json.dumps(error_data)}")
+            error_data["stack_trace"] = traceback.format_exc()
+        
+        # Add to recent errors cache (with limited size)
+        self.recent_errors.insert(0, error_data)
+        if len(self.recent_errors) > self.recent_errors_limit:
+            self.recent_errors.pop()
+        
+        # Log using our structured logger
+        log_error_with_context(error_data)
     
     async def handle_error(
         self,
@@ -246,20 +253,20 @@ class ErrorHandler:
             }
         )
     
-    def get_error_log(self, limit: int = 100) -> list:
-        """Get recent errors from the log."""
-        return self.error_log[:limit]
+    def get_error_log(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get recent errors from the in-memory cache."""
+        return self.recent_errors[:limit]
     
-    def get_errors_by_category(self, category: ErrorCategory, limit: int = 100) -> list:
-        """Get errors filtered by category."""
+    def get_errors_by_category(self, category: ErrorCategory, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get errors filtered by category from the in-memory cache."""
         return [
-            error for error in self.error_log 
+            error for error in self.recent_errors 
             if error["category"] == category.value
         ][:limit]
     
-    def clear_error_log(self):
-        """Clear the error log."""
-        self.error_log = []
+    def clear_recent_errors(self):
+        """Clear the in-memory error cache."""
+        self.recent_errors = []
 
 
 # Singleton instance

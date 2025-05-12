@@ -1,0 +1,70 @@
+version: "1.0"
+base_url: "{sentry_base_url}"
+categories:
+  issue_alert_rules:
+    name: "Issue Alert Rules"
+    base_path: "/api/0/projects/{organization_slug}/{project_slug}"
+    endpoints:
+      list:
+        path: "/rules/"
+        method: "GET"
+        description: "List issue alert rules for a project"
+        cache_ttl: 300
+        
+      detail:
+        path: "/rules/{rule_id}/"
+        method: "GET"
+        description: "Get issue alert rule details"
+        cache_ttl: 300
+        
+      create:
+        path: "/rules/"
+        method: "POST"
+        description: "Create a new issue alert rule"
+        cache_ttl: 0
+        
+      update:
+        path: "/rules/{rule_id}/"
+        method: "PUT"
+        description: "Update an issue alert rule"
+        cache_ttl: 0
+        
+      delete:
+        path: "/rules/{rule_id}/"
+        method: "DELETE"
+        description: "Delete an issue alert rule"
+        cache_ttl: 0
+        
+  metric_alert_rules:
+    name: "Metric Alert Rules"
+    base_path: "/api/0/organizations/{organization_slug}"
+    endpoints:
+      list:
+        path: "/alert-rules/"
+        method: "GET"
+        description: "List metric alert rules for an organization"
+        cache_ttl: 300
+        
+      detail:
+        path: "/alert-rules/{rule_id}/"
+        method: "GET"
+        description: "Get metric alert rule details"
+        cache_ttl: 300
+        
+      create:
+        path: "/alert-rules/"
+        method: "POST"
+        description: "Create a new metric alert rule"
+        cache_ttl: 0
+        
+      update:
+        path: "/alert-rules/{rule_id}/"
+        method: "PUT"
+        description: "Update a metric alert rule"
+        cache_ttl: 0
+        
+      delete:
+        path: "/alert-rules/{rule_id}/"
+        method: "DELETE"
+        description: "Delete a metric alert rule"
+        cache_ttl: 0

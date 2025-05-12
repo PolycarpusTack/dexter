@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import errorHandling from '../utils/errorHandling';
+import { errorHandling } from '../utils';
 
 interface ClipboardOptions {
   successMessage?: string;
@@ -58,7 +58,7 @@ export function useClipboard(): UseClipboardResult {
         setIsCopied(true);
         
         if (showNotification) {
-          showSuccessNotification({
+          errorHandling.showSuccessNotification({
             title: 'Success',
             message: successMessage
           });
@@ -95,7 +95,7 @@ export function useClipboard(): UseClipboardResult {
         setIsCopied(true);
         
         if (showNotification) {
-          showSuccessNotification({
+          errorHandling.showSuccessNotification({
             title: 'Success',
             message: successMessage
           });
@@ -115,7 +115,7 @@ export function useClipboard(): UseClipboardResult {
       console.error('Clipboard error:', error);
       
       if (showNotification) {
-        showErrorNotification({
+        errorHandling.showErrorNotification({
           title: 'Error',
           message: errorMessage
         });

@@ -10,22 +10,6 @@ import App from './App';
 import dexterTheme from './theme/theme';
 import './styles.css';
 
-// Suppress source map warnings in development mode
-if (import.meta.env.DEV && import.meta.env.VITE_SUPPRESS_SOURCEMAP_WARNINGS === 'true') {
-  const originalConsoleError = console.error;
-  console.error = (...args) => {
-    if (
-      typeof args[0] === 'string' && 
-      (args[0].includes('Source map error') || 
-       args[0].includes('Failed to parse source map'))
-    ) {
-      // Skip source map errors
-      return;
-    }
-    originalConsoleError(...args);
-  };
-}
-
 // Create a QueryClient with proper error handling
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,7 +48,6 @@ root.render(
     <MantineProvider 
       theme={dexterTheme} 
       defaultColorScheme="light"
-      withCssVariables={false} // Disable CSS variables to avoid the forEach error
     >
       <Notifications position="top-right" zIndex={1000} />
       <QueryClientProvider client={queryClient}>

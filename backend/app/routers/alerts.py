@@ -2,31 +2,14 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import logging
 import importlib
 
+# Import from our common utility module
+from app.utils.pydantic_compat import pattern_field
+
 logger = logging.getLogger(__name__)
-
-# Detect Pydantic version to use the right validator syntax
-def get_pydantic_version():
-    try:
-        import pydantic
-        version = getattr(pydantic, "__version__", "1.0.0")
-        major_version = int(version.split(".")[0])
-        return major_version
-    except (ImportError, ValueError, IndexError):
-        return 1  # Default to v1 if we can't determine version
-
-PYDANTIC_V2 = get_pydantic_version() >= 2
-logger.info(f"Using Pydantic v{'2+' if PYDANTIC_V2 else '1'}")
-
-# Helper function to handle Field validation based on Pydantic version
-def pattern_field(pattern, **kwargs):
-    if PYDANTIC_V2:
-        return Field(pattern=pattern, **kwargs)
-    else:
-        return Field(regex=pattern, **kwargs)
 
 # Try to import dependencies, but don't fail if they're not available
 try:
@@ -203,13 +186,13 @@ async def create_alert_rule(
             # Validate and create issue alert rule
             rule = IssueAlertRule(**rule_data)
             response = await sentry_client.create_issue_alert_rule(
-                current_user["org"], project, rule.dict()
+                current_user["org"], project, rule.model_dump()
             )
         elif rule_type == "metric":
             # Validate and create metric alert rule
             rule = MetricAlertRule(**rule_data)
             response = await sentry_client.create_metric_alert_rule(
-                current_user["org"], rule.dict()
+                current_user["org"], rule.model_dump()
             )
         else:
             raise HTTPException(status_code=400, detail="Invalid rule type")
@@ -245,13 +228,13 @@ async def update_alert_rule(
             # Validate and update issue alert rule
             rule = IssueAlertRule(**rule_data)
             response = await sentry_client.update_issue_alert_rule(
-                current_user["org"], project, rule_id, rule.dict()
+                current_user["org"], project, rule_id, rule.model_dump()
             )
         elif rule_type == "metric":
             # Validate and update metric alert rule
             rule = MetricAlertRule(**rule_data)
             response = await sentry_client.update_metric_alert_rule(
-                current_user["org"], rule_id, rule.dict()
+                current_user["org"], rule_id, rule.model_dump()
             )
         else:
             raise HTTPException(status_code=400, detail="Invalid rule type")

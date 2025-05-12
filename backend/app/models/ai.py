@@ -6,6 +6,7 @@ Pydantic models for AI-related endpoints.
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, List
 from enum import Enum
+from app.utils.pydantic_compat import config_class_factory
 
 class ModelStatus(str, Enum):
     """Status of an Ollama model."""
@@ -39,8 +40,8 @@ class ExplainRequest(BaseModel):
     retry_count: Optional[int] = 0
     model: Optional[str] = None  # Optional model override
     
-    class Config:
-        schema_extra = {
+    model_config = config_class_factory({
+        "json_schema_extra": {
             "example": {
                 "event_data": {
                     "eventID": "12345abcde",
@@ -58,6 +59,7 @@ class ExplainRequest(BaseModel):
                 }
             }
         }
+    })
 
 class ExplainResponse(BaseModel):
     """Response model from the explanation endpoint."""
@@ -66,13 +68,14 @@ class ExplainResponse(BaseModel):
     error: Optional[str] = None
     is_generic: Optional[bool] = False
     
-    class Config:
-        schema_extra = {
+    model_config = config_class_factory({
+        "json_schema_extra": {
             "example": {
                 "explanation": "This error occurs when your code tries to access a property (in this case 'foo') of an object that is undefined. Check that the object exists before attempting to access its properties.",
                 "model_used": "mistral:latest"
             }
         }
+    })
 
 class ModelSelectionRequest(BaseModel):
     """Request to change the active model."""

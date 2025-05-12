@@ -1,0 +1,36 @@
+version: "1.0"
+base_url: "{sentry_base_url}"
+categories:
+  discover:
+    name: "Discover"
+    base_path: "/api/0/organizations/{organization_slug}"
+    endpoints:
+      query:
+        path: "/events-stats/"
+        method: "GET"
+        description: "Execute a Discover query"
+        cache_ttl: 60
+        
+      saved_queries:
+        path: "/discover/saved/"
+        method: "GET"
+        description: "Get saved Discover queries"
+        cache_ttl: 300
+        
+      create_saved_query:
+        path: "/discover/saved/"
+        method: "POST"
+        description: "Create a saved Discover query"
+        cache_ttl: 0
+        
+      update_saved_query:
+        path: "/discover/saved/{query_id}/"
+        method: "PUT"
+        description: "Update a saved Discover query"
+        cache_ttl: 0
+        
+      delete_saved_query:
+        path: "/discover/saved/{query_id}/"
+        method: "DELETE"
+        description: "Delete a saved Discover query"
+        cache_ttl: 0

@@ -1,0 +1,68 @@
+name: Validate Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'backend/**/*.py'
+      - 'frontend/src/**/*.ts'
+      - 'frontend/src/**/*.tsx'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'backend/**/*.py'
+      - 'frontend/src/**/*.ts'
+      - 'frontend/src/**/*.tsx'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r docs/tools/requirements.txt
+      
+      - name: Validate documentation
+        run: python docs/tools/validate_docs.py
+      
+      - name: Generate status dashboard
+        run: python docs/tools/generate_status.py
+      
+      - name: Upload status dashboard as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: documentation-status
+          path: docs/status/documentation-status.md
+      
+      - name: Check for OpenAPI specs
+        id: check_files
+        run: |
+          if ls sentry-api.yaml 2>/dev/null || ls docs/sentry-api.yaml 2>/dev/null; then
+            echo "::set-output name=api_spec_exists::true"
+          else
+            echo "::set-output name=api_spec_exists::false"
+          fi
+      
+      - name: Extract API documentation
+        if: steps.check_files.outputs.api_spec_exists == 'true'
+        run: python docs/tools/extract_api_docs.py
+      
+      - name: Commit documentation changes
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/status/
+          git add docs/api/
+          git commit -m "Update documentation status and API docs [skip ci]" || echo "No changes to commit"
+          git push

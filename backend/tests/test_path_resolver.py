@@ -1,127 +1,70 @@
 import pytest
-from app.config.api_paths import ApiPathConfig, PathMapping
-from app.utils.path_resolver import PathResolver
+from app.utils.path_resolver import resolve_path, get_full_url, legacy_resolve_path
+from app.config.api.path_mappings import api_path_manager
+import os
 
 
-class TestPathResolver:
-    """Test cases for PathResolver utility."""
+class TestNewPathResolver:
+    """Test cases for the new path resolver system."""
     
-    def test_resolve_simple_path(self):
-        """Test resolving simple paths without parameters."""
-        result = PathResolver.resolve('/api/organizations')
-        assert result == '/api/organizations'
-    
-    def test_resolve_path_with_single_parameter(self):
-        """Test resolving paths with single parameter."""
-        result = PathResolver.resolve('/api/issues/{id}', id='123')
-        assert result == '/api/issues/123'
-    
-    def test_resolve_path_with_multiple_parameters(self):
-        """Test resolving paths with multiple parameters."""
-        result = PathResolver.resolve(
-            '/api/projects/{organization_slug}/{project_slug}/issues/',
-            organization_slug='my-org',
-            project_slug='my-project'
+    def test_resolve_path(self):
+        """Test resolving a path with parameters."""
+        path = resolve_path(
+            "issues", "list",
+            organization_slug="my-org",
+            project_slug="my-project"
         )
-        assert result == '/api/projects/my-org/my-project/issues/'
+        assert "/projects/my-org/my-project/issues/" in path
     
-    def test_resolve_with_parameter_aliases(self):
-        """Test parameter aliases are handled correctly."""
-        result = PathResolver.resolve(
-            '/api/projects/{organization_slug}/{project_slug}/issues/',
-            org='my-org',
-            project='my-project'
+    def test_get_full_url(self):
+        """Test getting a full URL with base URL and path."""
+        url = get_full_url(
+            "issues", "list",
+            organization_slug="my-org",
+            project_slug="my-project",
+            sentry_base_url="https://sentry.example.com"
         )
-        assert result == '/api/projects/my-org/my-project/issues/'
+        assert url.startswith("https://sentry.example.com")
+        assert "/projects/my-org/my-project/issues/" in url
     
-    def test_resolve_missing_parameters_raises_error(self):
+    def test_missing_parameters(self):
         """Test that missing parameters raise ValueError."""
-        with pytest.raises(ValueError, match='Missing required path parameters: id'):
-            PathResolver.resolve('/api/issues/{id}')
+        with pytest.raises(ValueError, match="Missing required parameter"):
+            resolve_path(
+                "issues", "list",
+                organization_slug="my-org"
+                # Missing project_slug
+            )
     
-    def test_resolve_mapping(self):
-        """Test resolving path from PathMapping object."""
-        mapping = PathMapping(
-            frontend_path='/api/v1/issues/{id}',
-            backend_path='/api/events/{id}',
-            sentry_path='/issues/{id}/',
-            method='GET',
-            description='Get issue details'
-        )
-        
-        # Test different path types
-        assert PathResolver.resolve_mapping(mapping, 'frontend', id='123') == '/api/v1/issues/123'
-        assert PathResolver.resolve_mapping(mapping, 'backend', id='123') == '/api/events/123'
-        assert PathResolver.resolve_mapping(mapping, 'sentry', id='123') == '/issues/123/'
+    def test_unknown_category(self):
+        """Test that an unknown category raises an appropriate error."""
+        with pytest.raises(ValueError, match="Failed to resolve path"):
+            resolve_path("unknown_category", "list")
     
-    def test_extract_parameters(self):
-        """Test extracting parameters from paths."""
-        # Single parameter
-        params = PathResolver.extract_parameters('/api/issues/123', '/api/issues/{id}')
-        assert params == {'id': '123'}
-        
-        # Multiple parameters
-        params = PathResolver.extract_parameters(
-            '/api/projects/my-org/my-project/issues/',
-            '/api/projects/{organization_slug}/{project_slug}/issues/'
-        )
-        assert params == {
-            'organization_slug': 'my-org',
-            'project_slug': 'my-project'
-        }
-        
-        # Non-matching path
-        params = PathResolver.extract_parameters('/api/users/123', '/api/issues/{id}')
-        assert params == {}
+    def test_unknown_endpoint(self):
+        """Test that an unknown endpoint raises an appropriate error."""
+        with pytest.raises(ValueError, match="Failed to resolve path"):
+            resolve_path("issues", "unknown_endpoint")
+
+
+class TestLegacyPathResolver:
+    """Test cases for the legacy path resolver system (backwards compatibility)."""
     
-    def test_validate_path_params(self):
-        """Test validating path parameters."""
-        # Valid parameters
-        is_valid, missing = PathResolver.validate_path_params(
-            '/api/issues/{id}',
-            {'id': '123'}
+    def test_legacy_resolve_path(self):
+        """Test that the legacy resolver maps to the new system correctly."""
+        path = legacy_resolve_path(
+            "ISSUES_LIST",
+            org="my-org",
+            project="my-project"
         )
-        assert is_valid is True
-        assert missing == []
-        
-        # Missing parameters
-        is_valid, missing = PathResolver.validate_path_params(
-            '/api/issues/{id}',
-            {}
+        # This should use the mapping to call resolve_path("issues", "list", ...)
+        assert path == resolve_path(
+            "issues", "list",
+            organization_slug="my-org",
+            project_slug="my-project"
         )
-        assert is_valid is False
-        assert missing == ['id']
-        
-        # With parameter aliases
-        is_valid, missing = PathResolver.validate_path_params(
-            '/api/projects/{organization_slug}/{project_slug}/issues/',
-            {'org': 'my-org', 'project': 'my-project'}
-        )
-        assert is_valid is True
-        assert missing == []
     
-    def test_find_matching_route(self):
-        """Test finding matching routes."""
-        # Test with real API paths
-        result = PathResolver.find_matching_route('/api/events/123')
-        assert result is not None
-        category, operation, mapping = result
-        assert category == 'issues'
-        assert operation == 'detail'
-        assert mapping.backend_path == '/api/events/{id}'
-        
-        # Non-matching path
-        result = PathResolver.find_matching_route('/api/unknown/123')
-        assert result is None
-    
-    def test_get_sentry_url(self):
-        """Test getting full Sentry API URL."""
-        # With leading slash
-        url = PathResolver.get_sentry_url('/issues/123/')
-        assert url.startswith('https://sentry.io/api/0/')
-        assert url.endswith('/issues/123/')
-        
-        # Without leading slash
-        url = PathResolver.get_sentry_url('issues/123/')
-        assert url.startswith('https://sentry.io/api/0/')
-        assert url.endswith('/issues/123/')
+    def test_unknown_legacy_path(self):
+        """Test that an unknown legacy path raises ValueError."""
+        with pytest.raises(ValueError, match="Unknown legacy path key"):
+            legacy_resolve_path("UNKNOWN_PATH")

@@ -1,267 +1,227 @@
-# Centralized API path mapping configuration
-# Maps between frontend paths, backend paths, and Sentry API paths
-
-from typing import Dict, Any, Optional
-from dataclasses import dataclass, field
-from enum import Enum
-
-
-class HttpMethod(Enum):
-    GET = "GET"
-    POST = "POST"
-    PUT = "PUT"
-    DELETE = "DELETE"
-    PATCH = "PATCH"
+from typing import Dict, Optional, Any, List, Type, Union
+from .models import ApiEndpoint, ApiCategory, ApiPathConfig
+import os
+import yaml
+from pathlib import Path
+import logging
+from functools import lru_cache
 
 
-@dataclass
-class ApiEndpoint:
-    """Configuration for a single API endpoint"""
-    name: str
-    frontend_path: str
-    backend_path: str
-    sentry_path: str
-    method: HttpMethod = HttpMethod.GET
-    path_params: list[str] = field(default_factory=list)
-    query_params: list[str] = field(default_factory=list)
-    requires_auth: bool = True
-    cache_ttl: Optional[int] = None  # Cache TTL in seconds
-    description: str = ""
-    
-    def resolve_frontend_path(self, **params) -> str:
-        """Resolve frontend path with parameters"""
-        path = self.frontend_path
-        for param, value in params.items():
-            path = path.replace(f"{{{param}}}", str(value))
-        return path
-    
-    def resolve_backend_path(self, **params) -> str:
-        """Resolve backend path with parameters"""
-        path = self.backend_path
-        for param, value in params.items():
-            path = path.replace(f"{{{param}}}", str(value))
-        return path
-    
-    def resolve_sentry_path(self, **params) -> str:
-        """Resolve Sentry API path with parameters"""
-        path = self.sentry_path
-        for param, value in params.items():
-            path = path.replace(f"{{{param}}}", str(value))
-        return path
-
-
-# API Path Mappings
-API_MAPPINGS: Dict[str, ApiEndpoint] = {
-    # Issues endpoints
-    "list_issues": ApiEndpoint(
-        name="list_issues",
-        frontend_path="/api/v1/issues",
-        backend_path="/organizations/{organization_slug}/projects/{project_slug}/issues",
-        sentry_path="/api/0/projects/{organization_slug}/{project_slug}/issues/",
-        method=HttpMethod.GET,
-        path_params=["organization_slug", "project_slug"],
-        query_params=["cursor", "status", "query", "limit"],
-        cache_ttl=300,  # 5 minutes
-        description="List project issues"
-    ),
-    
-    "get_issue": ApiEndpoint(
-        name="get_issue",
-        frontend_path="/api/v1/issues/{issue_id}",
-        backend_path="/organizations/{organization_slug}/issues/{issue_id}",
-        sentry_path="/api/0/issues/{issue_id}/",
-        method=HttpMethod.GET,
-        path_params=["organization_slug", "issue_id"],
-        cache_ttl=60,  # 1 minute
-        description="Get issue details"
-    ),
-    
-    "update_issue": ApiEndpoint(
-        name="update_issue",
-        frontend_path="/api/v1/issues/{issue_id}",
-        backend_path="/organizations/{organization_slug}/issues/{issue_id}",
-        sentry_path="/api/0/issues/{issue_id}/",
-        method=HttpMethod.PUT,
-        path_params=["organization_slug", "issue_id"],
-        description="Update issue"
-    ),
-    
-    "bulk_update_issues": ApiEndpoint(
-        name="bulk_update_issues",
-        frontend_path="/api/v1/issues/bulk",
-        backend_path="/organizations/{organization_slug}/projects/{project_slug}/issues/bulk",
-        sentry_path="/api/0/projects/{organization_slug}/{project_slug}/issues/",
-        method=HttpMethod.PUT,
-        path_params=["organization_slug", "project_slug"],
-        query_params=["id", "status"],
-        description="Bulk update issues"
-    ),
-    
-    # Events endpoints
-    "get_event": ApiEndpoint(
-        name="get_event",
-        frontend_path="/api/v1/events/{event_id}",
-        backend_path="/organizations/{organization_slug}/projects/{project_slug}/events/{event_id}",
-        sentry_path="/api/0/projects/{organization_slug}/{project_slug}/events/{event_id}/",
-        method=HttpMethod.GET,
-        path_params=["organization_slug", "project_slug", "event_id"],
-        cache_ttl=600,  # 10 minutes
-        description="Get event details"
-    ),
-    
-    "list_issue_events": ApiEndpoint(
-        name="list_issue_events",
-        frontend_path="/api/v1/issues/{issue_id}/events",
-        backend_path="/organizations/{organization_slug}/issues/{issue_id}/events",
-        sentry_path="/api/0/issues/{issue_id}/events/",
-        method=HttpMethod.GET,
-        path_params=["organization_slug", "issue_id"],
-        query_params=["cursor", "environment"],
-        cache_ttl=60,  # 1 minute
-        description="List issue events"
-    ),
-    
-    # Tag management
-    "list_issue_tags": ApiEndpoint(
-        name="list_issue_tags",
-        frontend_path="/api/v1/issues/{issue_id}/tags",
-        backend_path="/organizations/{organization_slug}/issues/{issue_id}/tags",
-        sentry_path="/api/0/issues/{issue_id}/tags/",
-        method=HttpMethod.GET,
-        path_params=["organization_slug", "issue_id"],
-        cache_ttl=300,  # 5 minutes
-        description="List issue tags"
-    ),
-    
-    "add_issue_tags": ApiEndpoint(
-        name="add_issue_tags",
-        frontend_path="/api/v1/issues/{issue_id}/tags",
-        backend_path="/organizations/{organization_slug}/issues/{issue_id}/tags",
-        sentry_path="/api/0/issues/{issue_id}/tags/",
-        method=HttpMethod.POST,
-        path_params=["organization_slug", "issue_id"],
-        description="Add tags to issue"
-    ),
-    
-    # Assignment
-    "assign_issue": ApiEndpoint(
-        name="assign_issue",
-        frontend_path="/api/v1/issues/{issue_id}/assign",
-        backend_path="/organizations/{organization_slug}/issues/{issue_id}/assign",
-        sentry_path="/api/0/issues/{issue_id}/",
-        method=HttpMethod.PUT,
-        path_params=["organization_slug", "issue_id"],
-        description="Assign issue to user"
-    ),
-    
-    # Comments
-    "list_issue_comments": ApiEndpoint(
-        name="list_issue_comments",
-        frontend_path="/api/v1/issues/{issue_id}/comments",
-        backend_path="/organizations/{organization_slug}/issues/{issue_id}/comments",
-        sentry_path="/api/0/issues/{issue_id}/comments/",
-        method=HttpMethod.GET,
-        path_params=["organization_slug", "issue_id"],
-        cache_ttl=60,  # 1 minute
-        description="List issue comments"
-    ),
-    
-    "add_issue_comment": ApiEndpoint(
-        name="add_issue_comment",
-        frontend_path="/api/v1/issues/{issue_id}/comments",
-        backend_path="/organizations/{organization_slug}/issues/{issue_id}/comments",
-        sentry_path="/api/0/issues/{issue_id}/comments/",
-        method=HttpMethod.POST,
-        path_params=["organization_slug", "issue_id"],
-        description="Add comment to issue"
-    ),
-    
-    # Alert rules
-    "list_alert_rules": ApiEndpoint(
-        name="list_alert_rules",
-        frontend_path="/api/v1/alert-rules",
-        backend_path="/organizations/{organization_slug}/alert-rules",
-        sentry_path="/api/0/organizations/{organization_slug}/alert-rules/",
-        method=HttpMethod.GET,
-        path_params=["organization_slug"],
-        cache_ttl=300,  # 5 minutes
-        description="List alert rules"
-    ),
-    
-    "create_alert_rule": ApiEndpoint(
-        name="create_alert_rule",
-        frontend_path="/api/v1/alert-rules",
-        backend_path="/organizations/{organization_slug}/alert-rules",
-        sentry_path="/api/0/organizations/{organization_slug}/alert-rules/",
-        method=HttpMethod.POST,
-        path_params=["organization_slug"],
-        description="Create alert rule"
-    ),
-    
-    # Discover API
-    "discover_query": ApiEndpoint(
-        name="discover_query",
-        frontend_path="/api/v1/discover",
-        backend_path="/organizations/{organization_slug}/discover",
-        sentry_path="/api/0/organizations/{organization_slug}/events/",
-        method=HttpMethod.GET,
-        path_params=["organization_slug"],
-        query_params=["field", "query", "statsPeriod", "start", "end", "project", "environment"],
-        cache_ttl=60,  # 1 minute
-        description="Query discover events"
-    ),
-}
+logger = logging.getLogger(__name__)
 
 
 class ApiPathManager:
-    """Manager for API path resolution and configuration"""
+    """Unified API path manager with enhanced functionality.
     
-    def __init__(self, mappings: Dict[str, ApiEndpoint] = None):
-        self.mappings = mappings or API_MAPPINGS
+    This class manages API endpoint configurations, providing methods to:
+    - Load configurations from YAML files
+    - Retrieve endpoint definitions
+    - Resolve path templates with parameters
+    - Generate full URLs
     
-    def get_endpoint(self, name: str) -> Optional[ApiEndpoint]:
-        """Get endpoint configuration by name"""
-        return self.mappings.get(name)
+    The manager supports loading multiple configuration files and merging them.
+    """
     
-    def resolve_frontend_path(self, name: str, **params) -> str:
-        """Resolve frontend path for an endpoint"""
-        endpoint = self.get_endpoint(name)
+    def __init__(self):
+        self.config: Optional[ApiPathConfig] = None
+        self._loaded_files: List[str] = []
+    
+    def load_from_yaml(self, file_path: str) -> None:
+        """Load configuration from YAML file.
+        
+        Args:
+            file_path: Path to the YAML configuration file
+            
+        Raises:
+            FileNotFoundError: If the file doesn't exist
+            yaml.YAMLError: If the YAML is invalid
+        """
+        if file_path in self._loaded_files:
+            logger.debug(f"Config file already loaded: {file_path}")
+            return
+            
+        try:
+            with open(file_path, 'r') as f:
+                config_data = yaml.safe_load(f)
+                
+            if not self.config:
+                # First config loaded becomes the base
+                self.config = ApiPathConfig(**config_data)
+            else:
+                # Merge with existing config
+                self._merge_config(config_data)
+                    
+            self._loaded_files.append(file_path)
+            logger.info(f"Loaded API configuration from {file_path}")
+        except FileNotFoundError:
+            logger.error(f"Config file not found: {file_path}")
+            raise
+        except yaml.YAMLError as e:
+            logger.error(f"Invalid YAML in {file_path}: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Error loading config from {file_path}: {e}")
+            raise
+    
+    def _merge_config(self, config_data: Dict[str, Any]) -> None:
+        """Merge new config data with existing configuration.
+        
+        Args:
+            config_data: Dictionary with configuration data from YAML
+        """
+        if not self.config:
+            return
+            
+        # Check version compatibility
+        if config_data.get("version") != self.config.version:
+            logger.warning(f"Config version mismatch: {config_data.get('version')} vs {self.config.version}")
+        
+        # Merge categories
+        for category_name, category_data in config_data.get("categories", {}).items():
+            if category_name in self.config.categories:
+                # Merge endpoints in existing category
+                category_obj = self.config.categories[category_name]
+                
+                # Update base_path if provided
+                if "base_path" in category_data and category_data["base_path"]:
+                    category_obj.base_path = category_data["base_path"]
+                
+                # Merge endpoints
+                for endpoint_name, endpoint_data in category_data.get("endpoints", {}).items():
+                    category_obj.endpoints[endpoint_name] = ApiEndpoint(**endpoint_data)
+            else:
+                # Add new category
+                self.config.categories[category_name] = ApiCategory(
+                    name=category_data.get("name", category_name),
+                    base_path=category_data.get("base_path"),
+                    endpoints={
+                        name: ApiEndpoint(**data) 
+                        for name, data in category_data.get("endpoints", {}).items()
+                    }
+                )
+    
+    def load_all_configs(self) -> None:
+        """Load all YAML configurations from the endpoints directory.
+        
+        Searches for .yaml files in the endpoints directory and loads them.
+        """
+        endpoint_dir = Path(__file__).parent / "endpoints"
+        
+        if not endpoint_dir.exists():
+            logger.warning(f"Endpoints directory not found: {endpoint_dir}")
+            return
+            
+        for file_path in endpoint_dir.glob("*.yaml"):
+            try:
+                self.load_from_yaml(str(file_path))
+            except Exception as e:
+                logger.error(f"Failed to load {file_path}: {e}")
+    
+    def get_endpoint(self, category: str, name: str) -> Optional[ApiEndpoint]:
+        """Get endpoint configuration by category and name.
+        
+        Args:
+            category: Category name
+            name: Endpoint name within the category
+            
+        Returns:
+            ApiEndpoint if found, None otherwise
+        """
+        if not self.config:
+            logger.warning("No configuration loaded")
+            return None
+            
+        category_config = self.config.categories.get(category)
+        if not category_config:
+            logger.warning(f"Category not found: {category}")
+            return None
+            
+        endpoint = category_config.endpoints.get(name)
         if not endpoint:
-            raise ValueError(f"Unknown endpoint: {name}")
-        return endpoint.resolve_frontend_path(**params)
+            logger.warning(f"Endpoint not found: {category}.{name}")
+            
+        return endpoint
     
-    def resolve_backend_path(self, name: str, **params) -> str:
-        """Resolve backend path for an endpoint"""
-        endpoint = self.get_endpoint(name)
+    def resolve_path(self, category: str, name: str, **kwargs) -> Optional[str]:
+        """Resolve endpoint path with provided parameters.
+        
+        Args:
+            category: Category name
+            name: Endpoint name within the category
+            **kwargs: Path parameters to substitute in the template
+            
+        Returns:
+            Resolved path string or None if endpoint not found
+            
+        Raises:
+            ValueError: If required parameters are missing
+        """
+        endpoint = self.get_endpoint(category, name)
         if not endpoint:
-            raise ValueError(f"Unknown endpoint: {name}")
-        return endpoint.resolve_backend_path(**params)
+            return None
+            
+        # Get base path for category
+        category_config = self.config.categories.get(category)
+        base_path = ""
+        if category_config and category_config.base_path:
+            try:
+                base_path = category_config.base_path.format(**kwargs)
+            except KeyError as e:
+                raise ValueError(f"Missing required parameter for category base path: {e}")
+        
+        # Combine with endpoint path
+        full_path_template = f"{base_path}{endpoint.path}"
+        
+        # Replace placeholders
+        try:
+            resolved_path = full_path_template.format(**kwargs)
+            return resolved_path
+        except KeyError as e:
+            raise ValueError(f"Missing required parameter for path resolution: {e}")
     
-    def resolve_sentry_path(self, name: str, **params) -> str:
-        """Resolve Sentry API path for an endpoint"""
-        endpoint = self.get_endpoint(name)
-        if not endpoint:
-            raise ValueError(f"Unknown endpoint: {name}")
-        return endpoint.resolve_sentry_path(**params)
+    def get_full_url(self, category: str, name: str, **kwargs) -> Optional[str]:
+        """Get complete URL including base URL and resolved path.
+        
+        Args:
+            category: Category name
+            name: Endpoint name within the category
+            **kwargs: Path parameters to substitute in the template
+            
+        Returns:
+            Complete URL string or None if endpoint not found
+        """
+        if not self.config:
+            logger.warning("No configuration loaded")
+            return None
+            
+        resolved_path = self.resolve_path(category, name, **kwargs)
+        if not resolved_path:
+            return None
+        
+        # Format base URL if it contains placeholders
+        try:
+            base_url = self.config.base_url.format(**kwargs)
+        except KeyError as e:
+            raise ValueError(f"Missing required parameter for base URL: {e}")
+            
+        return f"{base_url}{resolved_path}"
     
-    def list_endpoints(self) -> list[str]:
-        """List all available endpoint names"""
-        return list(self.mappings.keys())
-    
-    def get_endpoints_by_method(self, method: HttpMethod) -> list[ApiEndpoint]:
-        """Get all endpoints for a specific HTTP method"""
-        return [
-            endpoint for endpoint in self.mappings.values()
-            if endpoint.method == method
-        ]
-    
-    def get_cached_endpoints(self) -> list[ApiEndpoint]:
-        """Get all endpoints that have caching enabled"""
-        return [
-            endpoint for endpoint in self.mappings.values()
-            if endpoint.cache_ttl is not None
-        ]
+    @lru_cache(maxsize=100)
+    def get_cached_full_url(self, category: str, name: str, **kwargs) -> Optional[str]:
+        """Cached version of get_full_url for frequently accessed endpoints.
+        
+        Implements simple LRU caching to avoid repeated string formatting.
+        
+        Args:
+            category: Category name
+            name: Endpoint name within the category
+            **kwargs: Path parameters to substitute in the template
+            
+        Returns:
+            Complete URL string or None if endpoint not found
+        """
+        return self.get_full_url(category, name, **kwargs)
 
 
-# Default instance
+# Global instance 
 api_path_manager = ApiPathManager()
