@@ -11,15 +11,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import yaml
-from pydantic import Field, BaseSettings
+from pydantic import Field
 
 try:
-    # Try importing Pydantic v2 validators first
-    from pydantic import field_validator, ConfigDict as SettingsConfigDict
+    # Try importing Pydantic v2 stuff first
+    from pydantic import field_validator, ConfigDict
+    from pydantic_settings import BaseSettings
 except ImportError:
     # Fall back to Pydantic v1 validators if needed
-    from pydantic import validator as field_validator
-    # ConfigDict will be handled through the model_config function
+    from pydantic import validator as field_validator, BaseSettings
 
 from app.utils.pydantic_compat import get_pydantic_version, config_class_factory
 
@@ -227,7 +227,12 @@ def get_settings() -> AppSettings:
         print(f"Warning: Failed to apply YAML config: {str(e)}")
     
     # Apply env vars again to ensure they take highest precedence
-    settings_dict = settings.model_dump()
-    settings = AppSettings.model_validate(settings_dict)
+    if PYDANTIC_V2:
+        settings_dict = settings.model_dump()
+        settings = AppSettings.model_validate(settings_dict)
+    else:
+        # Pydantic v1 syntax
+        settings_dict = settings.dict()
+        settings = AppSettings.parse_obj(settings_dict)
     
     return settings

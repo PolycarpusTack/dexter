@@ -45,7 +45,7 @@ def pattern_field(pattern, **kwargs):
     if PYDANTIC_V2:
         return Field(pattern=pattern, **kwargs)
     else:
-        return Field(regex=pattern, **kwargs)
+        return Field(pattern=pattern, **kwargs)
 
 def config_class_factory(config_dict):
     """
