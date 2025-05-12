@@ -76,7 +76,7 @@ class PathResolverService:
     
     def build_sentry_url(self, endpoint_name: str, **params) -> str:
         """Build full Sentry API URL for an endpoint"""
-        from ..config import settings
+        from app.core.settings import settings
         
         endpoint = self.path_manager.get_endpoint(endpoint_name)
         if not endpoint:

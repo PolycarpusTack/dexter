@@ -1,0 +1,6 @@
+@echo off
+echo Installing essential packages for building the frontend...
+npm install --no-package-lock --no-save vite @vitejs/plugin-react typescript @rollup/rollup-win32-x64-msvc
+echo.
+echo Running build...
+npx vite build

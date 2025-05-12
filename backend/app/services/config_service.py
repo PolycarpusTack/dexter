@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 import httpx
 
 from ..models.config import DexterConfigUpdate # Import needed model
-from ..config import settings
+from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
 

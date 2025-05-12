@@ -1,59 +1,66 @@
-// File: src/hooks/useAuditLog.ts
-
 import { useCallback } from 'react';
-import useAppStore from '../store/appStore';
 
-export interface AuditLogEvent {
-  timestamp: string;
+// Types for audit log events
+interface AuditLogEvent {
   component: string;
   action: string;
-  details: Record<string, any>;
+  timestamp: number;
+  details?: Record<string, any>;
 }
 
 /**
- * Hook for logging user actions for audit purposes
- * 
- * @param component - Component name for the log source
+ * Hook for logging user interactions and component events
+ * @param componentName - Name of the component generating logs
  * @returns Function to log events
  */
-export function useAuditLog(component: string) {
-  const { userId, organizationId } = useAppStore(state => ({
-    userId: state.userId,
-    organizationId: state.organizationId
-  }));
-  
+export function useAuditLog(componentName: string) {
   /**
-   * Log an action with details
-   * 
-   * @param action - Action name
-   * @param details - Additional details
+   * Log an event with details
+   * @param action - Action being performed
+   * @param details - Additional details about the action
    */
   const logEvent = useCallback((
     action: string,
-    details: Record<string, any> = {}
+    details?: Record<string, any>
   ) => {
-    // Create audit log event
+    // Create the event object
     const event: AuditLogEvent = {
-      timestamp: new Date().toISOString(),
-      component,
+      component: componentName,
       action,
-      details: {
-        ...details,
-        userId,
-        organizationId
-      }
+      timestamp: Date.now(),
+      details
     };
     
-    // In development, log to console
+    // Log to console in development mode
     if (process.env.NODE_ENV === 'development') {
-      console.debug(`[AuditLog] ${component}:${action}`, event);
+      console.log('Audit log:', event);
     }
     
-    // TODO: Send to backend API or analytics service in production
-    // This would typically use an API call to store the audit trail
+    // In a real application, we would send this to a logging service
+    // This could be done through an API call or other method
+    // For now, we'll just store it in localStorage for demonstration
     
+    try {
+      // Get existing logs
+      const existingLogs = localStorage.getItem('auditLogs');
+      const logs = existingLogs ? JSON.parse(existingLogs) : [];
+      
+      // Add the new event
+      logs.push(event);
+      
+      // Trim to last 1000 events to prevent localStorage from growing too large
+      const trimmedLogs = logs.slice(-1000);
+      
+      // Save back to localStorage
+      localStorage.setItem('auditLogs', JSON.stringify(trimmedLogs));
+    } catch (error) {
+      // Silently fail if localStorage is not available
+      console.error('Failed to save audit log:', error);
+    }
+    
+    // Return the event (useful for testing)
     return event;
-  }, [component, userId, organizationId]);
+  }, [componentName]);
   
   return logEvent;
 }

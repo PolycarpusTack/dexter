@@ -9,7 +9,7 @@ import asyncio
 import time
 from datetime import datetime
 
-from ..config import settings
+from app.core.settings import settings
 from ..models.ai import ModelStatus, OllamaModel
 
 logging.basicConfig(level=settings.log_level.upper())

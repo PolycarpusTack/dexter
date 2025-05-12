@@ -1,136 +1,95 @@
 """
-WebSocket router for real-time updates.
+Websocket router for real-time communication.
 """
-from typing import Dict, List
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from app.services.websocket_manager import WebSocketManager
-from app.core.config import settings
-from app.core.security import get_current_user
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import logging
+import json
+from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-manager = WebSocketManager()
+
+# Keep track of active connections
+active_connections: Dict[str, List[WebSocket]] = {}
 
 
 @router.websocket("/ws/{client_id}")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    client_id: str,
-    token: str = None
-):
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
     """
-    WebSocket endpoint for real-time updates.
+    Websocket endpoint for real-time communication.
     
     Args:
         websocket: WebSocket connection
-        client_id: Unique client identifier
-        token: JWT token for authentication
+        client_id: Client identifier
     """
+    await websocket.accept()
+    
+    # Add connection to active connections
+    if client_id not in active_connections:
+        active_connections[client_id] = []
+    active_connections[client_id].append(websocket)
+    
+    logger.info(f"Client {client_id} connected via WebSocket")
+    
     try:
-        # Accept the WebSocket connection
-        await websocket.accept()
-        
-        # Authenticate user if token provided
-        user_id = None
-        if token:
-            try:
-                # Validate token and get user
-                # In production, implement proper JWT validation
-                user_id = "authenticated_user"  # Placeholder
-            except Exception as e:
-                logger.warning(f"WebSocket auth failed: {e}")
-        
-        # Connect to the manager
-        await manager.connect(websocket, client_id, user_id)
-        
-        # Send initial connection success message
-        await websocket.send_json({
-            "type": "connection",
-            "status": "connected",
-            "clientId": client_id,
-            "authenticated": bool(user_id)
-        })
-        
-        # Listen for messages
         while True:
-            data = await websocket.receive_json()
+            # Receive message from client
+            data = await websocket.receive_text()
             
-            # Handle different message types
-            if data.get("type") == "subscribe":
-                channel = data.get("channel")
-                if channel:
-                    await manager.subscribe(client_id, channel)
-                    await websocket.send_json({
-                        "type": "subscription",
-                        "channel": channel,
-                        "status": "subscribed"
-                    })
-            
-            elif data.get("type") == "unsubscribe":
-                channel = data.get("channel")
-                if channel:
-                    await manager.unsubscribe(client_id, channel)
-                    await websocket.send_json({
-                        "type": "subscription",
-                        "channel": channel,
-                        "status": "unsubscribed"
-                    })
-            
-            elif data.get("type") == "ping":
+            try:
+                # Parse JSON data
+                message = json.loads(data)
+                logger.debug(f"Received message from client {client_id}: {message}")
+                
+                # Echo message back to client
                 await websocket.send_json({
-                    "type": "pong",
-                    "timestamp": data.get("timestamp")
+                    "type": "echo",
+                    "data": message,
+                    "client_id": client_id
                 })
-            
-            elif data.get("type") == "presence":
-                # Update user presence
-                await manager.update_presence(client_id, data.get("status"))
-            
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON from client {client_id}: {e}")
+                await websocket.send_json({
+                    "type": "error",
+                    "error": "Invalid JSON",
+                    "message": str(e)
+                })
+                
     except WebSocketDisconnect:
-        manager.disconnect(client_id)
+        # Remove connection from active connections
+        active_connections[client_id].remove(websocket)
+        if not active_connections[client_id]:
+            del active_connections[client_id]
         logger.info(f"Client {client_id} disconnected")
+        
     except Exception as e:
         logger.error(f"WebSocket error for client {client_id}: {e}")
-        manager.disconnect(client_id)
 
 
-@router.post("/broadcast/{event_type}")
-async def broadcast_event(event_type: str, data: dict):
+async def broadcast_message(message: Dict, client_id: str = None):
     """
-    Broadcast an event to all connected clients.
+    Broadcast a message to clients.
     
-    This endpoint is used internally by the backend to send real-time updates.
+    Args:
+        message: Message to broadcast
+        client_id: Client ID to send to (None for all clients)
     """
-    message = {
-        "type": event_type,
-        "data": data
-    }
-    await manager.broadcast(message)
-    return {"status": "broadcasted"}
-
-
-@router.post("/notify/{client_id}")
-async def notify_client(client_id: str, data: dict):
-    """
-    Send a notification to a specific client.
-    """
-    message = {
-        "type": "notification",
-        "data": data
-    }
-    await manager.send_to_client(client_id, message)
-    return {"status": "sent"}
-
-
-@router.get("/connections")
-async def get_connections():
-    """
-    Get current WebSocket connections (for monitoring).
-    """
-    return {
-        "total": len(manager.active_connections),
-        "authenticated": len([c for c in manager.active_connections.values() if c.get("user_id")]),
-        "clients": list(manager.active_connections.keys())
-    }
+    if client_id:
+        # Send to specific client
+        if client_id in active_connections:
+            for connection in active_connections[client_id]:
+                try:
+                    await connection.send_json(message)
+                except Exception as e:
+                    logger.error(f"Error sending message to client {client_id}: {e}")
+    else:
+        # Send to all clients
+        for client_id, connections in active_connections.items():
+            for connection in connections:
+                try:
+                    await connection.send_json(message)
+                except Exception as e:
+                    logger.error(f"Error broadcasting message to client {client_id}: {e}")

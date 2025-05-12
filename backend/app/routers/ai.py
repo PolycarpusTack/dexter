@@ -12,7 +12,7 @@ from ..services.sentry_client import SentryApiClient
 from ..services.llm_service import LLMService
 from ..models.ai import ExplainRequest, ExplainResponse, ModelsResponse, ModelSelectionRequest
 from ..services.config_service import ConfigService, get_config_service
-from ..config import settings  # Import settings from config module
+from app.core.settings import settings  # Import settings from config module
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

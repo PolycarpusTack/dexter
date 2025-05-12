@@ -1,129 +1,87 @@
-// File: src/components/EventTable/columns/DeadlockColumn.tsx
-
 import React from 'react';
-import { 
-  Badge, 
-  Button, 
-  Tooltip, 
-  Group, 
-  Text, 
-  Box, 
-  ActionIcon, 
-  ThemeIcon,
-  useMantineTheme
-} from '@mantine/core';
-import { 
-  IconDatabase, 
-  IconLock, 
-  IconExternalLink, 
-  IconAlertTriangle 
-} from '@tabler/icons-react';
-import { hasDeadlock } from '../../../api/deadlockApi';
-import { EventType } from '../../../types/eventTypes';
+import { ActionIcon, Button, Tooltip } from '@mantine/core';
+import { IconLock, IconLockPlus } from '@tabler/icons-react';
+import { useDisclosure } from '@mantine/hooks';
+import DeadlockModal from '../../DeadlockDisplay/DeadlockModal';
 
+// Define the types for props
 interface DeadlockColumnProps {
-  event: EventType;
-  onViewDeadlock?: (eventId: string) => void;
-  showIndicator?: boolean;
-  showButton?: boolean;
+  event: {
+    id: string;
+    message?: string;
+    tags?: Array<{ key: string; value: string }>;
+    exception?: {
+      values?: Array<{
+        value?: string;
+        type?: string;
+      }>;
+    };
+    [key: string]: any;
+  };
 }
 
 /**
- * DeadlockColumn component for displaying deadlock detection in event tables
+ * Deadlock column component for event table
+ * Displays a button to open deadlock analyzer modal for PostgreSQL deadlock events
  */
-const DeadlockColumn: React.FC<DeadlockColumnProps> = ({
-  event,
-  onViewDeadlock,
-  showIndicator = true,
-  showButton = true
-}) => {
-  const theme = useMantineTheme();
+const DeadlockColumn: React.FC<DeadlockColumnProps> = ({ event }) => {
+  const [opened, { open, close }] = useDisclosure(false);
   
   // Check if this is a deadlock event
-  const isDeadlockEvent = hasDeadlock(event);
+  const isDeadlockEvent = React.useMemo(() => {
+    if (!event) return false;
+    
+    // Check for deadlock keywords in message or 40P01 error code
+    const message = event.message || '';
+    const hasDeadlockMessage = message.toLowerCase().includes('deadlock detected');
+    
+    // Check tags for error code
+    const tags = event.tags || [];
+    const hasDeadlockCode = tags.some(tag => 
+      (tag.key === 'error_code' || tag.key === 'db_error_code' || tag.key === 'sql_state') && 
+      tag.value === '40P01'
+    );
+    
+    // Check exception values
+    const exception = event.exception?.values?.[0] || {};
+    const hasDeadlockException = 
+      (exception.value?.toLowerCase()?.includes('deadlock detected')) || 
+      (exception.type?.toLowerCase()?.includes('deadlock'));
+    
+    return hasDeadlockMessage || hasDeadlockCode || hasDeadlockException;
+  }, [event]);
   
-  // Get severity from event data (aiSummary may be an object with deadlockAnalysis)
-  let severity = 0;
-  if (event.aiSummary && typeof event.aiSummary === 'object' && event.aiSummary !== null && 'deadlockAnalysis' in event.aiSummary) {
-    const deadlockAnalysis = (event.aiSummary as any).deadlockAnalysis;
-    if (deadlockAnalysis && typeof deadlockAnalysis === 'object' && 'severity' in deadlockAnalysis) {
-      severity = deadlockAnalysis.severity || 0;
-    }
-  }
-  const severityColor = severity > 70 ? 'red' : severity > 40 ? 'orange' : 'yellow';
-  
-  // If not a deadlock, just show a dash or nothing
   if (!isDeadlockEvent) {
-    return showIndicator ? (
-      <Box>
-        <Text color="dimmed" inline>—</Text>
-      </Box>
-    ) : null;
+    return (
+      <Tooltip label="Not a PostgreSQL deadlock">
+        <ActionIcon size="sm" variant="subtle" color="gray" disabled>
+          <IconLock size={14} />
+        </ActionIcon>
+      </Tooltip>
+    );
   }
-  
-  // Handle view deadlock click
-  const handleViewDeadlock = () => {
-    if (onViewDeadlock) {
-      onViewDeadlock(event.id);
-    }
-  };
   
   return (
-    <Group gap={8} wrap="nowrap">
-      {/* Deadlock indicator badge */}
-      {showIndicator && (
-        <Tooltip
-          label="PostgreSQL Deadlock (40P01)"
-          position="top"
-          withArrow
-        >
-          <Badge 
-            color={severityColor} 
-            variant="filled" 
-            leftSection={
-              <Box style={{ display: 'flex', alignItems: 'center' }}>
-                <ThemeIcon size="xs" color={severityColor} variant="transparent" style={{ backgroundColor: 'transparent' }}>
-                  {severity > 70 ? <IconAlertTriangle size={10} style={{ color: theme.colors[severityColor][9] }} /> : <IconLock size={10} style={{ color: theme.colors[severityColor][9] }} />}
-                </ThemeIcon>
-              </Box>
-            }
-            size="sm"
-          >
-            Deadlock
-          </Badge>
-        </Tooltip>
-      )}
+    <>
+      <Button
+        size="xs"
+        variant="light"
+        color="blue"
+        leftSection={<IconLockPlus size={14} />}
+        onClick={open}
+      >
+        Analyze Deadlock
+      </Button>
       
-      {/* View button */}
-      {showButton && (
-        <Button
-          size="xs"
-          variant="subtle"
-          color="red"
-          onClick={handleViewDeadlock}
-          leftSection={<IconDatabase size={12} />}
-        >
-          Analyze
-        </Button>
+      {opened && (
+        <DeadlockModal
+          eventId={event.id}
+          eventDetails={event}
+          isOpen={opened}
+          onClose={close}
+        />
       )}
-      
-      {/* Alternative compact view */}
-      {!showButton && !showIndicator && (
-        <Tooltip
-          label="View PostgreSQL Deadlock Analysis"
-          position="top"
-          withArrow
-        >
-          <ActionIcon
-            color="red"
-            variant="subtle"
-            onClick={handleViewDeadlock}
-          >
-            <IconExternalLink size={16} />
-          </ActionIcon>
-        </Tooltip>
-      )}
-    </Group>
+    </>
   );
 };
 

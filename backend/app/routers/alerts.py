@@ -3,9 +3,46 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, validator
+import logging
+import importlib
 
-from app.dependencies import get_sentry_client, get_current_user
-from app.services.sentry_client import SentryApiClient
+logger = logging.getLogger(__name__)
+
+# Detect Pydantic version to use the right validator syntax
+def get_pydantic_version():
+    try:
+        import pydantic
+        version = getattr(pydantic, "__version__", "1.0.0")
+        major_version = int(version.split(".")[0])
+        return major_version
+    except (ImportError, ValueError, IndexError):
+        return 1  # Default to v1 if we can't determine version
+
+PYDANTIC_V2 = get_pydantic_version() >= 2
+logger.info(f"Using Pydantic v{'2+' if PYDANTIC_V2 else '1'}")
+
+# Helper function to handle Field validation based on Pydantic version
+def pattern_field(pattern, **kwargs):
+    if PYDANTIC_V2:
+        return Field(pattern=pattern, **kwargs)
+    else:
+        return Field(regex=pattern, **kwargs)
+
+# Try to import dependencies, but don't fail if they're not available
+try:
+    from app.dependencies import get_sentry_client, get_current_user
+    from app.services.sentry_client import SentryApiClient
+    DEPENDENCIES_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Dependencies not available: {e}. Alert rules functionality will be limited.")
+    DEPENDENCIES_AVAILABLE = False
+    
+    # Create dummy dependency functions if real ones aren't available
+    async def get_sentry_client():
+        return None
+        
+    async def get_current_user(*args, **kwargs):
+        return {"id": "dev-user", "username": "dev", "org": "sentry", "email": "dev@example.com"}
 
 
 router = APIRouter(
@@ -53,19 +90,19 @@ class AlertRuleAction(BaseModel):
 class IssueAlertRule(BaseModel):
     """Issue alert rule model."""
     name: str
-    actionMatch: str = Field(..., regex="^(all|any|none)$")
+    actionMatch: str = pattern_field("^(all|any|none)$")
     conditions: List[AlertRuleCondition]
     actions: List[AlertRuleAction]
     frequency: int = Field(..., ge=5, le=43200)
     environment: Optional[str] = None
-    filterMatch: Optional[str] = Field(None, regex="^(all|any|none)$")
+    filterMatch: Optional[str] = pattern_field("^(all|any|none)$", default=None)
     filters: Optional[List[AlertRuleFilter]] = None
     owner: Optional[str] = None
 
 
 class MetricAlertTrigger(BaseModel):
     """Metric alert trigger model."""
-    label: str = Field(..., regex="^(critical|warning)$")
+    label: str = pattern_field("^(critical|warning)$")
     alertThreshold: float
     actions: List[AlertRuleAction] = []
 
@@ -74,10 +111,10 @@ class MetricAlertRule(BaseModel):
     """Metric alert rule model."""
     name: str = Field(..., max_length=256)
     aggregate: str
-    timeWindow: int = Field(..., regex="^(1|5|10|15|30|60|120|240|1440)$")
+    timeWindow: int = pattern_field("^(1|5|10|15|30|60|120|240|1440)$")
     projects: List[str]
     query: str
-    thresholdType: int = Field(..., regex="^(0|1)$")
+    thresholdType: int = pattern_field("^(0|1)$")
     triggers: List[MetricAlertTrigger]
     environment: Optional[str] = None
     dataset: Optional[str] = "events"

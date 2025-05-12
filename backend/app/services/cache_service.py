@@ -10,12 +10,24 @@ from typing import Any, Optional, Union, Dict, Callable
 from datetime import timedelta
 from functools import wraps
 import logging
-import redis
-from redis.exceptions import RedisError
 from fastapi import Request, Response
 from starlette.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
+
+# Try to import Redis, but don't fail if it's not available
+redis_available = False
+try:
+    import redis
+    from redis.exceptions import RedisError
+    redis_available = True
+    logger.info("Redis module found and loaded successfully")
+except ImportError:
+    logger.warning("Redis module not found. Using in-memory cache only.")
+    # Create placeholder for RedisError to avoid undefined reference
+    class RedisError(Exception):
+        """Placeholder for Redis errors when Redis is not available."""
+        pass
 
 
 class InMemoryCache:
@@ -69,7 +81,7 @@ class CacheService:
         self.redis_client = None
         self.in_memory_cache = InMemoryCache()
         
-        if redis_url:
+        if redis_url and redis_available:
             try:
                 self.redis_client = redis.Redis.from_url(
                     redis_url,
@@ -86,7 +98,10 @@ class CacheService:
                 logger.warning(f"Failed to connect to Redis: {e}. Using in-memory cache.")
                 self.redis_client = None
         else:
-            logger.info("No Redis URL provided. Using in-memory cache.")
+            if not redis_available:
+                logger.warning("Redis module not available. Using in-memory cache only.")
+            else:
+                logger.info("No Redis URL provided. Using in-memory cache.")
     
     async def _get_from_redis(self, key: str) -> Optional[str]:
         """Get value from Redis with error handling."""
@@ -169,7 +184,7 @@ class CacheService:
         success = False
         
         # Clear from Redis
-        if self.redis_client:
+        if self.redis_client and redis_available:
             try:
                 keys = self.redis_client.keys(pattern)
                 if keys:

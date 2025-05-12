@@ -1,100 +1,162 @@
-// File: src/api/enhancedDeadlockApi.ts
-
 import apiClient from './apiClient';
-import { 
-  DeadlockAnalysisResponse, 
-  AnalyzeDeadlockOptions 
-} from '../types/deadlock';
-import { createErrorHandler } from '../utils/errorHandling';
 
-// Error handler for deadlock API
-const handleDeadlockError = createErrorHandler('Deadlock Analysis Error', {
-  context: { apiModule: 'enhancedDeadlockApi' }
-});
+interface AnalyzeDeadlockOptions {
+  useEnhancedAnalysis?: boolean;
+  apiPath?: string;
+}
 
 /**
- * Analyze a PostgreSQL deadlock from an event
- * 
- * @param eventId - Event ID to analyze
- * @param options - Analysis options
- * @returns Promise with deadlock analysis data
+ * Analyze a deadlock event using the server-side analyzer
+ * @param eventId - ID of the event to analyze
+ * @param options - Options for analysis
+ * @returns Promise resolving to the analysis result
  */
-export const analyzeDeadlock = async (
-  eventId: string,
+export async function analyzeDeadlock(
+  eventId: string, 
   options: AnalyzeDeadlockOptions = {}
-): Promise<DeadlockAnalysisResponse> => {
-  const { useEnhancedAnalysis = true } = options;
+) {
+  const { 
+    useEnhancedAnalysis = true,
+    apiPath = useEnhancedAnalysis ? 'enhanced-analyzers' : 'analyzers'
+  } = options;
   
   try {
-    return await apiClient.get<DeadlockAnalysisResponse>(
-      `/analyze/deadlock/${eventId}`,
-      { 
-        params: { 
-          enhanced: useEnhancedAnalysis 
-        } 
-      }
-    );
+    const response = await apiClient.get(`/${apiPath}/analyze-deadlock/${eventId}`);
+    return response.data;
   } catch (error) {
-    handleDeadlockError(error, {
-      operation: 'analyzeDeadlock',
-      eventId,
-      options
-    });
+    console.error('Error analyzing deadlock:', error);
     throw error;
   }
-};
+}
 
 /**
- * Export deadlock visualization as SVG
- * 
- * @param eventId - Event ID for the visualization
+ * Export a deadlock visualization as SVG
+ * @param eventId - ID of the event to export
  * @param svgElement - SVG element to export
- * @returns Promise resolving when export completes
+ * @returns Promise resolving when the export is complete
  */
-export const exportDeadlockSVG = async (
-  eventId: string,
-  svgElement: SVGElement
-): Promise<void> => {
+export async function exportDeadlockSVG(eventId: string, svgElement: SVGElement) {
   try {
-    // Clone SVG element to add export attributes
+    // Create filename with event ID and date
+    const timestamp = new Date().toISOString().replace(/:/g, '-');
+    const filename = `deadlock-${eventId}-${timestamp}.svg`;
+    
+    // Clone the SVG to prepare it for export
     const svgClone = svgElement.cloneNode(true) as SVGElement;
     
-    // Set attributes needed for standalone SVG
+    // Set needed attributes for standalone SVG
     svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    svgClone.setAttribute('width', svgElement.clientWidth.toString());
-    svgClone.setAttribute('height', svgElement.clientHeight.toString());
+    svgClone.setAttribute('width', svgElement.getBoundingClientRect().width.toString());
+    svgClone.setAttribute('height', svgElement.getBoundingClientRect().height.toString());
     
-    // Create appropriate filename
-    const filename = `deadlock-${eventId.substring(0, 8)}.svg`;
+    // Clean up any transform on the root group if present
+    const rootGroup = svgClone.querySelector('g');
+    if (rootGroup) {
+      // Store the original transform
+      const originalTransform = rootGroup.getAttribute('transform');
+      
+      // If we're exporting with a zoom/pan applied, we might want to keep it
+      // For simplicity, we'll reset the transform here
+      // rootGroup.removeAttribute('transform');
+      
+      // Alternatively, for a proper export that includes current view:
+      // We can adjust the SVG viewBox based on the transform
+      if (originalTransform) {
+        // Extract translate and scale from the transform
+        const translateMatch = originalTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+        const scaleMatch = originalTransform.match(/scale\(([^)]+)\)/);
+        
+        if (translateMatch && translateMatch.length >= 3) {
+          const tx = parseFloat(translateMatch[1]);
+          const ty = parseFloat(translateMatch[2]);
+          
+          // Adjust viewBox to account for translation
+          const width = svgElement.getBoundingClientRect().width;
+          const height = svgElement.getBoundingClientRect().height;
+          svgClone.setAttribute('viewBox', `${-tx} ${-ty} ${width} ${height}`);
+          
+          // Remove the transform now that we've adjusted the viewBox
+          rootGroup.removeAttribute('transform');
+        }
+      }
+    }
     
-    // Convert to string
+    // Convert SVG to string
     const serializer = new XMLSerializer();
     const svgString = serializer.serializeToString(svgClone);
     
-    // Create blob and download link
-    const blob = new Blob([svgString], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
+    // Create a Blob from the SVG string
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
     
-    // Trigger download
-    document.body.appendChild(link);
-    link.click();
+    // Create an object URL for the Blob
+    const blobUrl = URL.createObjectURL(svgBlob);
     
-    // Clean up
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Create a download link and trigger it
+    const downloadLink = document.createElement('a');
+    downloadLink.href = blobUrl;
+    downloadLink.download = filename;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    // Clean up the URL object
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl);
+    }, 100);
+    
+    // Optionally, we could also log this action on the server
+    // await apiClient.post('/analytics/log-export', {
+    //   eventId,
+    //   exportType: 'svg',
+    //   timestamp: new Date().toISOString()
+    // });
+    
+    return { success: true, filename };
   } catch (error) {
-    handleDeadlockError(error, {
-      operation: 'exportDeadlockSVG',
-      eventId
-    });
+    console.error('Error exporting SVG:', error);
     throw error;
   }
-};
+}
 
-export default {
-  analyzeDeadlock,
-  exportDeadlockSVG
-};
+/**
+ * Get the deadlock analysis history for an event
+ * @param eventId - ID of the event to get history for
+ * @returns Promise resolving to the history data
+ */
+export async function getDeadlockHistory(eventId: string) {
+  try {
+    const response = await apiClient.get(`/enhanced-analyzers/deadlock-history/${eventId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting deadlock history:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get the lock compatibility matrix
+ * @returns Promise resolving to the lock compatibility matrix
+ */
+export async function getLockCompatibilityMatrix() {
+  try {
+    const response = await apiClient.get('/enhanced-analyzers/lock-compatibility-matrix');
+    return response.data;
+  } catch (error) {
+    console.error('Error getting lock compatibility matrix:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get deadlock patterns with recommendations
+ * @returns Promise resolving to the deadlock patterns
+ */
+export async function getDeadlockPatterns() {
+  try {
+    const response = await apiClient.get('/enhanced-analyzers/deadlock-patterns');
+    return response.data;
+  } catch (error) {
+    console.error('Error getting deadlock patterns:', error);
+    throw error;
+  }
+}

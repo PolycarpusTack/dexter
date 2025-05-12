@@ -58,7 +58,8 @@ if (!rootElement) {
 }
 
 // Mount the app
-ReactDOM.createRoot(rootElement).render(
+const root = ReactDOM.createRoot(rootElement);
+root.render(
   <React.StrictMode>
     <MantineProvider 
       theme={dexterTheme} 

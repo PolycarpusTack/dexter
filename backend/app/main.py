@@ -29,11 +29,35 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(events.router, prefix="/api/v1/events", tags=["events"])
-app.include_router(issues.router, prefix="/api/v1/issues", tags=["issues"])
-app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai"])
-app.include_router(config.router, prefix="/api/v1/config", tags=["config"])
-app.include_router(websocket.router, tags=["websocket"])
+try:
+    app.include_router(events.router, prefix="/api/v1/events", tags=["events"])
+    logger.info("Events router included")
+except Exception as e:
+    logger.warning(f"Failed to include events router: {e}")
+
+try:
+    app.include_router(issues.router, prefix="/api/v1/issues", tags=["issues"])
+    logger.info("Issues router included")
+except Exception as e:
+    logger.warning(f"Failed to include issues router: {e}")
+
+try:
+    app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai"])
+    logger.info("AI router included")
+except Exception as e:
+    logger.warning(f"Failed to include AI router: {e}")
+
+try:
+    app.include_router(config.router, prefix="/api/v1/config", tags=["config"])
+    logger.info("Config router included")
+except Exception as e:
+    logger.warning(f"Failed to include config router: {e}")
+
+try:
+    app.include_router(websocket.router, tags=["websocket"])
+    logger.info("Websocket router included")
+except Exception as e:
+    logger.warning(f"Failed to include websocket router: {e}")
 
 @app.get("/")
 async def root():

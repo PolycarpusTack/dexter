@@ -1,5 +1,19 @@
 /// <reference types="vite/client" />
 
+// Add declarations for JSX modules
+declare module "*.jsx" {
+  import * as React from "react";
+  const Component: React.ComponentType<any>;
+  export default Component;
+}
+
+// Specifically declare the DashboardPage module
+declare module "../pages/DashboardPage" {
+  import * as React from "react";
+  const DashboardPage: React.ComponentType<any>;
+  export default DashboardPage;
+}
+
 interface ImportMetaEnv {
   readonly DEV: boolean;
   readonly VITE_SUPPRESS_SOURCEMAP_WARNINGS: string;

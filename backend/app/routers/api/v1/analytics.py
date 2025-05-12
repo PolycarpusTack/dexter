@@ -11,7 +11,7 @@ from fastapi import Request
 
 from app.services.sentry_client import SentryApiClient
 from app.services.cache_service import cached
-from app.config import settings
+from app.core.settings import settings
 from app.models.analytics import AnalyticsResponse
 
 logger = logging.getLogger(__name__)

@@ -1,228 +1,61 @@
-# Enhanced Sentry client with path resolution and standardized API calls
+"""
+Enhanced Sentry API client with additional functionality.
+Extends the base SentryApiClient with Discover API features.
+"""
+
+from typing import Dict, Any, List, Optional, Union
 import logging
 import httpx
-from typing import Dict, Any, Optional, List
-from fastapi import HTTPException, status
+from fastapi import Depends, HTTPException, status
 
-from .sentry_client import SentryApiClient
-from .path_resolver_service import path_resolver
-from ..config.api.path_mappings import HttpMethod
+from app.services.sentry_client import SentryApiClient, get_sentry_client
+from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
 
 
 class EnhancedSentryClient(SentryApiClient):
-    """Enhanced Sentry client with path resolution and standardized API calls"""
+    """
+    Enhanced Sentry API client with additional functionality beyond the base client.
+    Provides methods for Discover API, enhanced event analysis, etc.
+    """
     
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.path_resolver = path_resolver
-    
-    async def call_endpoint(
-        self, 
-        endpoint_name: str, 
-        params: Dict[str, Any], 
-        data: Optional[Dict[str, Any]] = None,
-        **kwargs
-    ) -> Any:
-        """
-        Call a Sentry API endpoint by name
-        
-        Args:
-            endpoint_name: Name of the endpoint from path mappings
-            params: Parameters for path and query
-            data: Request body data for POST/PUT requests
-            **kwargs: Additional arguments for the HTTP request
-            
-        Returns:
-            API response data
-        """
-        # Get endpoint configuration
-        endpoint = self.path_resolver.path_manager.get_endpoint(endpoint_name)
-        if not endpoint:
-            raise ValueError(f"Unknown endpoint: {endpoint_name}")
-        
-        # Validate parameters
-        is_valid, missing = self.path_resolver.validate_params(endpoint_name, params)
-        if not is_valid:
-            raise ValueError(f"Missing required parameters: {missing}")
-        
-        # Build the full URL
-        url = self.path_resolver.build_sentry_url(endpoint_name, **params)
-        
-        # Separate path and query parameters
-        path_params = {k: v for k, v in params.items() if k in endpoint.path_params}
-        query_params = {k: v for k, v in params.items() if k in endpoint.query_params}
-        
-        # Make the API call based on method
-        try:
-            if endpoint.method == HttpMethod.GET:
-                response = await self.client.get(url, headers=self.headers, params=query_params, **kwargs)
-            elif endpoint.method == HttpMethod.POST:
-                response = await self.client.post(url, headers=self.headers, json=data, params=query_params, **kwargs)
-            elif endpoint.method == HttpMethod.PUT:
-                response = await self.client.put(url, headers=self.headers, json=data, params=query_params, **kwargs)
-            elif endpoint.method == HttpMethod.DELETE:
-                response = await self.client.delete(url, headers=self.headers, params=query_params, **kwargs)
-            elif endpoint.method == HttpMethod.PATCH:
-                response = await self.client.patch(url, headers=self.headers, json=data, params=query_params, **kwargs)
-            else:
-                raise ValueError(f"Unsupported HTTP method: {endpoint.method}")
-            
-            response.raise_for_status()
-            
-            # Handle pagination information if present
-            result = response.json()
-            if 'Link' in response.headers:
-                result['_pagination'] = self._parse_link_header(response.headers['Link'])
-            
-            return result
-            
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error calling {endpoint_name}: {e.response.status_code} - {e.response.text}")
-            raise HTTPException(
-                status_code=e.response.status_code,
-                detail=f"Sentry API error: {e.response.text}"
-            )
-        except httpx.RequestError as e:
-            logger.error(f"Request error calling {endpoint_name}: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Error connecting to Sentry API: {str(e)}"
-            )
-        except Exception as e:
-            logger.error(f"Unexpected error calling {endpoint_name}: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Unexpected error: {str(e)}"
-            )
-    
-    def _parse_link_header(self, link_header: str) -> Dict[str, Any]:
-        """Parse Link header for pagination information"""
-        links = {}
-        parts = link_header.split(',')
-        
-        for part in parts:
-            section = part.split(';')
-            if len(section) != 2:
-                continue
-                
-            url = section[0].strip()[1:-1]  # Remove < and >
-            name = section[1].strip().split('=')[1][1:-1]  # Remove quotes
-            
-            # Extract cursor from URL
-            from urllib.parse import urlparse, parse_qs
-            parsed_url = urlparse(url)
-            query_params = parse_qs(parsed_url.query)
-            cursor = query_params.get('cursor', [None])[0]
-            
-            links[name] = {
-                'url': url,
-                'cursor': cursor
-            }
-        
-        return links
-    
-    # Override methods to use path resolution
-    async def list_project_issues(
-        self, 
-        organization_slug: str, 
-        project_slug: str, 
-        query: Optional[str] = None, 
-        cursor: Optional[str] = None,
-        status: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """List issues using path resolution"""
-        params = {
-            'organization_slug': organization_slug,
-            'project_slug': project_slug,
-        }
-        
-        if query:
-            params['query'] = query
-        if cursor:
-            params['cursor'] = cursor
-        if status and status != 'all':
-            params['status'] = status
-        
-        return await self.call_endpoint('list_issues', params)
-    
-    async def get_issue_details(self, organization_slug: str, issue_id: str) -> Dict[str, Any]:
-        """Get issue details using path resolution"""
-        params = {
-            'organization_slug': organization_slug,
-            'issue_id': issue_id,
-        }
-        
-        return await self.call_endpoint('get_issue', params)
-    
-    async def update_issue_status(self, issue_id: str, status: str, organization_slug: str = "default") -> Dict[str, Any]:
-        """Update issue status using path resolution"""
-        params = {
-            'organization_slug': organization_slug,
-            'issue_id': issue_id,
-        }
-        
-        data = {'status': status}
-        
-        return await self.call_endpoint('update_issue', params, data)
-    
-    async def get_event_details(
-        self, 
-        organization_slug: str, 
-        project_slug: str, 
-        event_id: str
-    ) -> Dict[str, Any]:
-        """Get event details using path resolution"""
-        params = {
-            'organization_slug': organization_slug,
-            'project_slug': project_slug,
-            'event_id': event_id,
-        }
-        
-        return await self.call_endpoint('get_event', params)
-    
-    # Discover API methods
     async def discover_query(
         self,
         organization_slug: str,
         query_params: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Execute a Discover query
+        Execute a Discover query.
         
         Args:
-            organization_slug: Organization slug
-            query_params: Query parameters including fields, query, sort, etc.
+            organization_slug: The organization slug
+            query_params: Query parameters
             
         Returns:
-            Query results with data and metadata
+            Query results
         """
-        url = f"{self.base_url}/organizations/{organization_slug}/events/"
+        logger.info(f"Executing Discover query for {organization_slug}")
         
         try:
+            url = f"{self.base_url}/organizations/{organization_slug}/eventsv2/"
+            logger.debug(f"Making GET request to {url} with params: {query_params}")
+            
             response = await self.client.get(url, headers=self.headers, params=query_params)
             response.raise_for_status()
             
-            result = response.json()
-            
-            # Add pagination info if available
-            if 'Link' in response.headers:
-                result['_pagination'] = self._parse_link_header(response.headers['Link'])
-            
-            return result
-            
+            return response.json()
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error in discover query: {e.response.status_code} - {e.response.text}")
+            logger.error(f"HTTP error executing Discover query: {e.response.status_code} - {e.response.text}")
             raise HTTPException(
                 status_code=e.response.status_code,
                 detail=f"Sentry API error: {e.response.text}"
             )
         except Exception as e:
-            logger.error(f"Error executing discover query: {str(e)}")
+            logger.error(f"Error executing Discover query: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to execute discover query: {str(e)}"
+                detail=f"Error executing query: {str(e)}"
             )
     
     async def get_discover_saved_queries(
@@ -230,33 +63,31 @@ class EnhancedSentryClient(SentryApiClient):
         organization_slug: str
     ) -> List[Dict[str, Any]]:
         """
-        Get saved Discover queries from Sentry
+        Get saved Discover queries.
         
         Args:
-            organization_slug: Organization slug
+            organization_slug: The organization slug
             
         Returns:
             List of saved queries
         """
-        url = f"{self.base_url}/organizations/{organization_slug}/discover/saved/"
+        logger.info(f"Getting saved Discover queries for {organization_slug}")
         
         try:
+            url = f"{self.base_url}/organizations/{organization_slug}/discover/saved/"
+            logger.debug(f"Making GET request to {url}")
+            
             response = await self.client.get(url, headers=self.headers)
             response.raise_for_status()
-            return response.json()
             
+            return response.json()
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error getting saved queries: {e.response.status_code} - {e.response.text}")
-            raise HTTPException(
-                status_code=e.response.status_code,
-                detail=f"Sentry API error: {e.response.text}"
-            )
+            # Return empty list on error rather than raising exception
+            return []
         except Exception as e:
             logger.error(f"Error getting saved queries: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to get saved queries: {str(e)}"
-            )
+            return []
     
     async def create_discover_saved_query(
         self,
@@ -264,22 +95,25 @@ class EnhancedSentryClient(SentryApiClient):
         query_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Create a saved Discover query
+        Create a saved Discover query.
         
         Args:
-            organization_slug: Organization slug
-            query_data: Query definition data
+            organization_slug: The organization slug
+            query_data: Query data
             
         Returns:
-            Created query object
+            Created query
         """
-        url = f"{self.base_url}/organizations/{organization_slug}/discover/saved/"
+        logger.info(f"Creating saved Discover query for {organization_slug}")
         
         try:
+            url = f"{self.base_url}/organizations/{organization_slug}/discover/saved/"
+            logger.debug(f"Making POST request to {url}")
+            
             response = await self.client.post(url, headers=self.headers, json=query_data)
             response.raise_for_status()
-            return response.json()
             
+            return response.json()
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error creating saved query: {e.response.status_code} - {e.response.text}")
             raise HTTPException(
@@ -290,18 +124,60 @@ class EnhancedSentryClient(SentryApiClient):
             logger.error(f"Error creating saved query: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create saved query: {str(e)}"
+                detail=f"Error creating query: {str(e)}"
             )
     
-    @classmethod
-    async def get_instance(cls):
-        """Get an enhanced Sentry API client instance for dependency injection"""
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            return cls(client=client)
+    async def analyze_event(
+        self,
+        organization_slug: str,
+        project_slug: str,
+        event_id: str
+    ) -> Dict[str, Any]:
+        """
+        Perform enhanced analysis on an event.
+        
+        Args:
+            organization_slug: The organization slug
+            project_slug: The project slug
+            event_id: The event ID
+            
+        Returns:
+            Enhanced event analysis
+        """
+        # Get basic event details first
+        event = await self.get_event_details(organization_slug, project_slug, event_id)
+        
+        # Then add enhanced analysis
+        analysis = {
+            "event": event,
+            "analysis": {
+                "summary": "Event analysis not available in this version",
+                "recommendations": [],
+                "similar_events": []
+            }
+        }
+        
+        return analysis
 
 
-# Dependency for FastAPI
-async def get_enhanced_sentry_client() -> EnhancedSentryClient:
-    """Get an enhanced Sentry API client for dependency injection"""
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        yield EnhancedSentryClient(client=client)
+# FastAPI dependency
+async def get_enhanced_sentry_client(
+    sentry_client: SentryApiClient = Depends(get_sentry_client)
+) -> EnhancedSentryClient:
+    """
+    Get an instance of the enhanced Sentry client.
+    
+    Args:
+        sentry_client: Base Sentry client from dependency injection
+        
+    Returns:
+        EnhancedSentryClient instance
+    """
+    # Convert base client to enhanced client
+    enhanced_client = EnhancedSentryClient(
+        client=sentry_client.client,
+        base_url=sentry_client.base_url,
+        auth_token=sentry_client.auth_token
+    )
+    
+    return enhanced_client

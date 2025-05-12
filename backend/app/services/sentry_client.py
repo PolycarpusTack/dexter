@@ -9,8 +9,8 @@ import httpx
 from fastapi import Depends, HTTPException, status
 from typing import Dict, List, Optional, Any
 
-# Import settings from config.py
-from ..config import settings
+# Import settings from core.settings
+from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
 

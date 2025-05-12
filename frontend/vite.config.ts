@@ -4,7 +4,32 @@ import autoprefixer from 'autoprefixer';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      // Add TypeScript with Babel
+      babel: {
+        presets: [
+          ['@babel/preset-env', { targets: { node: 'current' } }],
+          ['@babel/preset-react', { runtime: 'automatic' }],
+          ['@babel/preset-typescript', { isTSX: true, allExtensions: true }]
+        ],
+        plugins: [
+          ["@babel/plugin-transform-typescript", { 
+            allowDeclareFields: true,
+            isTSX: true,
+            allExtensions: true
+          }],
+          "@babel/plugin-transform-react-jsx"
+        ]
+      }
+    })
+  ],
+  esbuild: {
+    // Enable JSX in .js files
+    jsx: 'react',
+    // Handle TypeScript
+    include: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx']
+  },
   css: {
     postcss: {
       plugins: [

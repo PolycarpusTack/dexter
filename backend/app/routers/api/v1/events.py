@@ -9,7 +9,7 @@ import logging
 import httpx
 
 from app.services.sentry_client import SentryApiClient
-from app.config import settings
+from app.core.settings import settings
 from app.utils.enhanced_deadlock_parser import parse_postgresql_deadlock, model_to_dict
 
 logger = logging.getLogger(__name__)

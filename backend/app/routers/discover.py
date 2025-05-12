@@ -102,9 +102,17 @@ async def execute_discover_query(
         if query.project:
             params["project"] = query.project
             
+        # Get Sentry organization from settings
+        org_slug = settings.SENTRY_ORG or settings.organization_slug
+        if not org_slug:
+            raise HTTPException(
+                status_code=400,
+                detail="No Sentry organization configured. Please set SENTRY_ORG environment variable."
+            )
+            
         # Execute query
         result = await discover_service.execute_query(
-            organization_slug=settings.SENTRY_ORG,
+            organization_slug=org_slug,
             query_params=params
         )
         
@@ -271,9 +279,15 @@ async def get_saved_queries(
     Get saved Discover queries
     """
     try:
+        # Get Sentry organization from settings
+        org_slug = settings.SENTRY_ORG or settings.organization_slug
+        if not org_slug:
+            # Just return empty list if no organization is configured
+            return []
+            
         # In a real implementation, this would query the database
         # For now, get from Sentry if available
-        sentry_queries = await discover_service.get_saved_queries(settings.SENTRY_ORG)
+        sentry_queries = await discover_service.get_saved_queries(org_slug)
         
         # Also include some mock queries for demo
         mock_queries = [

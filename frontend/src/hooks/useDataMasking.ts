@@ -1,103 +1,95 @@
-// File: src/hooks/useDataMasking.ts
-
 import { useState, useCallback } from 'react';
 
-export interface UseDataMaskingOptions {
-  /** Whether data is masked by default */
+interface DataMaskingOptions {
   defaultMasked?: boolean;
-  /** Custom patterns to mask */
   patterns?: Record<string, RegExp>;
-  /** Custom replacement strings */
-  replacements?: Record<string, string>;
+  replacements?: Record<string, string | ((match: string, ...groups: string[]) => string)>;
+}
+
+interface UseDataMaskingResult {
+  isMasked: boolean;
+  toggleMasking: () => void;
+  maskText: (text: string | undefined) => string;
+  setMasking: (masked: boolean) => void;
 }
 
 /**
- * Hook for masking sensitive data in strings
- * 
- * @param options - Configuration options
- * @returns Object with masking functions and state
+ * Hook for masking sensitive data in text
+ * @param options - Configuration options for data masking
+ * @returns Object with masking state and functions
  */
-export function useDataMasking(options: UseDataMaskingOptions = {}) {
+export function useDataMasking(options: DataMaskingOptions = {}): UseDataMaskingResult {
   const { 
     defaultMasked = false,
-    patterns: customPatterns = {},
-    replacements: customReplacements = {}
+    patterns = {
+      // Default patterns for common PII
+      email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
+      ipAddress: /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g,
+      creditCard: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
+      ssn: /\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/g,
+      phoneNumber: /\b(?:\+\d{1,2}\s?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
+      url: /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)/g,
+    },
+    replacements = {
+      // Default replacements
+      email: '[EMAIL]',
+      ipAddress: '[IP ADDRESS]',
+      creditCard: '[CREDIT CARD]',
+      ssn: '[SSN]',
+      phoneNumber: '[PHONE NUMBER]',
+      url: '[URL]',
+    },
   } = options;
   
   const [isMasked, setIsMasked] = useState<boolean>(defaultMasked);
   
-  // Default patterns for sensitive data
-  const defaultPatterns: Record<string, RegExp> = {
-    // Email addresses
-    email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-    // IP addresses
-    ip: /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g,
-    // URLs
-    url: /(https?:\/\/[^\s]+)/g,
-    // UUIDs
-    uuid: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
-    // SQL queries
-    sql: /\b(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE)\b[\s\S]*?(?:;|$)/gi,
-    // API keys and tokens
-    apiKey: /['"](sk|pk|api|token|key|secret|password|access_token)_[a-zA-Z0-9]{10,}['"]?/g,
-    // Credit card numbers
-    creditCard: /\b(?:\d{4}[ -]?){3}\d{4}\b/g,
-    // Phone numbers
-    phone: /\b\+?[0-9()[\].\- ]{10,}\b/g,
-    // Passwords in URL
-    passwordInUrl: /https?:\/\/[^:]+:[^@]+@/g
-  };
-  
-  // Default replacements
-  const defaultReplacements: Record<string, string> = {
-    email: '[EMAIL REDACTED]',
-    ip: '[IP REDACTED]',
-    url: '[URL REDACTED]',
-    uuid: '[UUID REDACTED]',
-    sql: '[SQL QUERY REDACTED]',
-    apiKey: '[API KEY REDACTED]',
-    creditCard: '[CREDIT CARD REDACTED]',
-    phone: '[PHONE REDACTED]',
-    passwordInUrl: '[URL WITH PASSWORD REDACTED]',
-    default: '[REDACTED]'
-  };
-  
-  // Merge default and custom patterns/replacements
-  const patterns = { ...defaultPatterns, ...customPatterns };
-  const replacements = { ...defaultReplacements, ...customReplacements };
-  
   /**
-   * Mask sensitive data in a string
-   * 
-   * @param text - Text to mask
-   * @returns Masked text if masking is enabled, original otherwise
-   */
-  const maskText = useCallback((text: string | undefined): string => {
-    if (!text || !isMasked) return text || '';
-    
-    let maskedText = text;
-    
-    // Apply each pattern
-    Object.entries(patterns).forEach(([type, pattern]) => {
-      const replacement = replacements[type] || replacements.default;
-      maskedText = maskedText.replace(pattern, replacement as string);
-    });
-    
-    return maskedText;
-  }, [isMasked, patterns, replacements]);
-  
-  /**
-   * Toggle masking on/off
+   * Toggle the masking state
    */
   const toggleMasking = useCallback(() => {
     setIsMasked(prev => !prev);
   }, []);
   
+  /**
+   * Explicitly set masking state
+   */
+  const setMasking = useCallback((masked: boolean) => {
+    setIsMasked(masked);
+  }, []);
+  
+  /**
+   * Apply masking to text based on patterns and replacements
+   * @param text - The text to mask
+   * @returns Masked text
+   */
+  const maskText = useCallback((text: string | undefined): string => {
+    if (!text || !isMasked) {
+      return text || '';
+    }
+    
+    let maskedText = text;
+    
+    // Apply each pattern and replacement
+    Object.entries(patterns).forEach(([key, pattern]) => {
+      const replacement = replacements[key];
+      
+      if (replacement) {
+        if (typeof replacement === 'function') {
+          maskedText = maskedText.replace(pattern, replacement);
+        } else {
+          maskedText = maskedText.replace(pattern, replacement);
+        }
+      }
+    });
+    
+    return maskedText;
+  }, [isMasked, patterns, replacements]);
+  
   return {
     isMasked,
     toggleMasking,
     maskText,
-    setIsMasked
+    setMasking
   };
 }
 

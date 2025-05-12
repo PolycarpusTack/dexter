@@ -2,11 +2,13 @@
 Service for Discover API operations
 """
 from typing import Dict, Any, List, Optional
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
 import logging
 
-from app.services.enhanced_sentry_client import EnhancedSentryClient
-from app.core.config import settings
+# Import enhanced client and the dependency function
+from app.services.enhanced_sentry_client import EnhancedSentryClient, get_enhanced_sentry_client
+# Use direct import from settings instead
+from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +234,7 @@ class DiscoverService:
 
 # Dependency injection
 async def get_discover_service(
-    sentry_client: EnhancedSentryClient
+    sentry_client = Depends(get_enhanced_sentry_client)
 ) -> DiscoverService:
     """Get Discover service instance"""
     return DiscoverService(sentry_client)

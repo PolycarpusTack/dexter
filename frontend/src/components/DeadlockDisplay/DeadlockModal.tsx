@@ -1,96 +1,75 @@
-// frontend/src/components/DeadlockDisplay/DeadlockModal.tsx
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { 
   Modal, 
-  Button, 
-  Group, 
-  Text, 
   Tabs, 
-  ActionIcon, 
-  Tooltip, 
-  Switch,
-  Paper,
+  Group, 
+  Button, 
+  Switch, 
+  Badge, 
+  Text, 
   Divider,
-  Box,
-  Collapse
+  useMantineTheme
 } from '@mantine/core';
 import { 
   IconGraph, 
   IconList, 
   IconBulb, 
-  IconRefresh,
-  IconDownload,
-  IconClipboard,
-  IconCheck,
-  IconMaximize,
+  IconLock, 
+  IconMaximize, 
   IconMinimize,
-  IconChevronDown,
-  IconChevronUp,
-  IconEye,
-  IconEyeOff
+  IconRefresh,
+  IconMask,
+  IconDownload
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
-import { useClipboard } from '../../hooks/useClipboard';
-import { useDataMasking } from '../../hooks/useDataMasking';
-import { useAuditLog } from '../../hooks/useAuditLog';
+import { useQuery } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
 
-// Import visualization components
+// Import components
 import EnhancedGraphView from './EnhancedGraphView';
 import TableInfo from './TableInfo';
 import RecommendationPanel from './RecommendationPanel';
+import { SimpleErrorBoundary } from '../ErrorHandling/SimpleErrorBoundary';
+
+// Import hooks
+import { useDataMasking } from '../../hooks/useDataMasking';
+import { useAuditLog } from '../../hooks/useAuditLog';
 
 // Import API functions
 import { analyzeDeadlock, exportDeadlockSVG } from '../../api/enhancedDeadlockApi';
-import { useQuery } from '@tanstack/react-query';
 import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling';
 
-// Import error boundary component
-import { ErrorBoundary } from '../ErrorHandling';
+// Define interfaces for props and data types
+interface EventTag {
+  key: string;
+  value: string;
+}
 
-// Import types
-import { SentryEvent } from '../../types/deadlock';
+interface EventException {
+  type?: string;
+  value?: string;
+}
 
-// Import schema validation
-import { safeValidateDeadlockAnalysisResponse } from '../../schemas/deadlockSchemas';
+interface EventExceptionContainer {
+  values?: EventException[];
+}
 
-// Import fallback components for error boundaries
-const GraphErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => (
-  <Paper p="md" withBorder>
-    <Text color="red" mb="md">Failed to render graph visualization</Text>
-    <Text size="sm" mb="md">{error.message}</Text>
-    <Button size="sm" onClick={resetErrorBoundary}>Try Again</Button>
-  </Paper>
-);
-
-const TableErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => (
-  <Paper p="md" withBorder>
-    <Text color="red" mb="md">Failed to render table information</Text>
-    <Text size="sm" mb="md">{error.message}</Text>
-    <Button size="sm" onClick={resetErrorBoundary}>Try Again</Button>
-  </Paper>
-);
-
-const RecommendationErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => (
-  <Paper p="md" withBorder>
-    <Text color="red" mb="md">Failed to render recommendations</Text>
-    <Text size="sm" mb="md">{error.message}</Text>
-    <Button size="sm" onClick={resetErrorBoundary}>Try Again</Button>
-  </Paper>
-);
+interface EventDetails {
+  id: string;
+  message?: string;
+  tags?: EventTag[];
+  exception?: EventExceptionContainer;
+  [key: string]: any; // For any additional fields
+}
 
 interface DeadlockModalProps {
   eventId: string;
-  eventDetails: SentryEvent;
+  eventDetails: EventDetails;
   isOpen: boolean;
   onClose: () => void;
 }
 
 /**
  * Modal component for PostgreSQL deadlock visualization and analysis
- * 
- * This component displays deadlock information in a modal with tabs for
- * different visualization types.
  */
 const DeadlockModal: React.FC<DeadlockModalProps> = ({ 
   eventId, 
@@ -98,216 +77,228 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
   isOpen, 
   onClose 
 }) => {
+  const theme = useMantineTheme();
   const [activeTab, setActiveTab] = useState<string>('graph');
-  const [fullScreen, setFullScreen] = useState<boolean>(false);
-  const [rawViewOpen, { toggle: toggleRawView }] = useDisclosure(false);
+  const [fullscreen, setFullscreen] = useState<boolean>(false);
   const [useEnhancedAnalysis, setUseEnhancedAnalysis] = useState<boolean>(true);
   
   // Custom hooks
-  const { isCopied, copyToClipboard } = useClipboard();
-  const { isMasked, toggleMasking, maskText } = useDataMasking({ defaultMasked: true });
+  const { isMasked, toggleMasking, maskText } = useDataMasking({
+    defaultMasked: true,
+    patterns: {
+      // Add custom patterns for SQL queries
+      tableNames: /\b(FROM|JOIN|UPDATE|INTO)\s+([a-zA-Z0-9_."]+)/gi,
+      columnNames: /\b(SELECT|WHERE|GROUP BY|ORDER BY|HAVING)\s+([a-zA-Z0-9_,.()\s"]+)(\s+FROM|\s*$)/gi,
+      values: /'[^']*'/g
+    },
+    replacements: {
+      tableNames: (match, keyword, tableName) => `${keyword} [TABLE]`,
+      columnNames: (match, keyword, columns, ending) => `${keyword} [COLUMNS]${ending}`,
+      values: '[VALUE]'
+    }
+  });
+  
+  // Audit logging
   const logEvent = useAuditLog('DeadlockModal');
   
-  // Log opening of modal
-  useEffect(() => {
+  // When the modal opens, log an event
+  React.useEffect(() => {
     if (isOpen) {
-      logEvent('open_deadlock_modal', { eventId });
+      logEvent('opened', { eventId, hasEventDetails: !!eventDetails });
     }
-  }, [isOpen, eventId, logEvent]);
-  
-  // Extract a unique ID that combines eventId and project
-  const uniqueId = React.useMemo(() => {
-    if (!eventId) return null;
-    const projectId = eventDetails?.projectId || eventDetails?.project?.id || '';
-    return `${projectId}-${eventId}`;
-  }, [eventId, eventDetails]);
+  }, [isOpen, eventId, eventDetails, logEvent]);
   
   // Fetch deadlock analysis data
   const { 
     data: deadlockData,
     isLoading,
     isError,
+    error,
     refetch
   } = useQuery({
-    queryKey: ['deadlockAnalysis', uniqueId, useEnhancedAnalysis], 
+    queryKey: ['deadlockAnalysis', eventId, useEnhancedAnalysis],
     queryFn: async () => {
-      const response = await analyzeDeadlock(eventId, { 
-        useEnhancedAnalysis
-        // We no longer need to specify apiPath as it's handled in the API function
+      // Log the API call
+      logEvent('fetch_analysis', { 
+        eventId, 
+        enhanced: useEnhancedAnalysis 
       });
       
-      // Validate the response with Zod schema
-      return safeValidateDeadlockAnalysisResponse(response);
+      return analyzeDeadlock(eventId, { 
+        useEnhancedAnalysis,
+        apiPath: useEnhancedAnalysis ? 'enhanced-analyzers' : 'analyzers'
+      });
     },
-    enabled: !!uniqueId && isOpen, // Only fetch when modal is open
+    enabled: isOpen,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
   });
   
   // Handle tab change
   const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    logEvent('change_tab', { tab: value, eventId });
+    setActiveTab(value || 'graph');
+    logEvent('tab_change', { tab: value });
   };
   
-  // Export visualization as SVG
-  const handleExportSVG = useCallback(() => {
-    try {
-      // Get the SVG element
-      const svgElement = document.querySelector('.deadlock-graph svg');
-      if (svgElement) {
-        exportDeadlockSVG(eventId, svgElement as SVGElement);
-        showSuccessNotification({
-          title: 'SVG Exported',
-          message: 'Deadlock visualization has been exported as SVG'
-        });
-        logEvent('export_svg', { eventId });
-      } else {
-        showErrorNotification({
-          title: 'Export Failed',
-          message: 'Could not find SVG element to export'
-        });
-      }
-    } catch (error) {
-      console.error('Error exporting SVG:', error);
-      showErrorNotification({
-        title: 'Export Failed',
-        message: `Error: ${(error as Error).message || 'Unknown error'}`
-      });
-    }
-  }, [eventId, logEvent]);
-  
-  // Copy recommendation to clipboard
-  const handleCopyRecommendation = useCallback(() => {
-    if (deadlockData?.analysis?.recommended_fix) {
-      const recommendation = maskText(deadlockData.analysis.recommended_fix);
-      copyToClipboard(recommendation, {
-        successMessage: 'Recommendation copied to clipboard',
-        showNotification: true
-      });
-      logEvent('copy_recommendation', { eventId });
-    }
-  }, [deadlockData, maskText, copyToClipboard, eventId, logEvent]);
+  // Handle fullscreen toggle
+  const handleFullscreenToggle = () => {
+    setFullscreen(!fullscreen);
+    logEvent('toggle_fullscreen', { fullscreen: !fullscreen });
+  };
   
   // Toggle enhanced analysis
   const handleToggleEnhancedAnalysis = (event: React.ChangeEvent<HTMLInputElement>) => {
     setUseEnhancedAnalysis(event.currentTarget.checked);
-    logEvent('toggle_enhanced_analysis', { 
-      eventId, 
-      enabled: event.currentTarget.checked 
-    });
+    logEvent('toggle_enhanced_analysis', { enhanced: event.currentTarget.checked });
   };
   
-  // Toggle full screen
-  const handleToggleFullScreen = useCallback(() => {
-    setFullScreen(prev => !prev);
-    logEvent('toggle_fullscreen', { eventId, fullScreen: !fullScreen });
-  }, [fullScreen, eventId, logEvent]);
+  // Toggle data masking
+  const handleToggleDataMasking = () => {
+    toggleMasking();
+    logEvent('toggle_data_masking', { masked: !isMasked });
+  };
   
-  // Modal size based on fullScreen state
-  const modalSize = fullScreen ? 'calc(100vw - 40px)' : 'xl';
+  // Refresh analysis
+  const handleRefresh = () => {
+    refetch();
+    logEvent('refresh_analysis', { eventId });
+  };
   
-  // Extract deadlock message
-  const deadlockMessage = extractDeadlockMessage(eventDetails);
+  // Export visualization as SVG
+  const handleExportSVG = () => {
+    // Find SVG element in the DOM
+    const svgElement = document.querySelector('.deadlock-graph svg');
+    if (svgElement && eventId) {
+      exportDeadlockSVG(eventId, svgElement as SVGElement);
+      showSuccessNotification({
+        title: 'SVG Exported',
+        message: 'Deadlock visualization has been exported as SVG'
+      });
+      logEvent('export_svg', { eventId });
+    } else {
+      showErrorNotification({
+        title: 'Export Failed',
+        message: 'Could not find SVG element to export'
+      });
+      logEvent('export_svg_failed', { eventId, reason: 'SVG element not found' });
+    }
+  };
+  
+  // Format timestamp to relative time if available
+  const formattedTimestamp = deadlockData?.analysis?.timestamp 
+    ? formatDistanceToNow(new Date(deadlockData.analysis.timestamp), { addSuffix: true })
+    : null;
+  
+  // Determine modal size based on fullscreen
+  const modalSize = fullscreen ? 'calc(100vw - 40px)' : '90%';
   
   return (
     <Modal
       opened={isOpen}
-      onClose={() => {
-        logEvent('close_deadlock_modal', { eventId });
-        onClose();
-      }}
+      onClose={onClose}
       title={
-        <Group>
+        <Group gap="xs">
+          <IconLock size={18} />
           <Text fw={600}>PostgreSQL Deadlock Analysis</Text>
-          <Text c="dimmed" size="sm">Event: {eventId}</Text>
+          {deadlockData?.analysis?.metadata?.cycles_found > 0 && (
+            <Badge color="red">
+              {deadlockData.analysis.metadata.cycles_found} cycle{deadlockData.analysis.metadata.cycles_found !== 1 ? 's' : ''}
+            </Badge>
+          )}
+          {formattedTimestamp && (
+            <Badge color="gray" variant="outline">{formattedTimestamp}</Badge>
+          )}
         </Group>
       }
       size={modalSize}
-      fullScreen={fullScreen}
-      trapFocus
-      zIndex={1000}
+      fullScreen={fullscreen}
+      classNames={{
+        body: fullscreen ? 'flex-grow-1 d-flex flex-column' : ''
+      }}
       styles={{
         body: {
-          paddingLeft: '1rem',
-          paddingRight: '1rem',
-          paddingBottom: '1rem'
+          display: 'flex',
+          flexDirection: 'column',
+          ...(fullscreen && { height: 'calc(100vh - 120px)' })
         }
       }}
     >
-      {/* Controls */}
-      <Group justify="apart" mb="md">
-        <Group gap="xs">
+      {/* Control bar */}
+      <Group position="apart" mb="md">
+        <Group>
           <Switch
             size="xs"
             label="Enhanced Analysis"
             checked={useEnhancedAnalysis}
             onChange={handleToggleEnhancedAnalysis}
           />
-          
           <Switch
             size="xs"
             label="Mask Sensitive Data"
             checked={isMasked}
-            onChange={() => {
-              toggleMasking();
-              logEvent('toggle_masking', { eventId, masked: !isMasked });
-            }}
-            thumbIcon={isMasked ? <IconEyeOff size={12} /> : <IconEye size={12} />}
+            onChange={handleToggleDataMasking}
           />
         </Group>
         
         <Group gap="xs">
-          <Tooltip label="Refresh Analysis">
-            <ActionIcon 
-              onClick={() => {
-                refetch();
-                logEvent('refresh_analysis', { eventId });
-              }}
-              loading={isLoading}
-              variant="light"
-              aria-label="Refresh Analysis"
-            >
-              <IconRefresh size={16} />
-            </ActionIcon>
-          </Tooltip>
+          <Button 
+            size="xs" 
+            variant="light"
+            leftSection={<IconRefresh size={14} />}
+            onClick={handleRefresh}
+            loading={isLoading}
+          >
+            Refresh
+          </Button>
           
-          <Tooltip label="Export as SVG">
-            <ActionIcon
-              onClick={handleExportSVG}
-              disabled={isLoading || isError}
-              variant="light"
-              aria-label="Export as SVG"
-            >
-              <IconDownload size={16} />
-            </ActionIcon>
-          </Tooltip>
+          <Button 
+            size="xs" 
+            variant="light"
+            leftSection={<IconMask size={14} />}
+            onClick={handleToggleDataMasking}
+          >
+            {isMasked ? 'Show' : 'Mask'} Data
+          </Button>
           
-          <Tooltip label={fullScreen ? "Exit Full Screen" : "Full Screen"}>
-            <ActionIcon 
-              onClick={handleToggleFullScreen} 
-              variant="light"
-              aria-label={fullScreen ? "Exit Full Screen" : "Full Screen"}
-            >
-              {fullScreen ? <IconMinimize size={16} /> : <IconMaximize size={16} />}
-            </ActionIcon>
-          </Tooltip>
+          <Button 
+            size="xs" 
+            variant="light"
+            leftSection={<IconDownload size={14} />}
+            onClick={handleExportSVG}
+            disabled={isLoading || isError || activeTab !== 'graph'}
+          >
+            Export SVG
+          </Button>
+          
+          <Button 
+            size="xs" 
+            variant="light"
+            leftSection={fullscreen ? <IconMinimize size={14} /> : <IconMaximize size={14} />}
+            onClick={handleFullscreenToggle}
+          >
+            {fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          </Button>
         </Group>
       </Group>
       
       {/* Analysis metadata */}
       {deadlockData?.analysis?.metadata && (
-        <Group gap="xs" justify="right" mb="xs">
-          <Text size="xs" c="dimmed">
+        <Group position="right" mb="md" spacing="xs">
+          <Text size="xs" color="dimmed">
             Analysis time: {deadlockData.analysis.metadata.execution_time_ms}ms
           </Text>
-          <Text size="xs" c="dimmed">
-            Parser: {deadlockData.analysis.metadata.parser_version || 'standard'}
-          </Text>
+          {deadlockData.analysis.metadata.parser_version && (
+            <Text size="xs" color="dimmed">
+              Parser: {deadlockData.analysis.metadata.parser_version}
+            </Text>
+          )}
         </Group>
       )}
       
-      {/* Tabs and content */}
-      <Tabs value={activeTab} onChange={(value: string | null) => handleTabChange(value || '')} mb="md">
+      <Divider mb="md" />
+      
+      {/* Tabs */}
+      <Tabs value={activeTab} onChange={handleTabChange} mb="md">
         <Tabs.List>
           <Tabs.Tab 
             value="graph"
@@ -332,174 +323,47 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
         </Tabs.List>
       </Tabs>
       
-      {/* Tab Content */}
-      <Box 
-        mb="md" 
-        className="deadlock-graph" 
-        style={{ minHeight: '400px' }}
-      >
+      {/* Tab content */}
+      <div style={{ flex: 1, overflow: 'auto' }}>
         {activeTab === 'graph' && (
-          <ErrorBoundary
-            fallback={(error, resetError) => (
-              <GraphErrorFallback 
-                error={error} 
-                resetErrorBoundary={resetError} 
-              />
-            )}
-            onError={() => {
-              // When error occurs, trigger refetch
-              refetch();
-              logEvent('reset_error', { component: 'graph', eventId });
-            }}
-          >
+          <SimpleErrorBoundary fallbackMessage="Error loading graph visualization">
             <EnhancedGraphView 
               data={deadlockData?.analysis?.visualization_data} 
               isLoading={isLoading} 
             />
-          </ErrorBoundary>
+          </SimpleErrorBoundary>
         )}
         
         {activeTab === 'tables' && (
-          <ErrorBoundary
-            fallback={(error, resetError) => (
-              <TableErrorFallback 
-                error={error} 
-                resetErrorBoundary={resetError} 
-              />
-            )}
-            onError={() => {
-              refetch();
-              logEvent('reset_error', { component: 'tables', eventId });
-            }}
-          >
+          <SimpleErrorBoundary fallbackMessage="Error loading deadlock details">
             <TableInfo 
-              data={deadlockData?.analysis?.visualization_data} 
+              data={deadlockData?.analysis?.visualization_data}
               isLoading={isLoading}
-              maskText={maskText}
               isMasked={isMasked}
+              maskText={maskText}
             />
-          </ErrorBoundary>
+          </SimpleErrorBoundary>
         )}
         
         {activeTab === 'recommendation' && (
-          <ErrorBoundary
-            fallback={(error, resetError) => (
-              <RecommendationErrorFallback 
-                error={error} 
-                resetErrorBoundary={resetError} 
-              />
-            )}
-            onError={() => {
-              refetch();
-              logEvent('reset_error', { component: 'recommendation', eventId });
-            }}
-          >
-            <Box>
-              <Group justify="right" mb="sm">
-                <Button
-                  size="xs"
-                  variant="light"
-                  leftSection={isCopied ? <IconCheck size={14} /> : <IconClipboard size={14} />}
-                  onClick={handleCopyRecommendation}
-                  color={isCopied ? 'green' : 'blue'}
-                >
-                  {isCopied ? 'Copied!' : 'Copy to Clipboard'}
-                </Button>
-              </Group>
-              <RecommendationPanel 
-                data={deadlockData ? {
-                  recommendedFix: maskText(deadlockData.analysis.recommended_fix || ''),
-                  processes: deadlockData.analysis.visualization_data.processes || [],
-                  relations: deadlockData.analysis.visualization_data.relations,
-                  deadlockChain: deadlockData.analysis.visualization_data.deadlockChain,
-                  pattern: deadlockData.analysis.visualization_data.pattern
-                } as any : undefined} 
-                isLoading={isLoading}
-                isMasked={isMasked}
-              />
-            </Box>
-          </ErrorBoundary>
+          <SimpleErrorBoundary fallbackMessage="Error loading recommendations">
+            <RecommendationPanel 
+              data={{
+                processes: deadlockData?.analysis?.visualization_data?.processes || [],
+                relations: deadlockData?.analysis?.visualization_data?.relations || [],
+                deadlockChain: deadlockData?.analysis?.visualization_data?.deadlockChain || [],
+                pattern: deadlockData?.analysis?.visualization_data?.pattern,
+                recommendedFix: deadlockData?.analysis?.recommended_fix
+              }}
+              isLoading={isLoading}
+              isMasked={isMasked}
+              maskText={maskText}
+            />
+          </SimpleErrorBoundary>
         )}
-      </Box>
-      
-      {/* Raw data view */}
-      <Divider mb="xs" />
-      <Button 
-        variant="subtle" 
-        rightSection={rawViewOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
-        onClick={() => {
-          toggleRawView();
-          logEvent('toggle_raw_view', { eventId, open: !rawViewOpen });
-        }}
-        size="xs"
-      >
-        {rawViewOpen ? 'Hide raw deadlock data' : 'Show raw deadlock data'}
-      </Button>
-      
-      <Collapse in={rawViewOpen}>
-        <Paper withBorder p="md" radius="md" mt="md" bg="#f9f9f9">
-          <Text size="sm" fw={500} mb="xs">Raw Deadlock Message</Text>
-          <Paper p="xs" withBorder radius="md" bg="white">
-            <Text size="xs" ff="monospace" style={{ whiteSpace: 'pre-wrap' }}>
-              {isMasked ? maskText(deadlockMessage) : deadlockMessage}
-            </Text>
-          </Paper>
-          
-          {deadlockData && (
-            <>
-              <Text size="sm" fw={500} mt="md" mb="xs">Parsed Analysis Data</Text>
-              <Paper p="xs" withBorder radius="md" bg="white" style={{ maxHeight: '200px', overflow: 'auto' }}>
-                <pre style={{ margin: 0, fontSize: '11px' }}>
-                  {isMasked 
-                    ? maskText(JSON.stringify(deadlockData, null, 2))
-                    : JSON.stringify(deadlockData, null, 2)
-                  }
-                </pre>
-              </Paper>
-            </>
-          )}
-        </Paper>
-      </Collapse>
+      </div>
     </Modal>
   );
 };
-
-/**
- * Extract the deadlock message from event details
- */
-function extractDeadlockMessage(eventDetails: SentryEvent): string {
-  if (!eventDetails) return '';
-  
-  // Check in message field
-  if (eventDetails.message && eventDetails.message.includes('deadlock detected')) {
-    return eventDetails.message;
-  }
-  
-  // Check in exception values
-  const exceptionValues = eventDetails.exception?.values || [];
-  for (const exception of exceptionValues) {
-    if (exception.value && exception.value.includes('deadlock detected')) {
-      return exception.value;
-    }
-  }
-  
-  // Check in entries
-  const entries = eventDetails.entries || [];
-  for (const entry of entries) {
-    if (entry.type === 'exception') {
-      const values = entry.data?.values || [];
-      for (const value of values) {
-        if (value.value && value.value.includes('deadlock detected')) {
-          return value.value;
-        }
-      }
-    }
-  }
-  
-  // Fallback: return message or first exception value
-  return eventDetails.message || 
-         (exceptionValues[0]?.value || '') || 
-         'No deadlock message found in event data';
-}
 
 export default DeadlockModal;
