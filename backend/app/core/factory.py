@@ -8,14 +8,20 @@ on the application configuration.
 import logging
 from typing import Optional, List, Dict, Any
 
-import sentry_sdk
+# Make Sentry SDK optional
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    SENTRY_AVAILABLE = True
+except ImportError:
+    SENTRY_AVAILABLE = False
+    
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
-from sentry_sdk.integrations.logging import LoggingIntegration
 
 from .config import AppSettings, get_settings
 from .middleware import setup_middlewares
@@ -31,6 +37,10 @@ def configure_sentry(settings: AppSettings) -> None:
     Args:
         settings: Application settings containing Sentry configuration
     """
+    if not SENTRY_AVAILABLE:
+        logger.warning("Sentry SDK not installed. Run 'pip install sentry_sdk' to enable error tracking.")
+        return
+        
     if not settings.SENTRY_DSN:
         logger.info("Sentry integration disabled (no DSN provided)")
         return
