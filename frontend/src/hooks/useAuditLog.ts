@@ -8,12 +8,15 @@ interface AuditLogEvent {
   details?: Record<string, any>;
 }
 
+// Return type for the logEvent function
+type LogEventFunction = (action: string, details?: Record<string, any>) => AuditLogEvent;
+
 /**
  * Hook for logging user interactions and component events
  * @param componentName - Name of the component generating logs
  * @returns Function to log events
  */
-export function useAuditLog(componentName: string) {
+export function useAuditLog(componentName: string): LogEventFunction {
   /**
    * Log an event with details
    * @param action - Action being performed

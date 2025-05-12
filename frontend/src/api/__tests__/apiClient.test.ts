@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
-import { EnhancedApiClient, apiClient, createApiClient } from '../apiClient';
+import { EnhancedApiClient, apiClient, createApiClient, uncachedClient, persistentClient } from '../apiClient';
 import { requestCache } from '../../utils/requestCache';
 import { requestDeduplicator } from '../../utils/requestDeduplicator';
 import { requestBatcher } from '../../utils/requestBatcher';
@@ -477,8 +477,6 @@ describe('Default API client instances', () => {
   });
 
   it('creates specialized clients with correct configurations', () => {
-    const { uncachedClient, persistentClient } = require('../apiClient');
-    
     expect(uncachedClient).toBeInstanceOf(EnhancedApiClient);
     expect(persistentClient).toBeInstanceOf(EnhancedApiClient);
   });

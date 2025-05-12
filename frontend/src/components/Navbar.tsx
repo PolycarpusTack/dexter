@@ -1,4 +1,5 @@
 // React import required for JSX
+import React from 'react';
 import { Stack, NavLink } from '@mantine/core';
 import { IconDashboard, IconBug, IconBell, IconSearch } from '@tabler/icons-react';
 import { useNavigate, useLocation } from 'react-router-dom';

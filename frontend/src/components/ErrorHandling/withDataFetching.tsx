@@ -67,7 +67,8 @@ export function withDataFetching<T, P extends { data?: T }>(
       // Fetch data on mount and when dependencies change
       useEffect(() => {
         fetchDataAndUpdateState();
-      }, []); // eslint-disable-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
       
       // Handle retry
       const handleRetry = () => {

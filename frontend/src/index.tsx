@@ -13,7 +13,7 @@ import './styles.css';
 // Suppress source map warnings in development mode
 if (import.meta.env.DEV && import.meta.env.VITE_SUPPRESS_SOURCEMAP_WARNINGS === 'true') {
   const originalConsoleError = console.error;
-  console.error = (...args: any[]) => {
+  console.error = (...args) => {
     if (
       typeof args[0] === 'string' && 
       (args[0].includes('Source map error') || 
@@ -74,3 +74,6 @@ root.render(
     </MantineProvider>
   </React.StrictMode>
 );
+
+// Export default component for compatibility
+export default App;

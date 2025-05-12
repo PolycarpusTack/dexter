@@ -28,15 +28,14 @@ import { formatDistanceToNow } from 'date-fns';
 import EnhancedGraphView from './EnhancedGraphView';
 import TableInfo from './TableInfo';
 import RecommendationPanel from './RecommendationPanel';
-import { SimpleErrorBoundary } from '../ErrorHandling/SimpleErrorBoundary';
+import SimpleErrorBoundary from '../ErrorHandling/SimpleErrorBoundary';
 
 // Import hooks
-import { useDataMasking } from '../../hooks/useDataMasking';
-import { useAuditLog } from '../../hooks/useAuditLog';
+import { useDataMasking, useAuditLog } from '../../hooks';
 
 // Import API functions
-import { analyzeDeadlock, exportDeadlockSVG } from '../../api/enhancedDeadlockApi';
-import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling';
+import { enhancedDeadlockApi } from '../../api';
+import errorHandling from '../../utils/errorHandling';
 
 // Define interfaces for props and data types
 interface EventTag {
@@ -124,7 +123,7 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
         enhanced: useEnhancedAnalysis 
       });
       
-      return analyzeDeadlock(eventId, { 
+      return enhancedDeadlockApi.analyzeDeadlock(eventId, { 
         useEnhancedAnalysis,
         apiPath: useEnhancedAnalysis ? 'enhanced-analyzers' : 'analyzers'
       });
@@ -169,14 +168,14 @@ const DeadlockModal: React.FC<DeadlockModalProps> = ({
     // Find SVG element in the DOM
     const svgElement = document.querySelector('.deadlock-graph svg');
     if (svgElement && eventId) {
-      exportDeadlockSVG(eventId, svgElement as SVGElement);
-      showSuccessNotification({
+      enhancedDeadlockApi.exportDeadlockSVG(eventId, svgElement as SVGElement);
+      errorHandling.showSuccessNotification({
         title: 'SVG Exported',
         message: 'Deadlock visualization has been exported as SVG'
       });
       logEvent('export_svg', { eventId });
     } else {
-      showErrorNotification({
+      errorHandling.showErrorNotification({
         title: 'Export Failed',
         message: 'Could not find SVG element to export'
       });

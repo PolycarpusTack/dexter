@@ -64,4 +64,7 @@ export const useErrorContext = (): ErrorContextValue => {
   return context;
 };
 
-export default ErrorContext;
+// Don't export ErrorContext as default as it's not a component
+// The useErrorContext hook should be used to access the context
+// If needed, we can export the context itself for advanced use cases
+export { ErrorContext };

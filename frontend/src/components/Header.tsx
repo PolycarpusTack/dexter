@@ -1,4 +1,5 @@
-// React import required for JSX but since compiler option is React.createElement, no explicit import needed
+// React import required for JSX
+import React from 'react';
 import { Group, Title, Box } from '@mantine/core';
 import { IconBrain } from '@tabler/icons-react';
 

@@ -1,101 +1,164 @@
-// File: src/utils/errorHandling.ts
+import { notifications } from '@mantine/notifications';
+import { IconCheck, IconX } from '@tabler/icons-react';
 
-import {
-  categorizeError,
-  isRetryableError,
-  createErrorHandler,
-  showSuccessNotification,
-  showErrorNotification,
-  showInfoNotification,
-  showWarningNotification,
-  showLoadingNotification,
-  dismissNotification,
-  ErrorCategory,
-  ErrorContext,
-  ErrorHandlerOptions,
-  NotificationOptions
-} from './errorHandling/index';
+/**
+ * Error notification options
+ */
+interface ErrorNotificationOptions {
+  title?: string;
+  message: string;
+  duration?: number;
+  withBorder?: boolean;
+  icon?: React.ReactNode;
+}
 
-import {
-  AppErrorBoundary,
-  ErrorBoundary,
-  ErrorContext as ErrorContextProvider,
-  ErrorFallback,
-  RefreshableContainer,
-  withDataFetching,
-  withErrorBoundary
-} from '../components/ErrorHandling';
+/**
+ * Success notification options
+ */
+interface SuccessNotificationOptions {
+  title?: string;
+  message: string;
+  duration?: number;
+  withBorder?: boolean;
+  icon?: React.ReactNode;
+}
 
-import {
-  EnhancedError,
-  ApiError,
-  NetworkError
-} from './errorFactory';
-
-import ErrorFactory from './errorFactory';
-
-import {
-  attemptErrorRecovery,
-  DEFAULT_RECOVERY_STRATEGIES,
-  networkRecoveryStrategy,
-  sessionRecoveryStrategy
-} from './errorRecovery';
-
-// Export functions and values
-export {
-  // Error types and factories
-  ErrorFactory,
-  EnhancedError,
-  ApiError,
-  NetworkError,
+/**
+ * Show a success notification
+ * @param options - Notification options
+ */
+export const showSuccessNotification = (options: SuccessNotificationOptions) => {
+  const {
+    title = 'Success',
+    message,
+    duration = 3000,
+    withBorder = true,
+    icon = <IconCheck size={18} />
+  } = options;
   
-  // Error categorization and detection
-  categorizeError,
-  isRetryableError,
-  
-  // Error handlers
-  createErrorHandler,
-  
-  // Notifications
-  showSuccessNotification,
-  showErrorNotification,
-  showInfoNotification,
-  showWarningNotification,
-  showLoadingNotification,
-  dismissNotification,
-  
-  // Recovery
-  attemptErrorRecovery,
-  DEFAULT_RECOVERY_STRATEGIES,
-  networkRecoveryStrategy,
-  sessionRecoveryStrategy,
-  
-  // Error boundary components
-  AppErrorBoundary,
-  ErrorBoundary,
-  ErrorContextProvider,
-  ErrorFallback,
-  RefreshableContainer,
-  withDataFetching,
-  withErrorBoundary
+  notifications.show({
+    title,
+    message,
+    color: 'green',
+    icon,
+    withBorder,
+    autoClose: duration,
+  });
 };
 
-// Export types
-export type {
-  ErrorCategory,
-  ErrorContext,
-  ErrorHandlerOptions,
-  NotificationOptions
+/**
+ * Show an error notification
+ * @param options - Notification options
+ */
+export const showErrorNotification = (options: ErrorNotificationOptions) => {
+  const {
+    title = 'Error',
+    message,
+    duration = 5000,
+    withBorder = true,
+    icon = <IconX size={18} />
+  } = options;
+  
+  notifications.show({
+    title,
+    message,
+    color: 'red',
+    icon,
+    withBorder,
+    autoClose: duration,
+  });
+};
+
+/**
+ * Format an error object into a readable message
+ * @param error - Error object
+ * @returns Formatted error message
+ */
+export const formatErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  
+  if (typeof error === 'string') {
+    return error;
+  }
+  
+  if (typeof error === 'object' && error !== null) {
+    // Try to extract message from API error responses
+    if ('message' in error && typeof error.message === 'string') {
+      return error.message;
+    }
+    
+    if ('error' in error && typeof error.error === 'string') {
+      return error.error;
+    }
+    
+    if ('detail' in error && typeof error.detail === 'string') {
+      return error.detail;
+    }
+    
+    return JSON.stringify(error);
+  }
+  
+  return 'An unknown error occurred';
+};
+
+/**
+ * Handle an error with appropriate logging and notification
+ * @param error - Error object
+ * @param options - Additional options
+ */
+export const handleError = (
+  error: unknown,
+  options: {
+    showNotification?: boolean;
+    title?: string;
+    context?: string;
+    notificationDuration?: number;
+    logLevel?: 'error' | 'warn' | 'info';
+  } = {}
+) => {
+  const {
+    showNotification = true,
+    title = 'Error',
+    context = '',
+    notificationDuration = 5000,
+    logLevel = 'error'
+  } = options;
+  
+  // Format the error message
+  const errorMessage = formatErrorMessage(error);
+  
+  // Log the error
+  const contextPrefix = context ? `[${context}] ` : '';
+  switch (logLevel) {
+    case 'warn':
+      console.warn(`${contextPrefix}Error:`, error);
+      break;
+    case 'info':
+      console.info(`${contextPrefix}Error:`, error);
+      break;
+    case 'error':
+    default:
+      console.error(`${contextPrefix}Error:`, error);
+      break;
+  }
+  
+  // Show notification if requested
+  if (showNotification) {
+    showErrorNotification({
+      title,
+      message: errorMessage,
+      duration: notificationDuration
+    });
+  }
+  
+  return errorMessage;
 };
 
 export default {
-  categorizeError,
-  isRetryableError,
-  createErrorHandler,
   showSuccessNotification,
   showErrorNotification,
-  ErrorFactory,
-  attemptErrorRecovery,
-  withErrorBoundary,
-  withDataFetching
+  formatErrorMessage,
+  handleError
 };

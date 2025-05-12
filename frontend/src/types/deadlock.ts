@@ -1,152 +1,91 @@
-// frontend/src/types/deadlock.ts
-
 /**
- * Type definitions for the Deadlock Analyzer
+ * Process involved in a deadlock
  */
-
 export interface DeadlockProcess {
   pid: number;
-  applicationName: string;
-  databaseName: string;
-  query: string;
-  blockingPids: number[];
+  applicationName?: string;
+  username?: string;
+  databaseName?: string;
+  query?: string;
+  blockingPids?: number[];
   waitEventType?: string;
   waitEvent?: string;
   tableName?: string;
   relation?: number;
   lockType?: string;
   lockMode?: string;
-  startTime?: string;
-  executionTimeMs?: number;
-  sessionUser?: string;
-  clientAddr?: string;
-  transactionStartTime?: string;
-  critical?: boolean;
+  inCycle?: boolean;
+  tables?: string[];
+  locks_held?: string[];
+  locks_waiting?: string[];
 }
 
+/**
+ * Relation (table) involved in a deadlock
+ */
 export interface DeadlockRelation {
   relationId: number;
-  schema: string;
-  name: string;
-  lockingProcesses: number[];
-  accessPattern?: string;
-  totalRows?: number;
-  estimatedImpact?: string;
-  hasIndex?: boolean;
-  indexTypes?: string[];
+  schema?: string;
+  name?: string;
+  lockingProcesses?: number[];
 }
 
-export interface DeadlockEdge {
-  source: number;
-  target: number;
-  lockType?: string;
-  lockMode?: string;
-  tableName?: string;
-}
-
-export interface DeadlockPattern {
-  type: string;
-  commonality?: string;
-  risk?: string;
-}
-
-export interface DeadlockVisualizationData {
-  processes: DeadlockProcess[];
-  relations: DeadlockRelation[];
-  deadlockChain?: DeadlockEdge[];
-  pattern?: DeadlockPattern;
-}
-
+/**
+ * Metadata about the deadlock analysis
+ */
 export interface DeadlockMetadata {
   execution_time_ms: number;
   parser_version?: string;
-  cycles_found?: number;
-  confidence_score?: number;
+  cycles_found: number;
+  severity?: number;
 }
 
+/**
+ * Detailed data about the deadlock visualization
+ */
+export interface DeadlockVisualizationData {
+  processes: DeadlockProcess[];
+  relations: DeadlockRelation[];
+  deadlockChain?: number[];
+  pattern?: string;
+  cycles?: number[][];
+  severity?: number;
+}
+
+/**
+ * Result of a deadlock analysis
+ */
 export interface DeadlockAnalysis {
-  timestamp: string;
+  timestamp?: string;
   metadata?: DeadlockMetadata;
-  visualization_data: DeadlockVisualizationData;
+  visualization_data?: DeadlockVisualizationData;
   recommended_fix?: string;
 }
 
+/**
+ * Complete deadlock analysis response
+ */
 export interface DeadlockAnalysisResponse {
   success: boolean;
-  analysis: DeadlockAnalysis;
+  analysis?: DeadlockAnalysis;
+  error?: string;
 }
 
-export interface EventTag {
-  key: string;
-  value: string;
-  [key: string]: any; // Allow additional properties for compatibility
-}
-
-export interface EventException {
-  type: string;
-  value: string;
-  stacktrace?: any[];
-}
-
-export interface EventExceptionData {
-  values: EventException[];
-}
-
-export interface EventEntry {
-  type: string;
-  data: any;
-}
-
-export interface EventContext {
-  [key: string]: any;
-}
-
-export interface SentryEvent {
-  id: string;
-  projectId?: string;
-  project?: {
-    id: string;
-    name: string;
-    slug?: string;
-  };
-  title?: string;
-  message?: string;
-  level?: string;
-  timestamp: string;
-  tags?: EventTag[];
-  entries?: EventEntry[];
-  exception?: {
-    values: EventException[];
-  };
-  contexts?: {
-    [key: string]: EventContext;
-  };
-  [key: string]: any;
-}
-
-export interface AnalyzeDeadlockOptions {
+/**
+ * Options for deadlock analysis
+ */
+export interface DeadlockAnalysisOptions {
   useEnhancedAnalysis?: boolean;
   apiPath?: string;
+  includeRawData?: boolean;
 }
 
-export interface UseClipboardOptions {
-  successMessage?: string;
-  errorMessage?: string;
-  successDuration?: number;
-  showNotification?: boolean;
-}
-
-export interface UseDataMaskingOptions {
-  defaultMasked?: boolean;
-  patterns?: Record<string, RegExp>;
-  replacements?: Record<string, string>;
-}
-
-export interface AuditLogEvent {
-  timestamp: string;
-  userId: string;
-  organizationId: string;
-  component: string;
-  action: string;
-  details: Record<string, any>;
-}
+export default {
+  DeadlockProcess,
+  DeadlockRelation,
+  DeadlockMetadata,
+  DeadlockVisualizationData,
+  DeadlockAnalysis,
+  DeadlockAnalysisResponse,
+  DeadlockAnalysisOptions
+};

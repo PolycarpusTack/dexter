@@ -1,5 +1,5 @@
 import React from 'react';
-import { render as rtlRender, RenderOptions } from '@testing-library/react';
+import { render as rtlRender, RenderOptions, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
@@ -88,9 +88,7 @@ export function mockApiResponse(endpoint: string, response: any, status = 200) {
 
 // Helper to get by text with partial match
 export function getByTextContent(text: string) {
-  // Import screen from testing-library
-  const { screen } = require('@testing-library/react');
-  
+  // Import screen directly (no require)
   return screen.getByText((_: string, element: Element | null) => {
     const hasText = (element: Element | null): boolean => element?.textContent === text;
     const elementHasText = hasText(element);

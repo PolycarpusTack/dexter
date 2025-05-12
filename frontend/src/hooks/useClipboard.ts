@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { showSuccessNotification, showErrorNotification } from '../utils/errorHandling';
+import errorHandling from '../utils/errorHandling';
 
 interface ClipboardOptions {
   successMessage?: string;

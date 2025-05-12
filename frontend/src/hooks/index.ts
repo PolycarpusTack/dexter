@@ -6,6 +6,13 @@ import useEventData from './useEventData';
 import { useDataMasking } from './useDataMasking';
 import { useAuditLog } from './useAuditLog';
 import useIssueActions from './useIssueActions';
+import { useAuth } from './useAuth';
+import { useBulkOperations } from './useBulkOperations';
+import { useErrorHandler } from './useErrorHandler';
+import { useEventFrequency } from './useEventFrequency';
+import { useIssueImpact } from './useIssueImpact';
+import { useRealtimeUpdates } from './useRealtimeUpdates';
+import { useSearchParamState } from './useSearchParamState';
 
 export {
   useKeyboardNavigation,
@@ -13,5 +20,12 @@ export {
   useEventData,
   useDataMasking,
   useAuditLog,
-  useIssueActions
+  useIssueActions,
+  useAuth,
+  useBulkOperations,
+  useErrorHandler,
+  useEventFrequency,
+  useIssueImpact,
+  useRealtimeUpdates,
+  useSearchParamState
 };
