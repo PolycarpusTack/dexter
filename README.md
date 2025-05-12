@@ -1,5 +1,9 @@
 # Dexter - Sentry Observability Companion
 
+[![Backend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=backend)](https://codecov.io/gh/your-org/dexter)
+[![Frontend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=frontend)](https://codecov.io/gh/your-org/dexter)
+[![CI Tests](https://github.com/your-org/dexter/actions/workflows/test.yml/badge.svg)](https://github.com/your-org/dexter/actions/workflows/test.yml)
+
 Dexter is an intelligent companion tool designed to enhance your Sentry.io experience. It provides a user-friendly interface to explore Sentry issues, leverage AI for error explanations, and perform enhanced error analysis, making observability more accessible and actionable across different roles.
 
 ## ✨ Key Features
@@ -90,6 +94,10 @@ Dexter is an intelligent companion tool designed to enhance your Sentry.io exper
     * npm (Frontend)
 * **Containerization (Optional):**
     * Docker (Dockerfiles provided for backend and frontend)
+* **CI/CD & Quality:**
+    * GitHub Actions (automated testing and code coverage)
+    * Codecov (coverage reporting and tracking)
+    * [Enhanced Coverage Reporting](docs/ci_cd_coverage_reporting.md) (strict quality controls)
 
 ##  Prerequisites
 

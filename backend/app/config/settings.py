@@ -1,4 +1,5 @@
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 from typing import Optional, List, Dict, Any
 import os
 from pathlib import Path
@@ -43,11 +44,13 @@ class Settings(BaseSettings):
     
     # Error Handling Settings
     recent_errors_limit: int = 100  # Number of recent errors to keep in memory
-    include_stack_trace: bool = Field(default=None)  # None means use debug setting
+    include_stack_trace: bool | None = None  # None means use debug setting
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False,
+        "extra": "allow"
+    }
     
     @property
     def should_include_stack_trace(self) -> bool:

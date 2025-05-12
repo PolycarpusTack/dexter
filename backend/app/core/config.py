@@ -11,7 +11,20 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import yaml
-from pydantic import BaseSettings, root_validator, validator, Field
+from pydantic import Field, BaseSettings
+
+try:
+    # Try importing Pydantic v2 validators first
+    from pydantic import field_validator, ConfigDict as SettingsConfigDict
+except ImportError:
+    # Fall back to Pydantic v1 validators if needed
+    from pydantic import validator as field_validator
+    # ConfigDict will be handled through the model_config function
+
+from app.utils.pydantic_compat import get_pydantic_version, config_class_factory
+
+# Check if we're using Pydantic v2+
+PYDANTIC_V2 = get_pydantic_version() >= 2
 
 
 class AppMode(str, Enum):
@@ -96,17 +109,19 @@ class AppSettings(BaseSettings):
     RECENT_ERRORS_LIMIT: int = 100  # Number of recent errors to keep in memory
     INCLUDE_STACK_TRACE: Optional[bool] = None  # None means use debug setting
     
-    @validator("PORT")
+    @field_validator("PORT")
     def validate_port(cls, v: int) -> int:
         """Ensure port is in valid range."""
         if not 1 <= v <= 65535:
             raise ValueError(f"Port must be between 1 and 65535, got {v}")
         return v
     
-    @validator("CORS_ORIGINS")
-    def validate_cors_origins(cls, v: List[str], values: Dict[str, Any]) -> List[str]:
+    @field_validator("CORS_ORIGINS")
+    def validate_cors_origins(cls, v: List[str], info) -> List[str]:
         """Warn about wildcard CORS in production."""
-        if "*" in v and not values.get("DEBUG", False):
+        # Get the debugging status from the validated data
+        data = info.data if hasattr(info, 'data') else {}
+        if "*" in v and not data.get("DEBUG", False):
             print("WARNING: Using wildcard CORS origins in non-debug mode")
         return v
     
@@ -117,11 +132,20 @@ class AppSettings(BaseSettings):
             return self.INCLUDE_STACK_TRACE
         return self.DEBUG
     
-    class Config:
-        """Configuration for settings behavior."""
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
+    if PYDANTIC_V2:
+        model_config = {
+            "env_file": ".env",
+            "env_file_encoding": "utf-8",
+            "case_sensitive": True,
+            "extra": "allow"
+        }
+    else:
+        # For Pydantic v1
+        class Config:
+            env_file = ".env"
+            env_file_encoding = "utf-8"
+            case_sensitive = True
+            extra = "allow"
 
 
 def load_yaml_config(app_mode: Union[AppMode, str]) -> Dict[str, Any]:
@@ -203,6 +227,7 @@ def get_settings() -> AppSettings:
         print(f"Warning: Failed to apply YAML config: {str(e)}")
     
     # Apply env vars again to ensure they take highest precedence
-    settings = AppSettings.parse_obj(settings.dict())
+    settings_dict = settings.model_dump()
+    settings = AppSettings.model_validate(settings_dict)
     
     return settings

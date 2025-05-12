@@ -60,7 +60,15 @@ jobs:
       with:
         file: ./backend/coverage.xml
         flags: backend
-        fail_ci_if_error: false
+        fail_ci_if_error: true
+        verbose: true
+        
+    - name: Archive backend coverage results
+      uses: actions/upload-artifact@v3
+      with:
+        name: backend-coverage-report
+        path: ./backend/coverage.xml
+        retention-days: 14
 
   frontend-tests:
     runs-on: ubuntu-latest
@@ -96,7 +104,15 @@ jobs:
       with:
         file: ./frontend/coverage/coverage-final.json
         flags: frontend
-        fail_ci_if_error: false
+        fail_ci_if_error: true
+        verbose: true
+        
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-coverage-report
+        path: ./frontend/coverage/
+        retention-days: 14
 
   integration-tests:
     runs-on: ubuntu-latest
