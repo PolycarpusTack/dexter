@@ -1,0 +1,69 @@
+# Test configuration for the API
+test:
+  mock_sentry_api: true
+  use_test_database: true
+  mock_responses:
+    issues.list:
+      data:
+        - id: "1234"
+          title: "Test Issue 1"
+          status: "unresolved"
+          project: "test-project"
+          count: 42
+        - id: "5678"
+          title: "Test Issue 2"
+          status: "resolved"
+          project: "test-project"
+          count: 12
+    issues.detail:
+      id: "1234"
+      title: "Test Issue 1"
+      status: "unresolved"
+      project: "test-project"
+      firstSeen: "2025-01-01T00:00:00Z"
+      lastSeen: "2025-01-02T00:00:00Z"
+      count: 42
+      userCount: 15
+      tags:
+        browser: "Chrome"
+        os: "Windows"
+    events.list:
+      data:
+        - id: "event-1"
+          issue_id: "1234"
+          timestamp: "2025-01-01T00:00:00Z"
+        - id: "event-2"
+          issue_id: "1234"
+          timestamp: "2025-01-01T00:05:00Z"
+    events.detail:
+      id: "event-1"
+      issue_id: "1234"
+      timestamp: "2025-01-01T00:00:00Z"
+      tags:
+        browser: "Chrome"
+        os: "Windows"
+      entries:
+        - type: "exception"
+          data:
+            values:
+              - type: "TypeError"
+                value: "Cannot read property 'length' of undefined"
+    discover.query:
+      data:
+        - title: "TypeError: Cannot read property 'length' of undefined"
+          count: 42
+        - title: "RangeError: Maximum call stack size exceeded"
+          count: 18
+    alert_rules.list:
+      data:
+        - id: "rule-1"
+          name: "High error volume"
+          conditions:
+            - type: "event"
+              attribute: "count()"
+              operator: "greater"
+              value: 100
+          actions:
+            - type: "email"
+              recipients: ["test@example.com"]
+          frequency: 15

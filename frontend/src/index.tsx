@@ -1,5 +1,8 @@
 // File: frontend/src/index.tsx
 
+// Import module polyfill to fix "exports is not defined" error
+import './modulePolyfill';
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { MantineProvider } from '@mantine/core';

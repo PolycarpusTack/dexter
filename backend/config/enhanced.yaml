@@ -1,0 +1,16 @@
+# Enhanced mode configuration for Dexter
+# Enables all advanced features for production use
+
+# Enable all features
+ENABLE_DEADLOCK_ANALYSIS: true
+ENABLE_OLLAMA: true
+ENABLE_REAL_TIME: true
+ENABLE_CACHING: true
+
+# Performance settings optimized for production
+WORKERS: 4
+CACHE_TTL_DEFAULT: 300
+MAX_CONNECTIONS: 200
+
+# Use a more advanced LLM model
+OLLAMA_MODEL: llama3

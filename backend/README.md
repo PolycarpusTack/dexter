@@ -2,6 +2,17 @@
 
 The Dexter backend API provides a powerful interface to Sentry data with AI-powered analysis capabilities.
 
+## 🆕 New Architecture
+
+**Important**: Dexter now uses a consolidated architecture with a single entry point and configuration-driven modes. See [README_MIGRATION.md](README_MIGRATION.md) for details.
+
+Key changes:
+- Single entry point (`app/main.py`)
+- Mode selection via `APP_MODE` environment variable
+- Configuration via YAML files in `config/` directory
+
+The old `main_*.py` files still exist for backward compatibility but will be deprecated in the future.
+
 ## Setup Instructions
 
 1. **Clone the repository and navigate to the backend directory:**
@@ -33,12 +44,47 @@ The Dexter backend API provides a powerful interface to Sentry data with AI-powe
 
 5. **Run the development server:**
    ```bash
+   # Run with default mode
    python run.py
+   
+   # Or run with a specific mode
+   python run.py debug
    ```
 
    The API will be available at `http://localhost:8001`
 
+## Running with Different Modes
+
+Dexter supports several application modes:
+
+```bash
+# Default mode
+python -m app.main
+
+# Debug mode (enhanced logging, all features)
+set APP_MODE=debug && python -m app.main
+
+# Minimal mode (lightweight, fewer features)
+set APP_MODE=minimal && python -m app.main
+
+# Enhanced mode (all features, optimized for production)
+set APP_MODE=enhanced && python -m app.main
+
+# Simplified mode (core features only)
+set APP_MODE=simplified && python -m app.main
+```
+
+You can also use the provided batch files:
+```bash
+# These still work the same:
+run_minimal.bat
+start_dev_server.bat
+run_simplified.bat
+```
+
 ## Configuration
+
+### Environment Variables
 
 The following environment variables are required:
 
@@ -47,9 +93,20 @@ The following environment variables are required:
 - `SENTRY_PROJECT_SLUG`: Your default Sentry project slug (optional but recommended)
 
 Optional configurations:
+- `APP_MODE`: Application mode (default, debug, minimal, enhanced, simplified)
 - `OLLAMA_BASE_URL`: URL for the Ollama LLM service (default: http://localhost:11434)
 - `OLLAMA_MODEL`: Model to use with Ollama (default: mistral:latest)
 - `USE_MOCK_DATA`: Set to "true" to use mock data for development
+
+### YAML Configuration
+
+You can also configure the application using YAML files in the `config/` directory:
+
+- `base.yaml`: Common settings for all modes
+- `debug.yaml`: Settings for debug mode
+- `minimal.yaml`: Settings for minimal mode
+- `enhanced.yaml`: Settings for enhanced mode
+- `simplified.yaml`: Settings for simplified mode
 
 ## API Endpoints
 
@@ -108,8 +165,21 @@ If mock data isn't working:
 2. Restart the backend server
 3. Check the logs for confirmation that mock data is being used
 
+### Architecture Migration Issues
+
+If you encounter issues with the new architecture:
+1. Check the migration documentation in `MIGRATION_GUIDE.md`
+2. Try running with different modes to isolate the issue
+3. Look for deprecation warnings that might indicate outdated usage patterns
+
 ## API Documentation
 
 Once the server is running, you can access the interactive API documentation at:
 - Swagger UI: http://localhost:8001/docs
 - ReDoc: http://localhost:8001/redoc
+
+## Resources
+
+- [QUICK_REFERENCE.md](QUICK_REFERENCE.md): Developer's quick reference guide
+- [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md): Detailed migration information
+- [ADOPTION_STRATEGY.md](ADOPTION_STRATEGY.md): Phase-by-phase adoption plan

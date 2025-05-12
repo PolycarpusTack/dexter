@@ -27,3 +27,15 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// This helps compatibility with CommonJS modules that might be used
+declare global {
+  // eslint-disable-next-line no-var
+  var exports: any;
+  // eslint-disable-next-line no-var
+  var module: {
+    exports: any;
+  };
+  // eslint-disable-next-line no-var
+  var require: (path: string) => any;
+}

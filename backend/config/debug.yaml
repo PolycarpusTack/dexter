@@ -1,0 +1,14 @@
+# Debug mode configuration for Dexter
+# Enables development-friendly settings
+
+# Core settings
+DEBUG: true
+LOG_LEVEL: DEBUG
+RELOAD: true
+
+# Enable all features for development
+ENABLE_REAL_TIME: true
+
+# Performance settings optimized for development
+CACHE_TTL_DEFAULT: 60  # Shorter cache for development
+REQUEST_TIMEOUT: 60  # Longer timeout for debugging

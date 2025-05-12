@@ -1,0 +1,15 @@
+# Minimal mode configuration for Dexter
+# Disables resource-intensive features for lightweight deployment
+
+# Core settings
+LOG_LEVEL: WARNING
+WORKERS: 1
+
+# Disable optional features
+ENABLE_DEADLOCK_ANALYSIS: false
+ENABLE_OLLAMA: false
+ENABLE_REAL_TIME: false
+
+# Performance settings optimized for minimal resource usage
+CACHE_TTL_DEFAULT: 600  # Longer cache to reduce API calls
+MAX_CONNECTIONS: 50  # Fewer connections to conserve resources

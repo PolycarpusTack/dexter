@@ -1,0 +1,23 @@
+# Base configuration for Dexter
+# All application modes inherit from this configuration
+
+# Core settings
+API_PREFIX: /api/v1
+DEBUG: false
+LOG_LEVEL: INFO
+
+# Feature flags
+ENABLE_DEADLOCK_ANALYSIS: true
+ENABLE_OLLAMA: true
+ENABLE_REAL_TIME: false
+ENABLE_CACHING: true
+
+# Performance settings
+CACHE_TTL_DEFAULT: 300
+REQUEST_TIMEOUT: 30
+MAX_CONNECTIONS: 100
+
+# CORS settings (tighten in production)
+CORS_ORIGINS:
+  - "*"
+CORS_ALLOW_CREDENTIALS: true

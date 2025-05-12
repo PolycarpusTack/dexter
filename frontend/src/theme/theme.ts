@@ -279,6 +279,11 @@ export const dexterTheme: MantineThemeOverride = {
       '#7c4a00', // Added darker shade
       '#613b00', // Added darkest shade
     ],
+    
+    // Background colors - added from theme.js
+    background: colors.neutral[50],
+    surface: 'white',
+    border: colors.neutral[300],
   },
   
   // Set primary color name (used by Mantine)
@@ -350,7 +355,7 @@ export const dexterTheme: MantineThemeOverride = {
   // Global styles
   globalStyles: (theme) => ({
     body: {
-      backgroundColor: theme.colors.gray[0],
+      backgroundColor: theme.colors.background || theme.colors.gray[0],
       color: colors.neutral[800],
       lineHeight: 1.6,
     },

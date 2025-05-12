@@ -1,37 +1,23 @@
 """
-Minimal version of the FastAPI application for testing basic functionality.
+Deprecated: Shim for backward compatibility with main_minimal.py
 """
-from fastapi import FastAPI
-import logging
+import os
+import warnings
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-# Create FastAPI app
-app = FastAPI(
-    title="Dexter API (Minimal)",
-    description="Minimal version for testing",
-    version="1.0.0"
+warnings.warn(
+    "main_minimal.py is deprecated and will be removed in a future version. "
+    "Please use 'APP_MODE=minimal python -m app.main' instead.",
+    DeprecationWarning,
+    stacklevel=2
 )
 
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {
-        "message": "Dexter API (Minimal)",
-        "version": "1.0.0",
-        "status": "running"
-    }
+# Set environment variable for mode
+os.environ["APP_MODE"] = "minimal"
 
-@app.get("/health")
-async def health():
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "service": "dexter-api-minimal"
-    }
+# Import the app from main (now updated)
+from app.main import app
 
+# Keep this for backwards compatibility
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("app.main_minimal:app", host="0.0.0.0", port=8000)

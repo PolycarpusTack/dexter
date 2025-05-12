@@ -21,6 +21,9 @@ interface AppState {
   statusFilter: string;
   searchQuery: string;
   
+  // Events to support "latest event" fetching when needed
+  latestEventsByIssue: Record<string, string>;
+  
   /** Active AI model for explanations */
   activeAIModel: string | null;
   /** Theme mode */
@@ -81,6 +84,24 @@ interface AppState {
   setCustomShortcut: (action: string, shortcut: string) => void;
   /** Reset all settings to defaults */
   resetSettings: () => void;
+  
+  /** Store latest event ID for an issue (migrated from appStore.js) */
+  storeLatestEventId: (issueId: string, eventId: string) => void;
+  
+  /** Set status filter (added for compatibility with old appStore.jsx) */
+  setStatusFilter: (status: string) => void;
+  
+  /** Set search query (added for compatibility with old appStore.jsx) */
+  setSearchQuery: (query: string) => void;
+  
+  /** Reset filters (migrated from appStore.js) */
+  resetFilters: () => void;
+  
+  /** Set configuration (added for compatibility with old appStore.jsx) */
+  setConfig: (config: { organization_slug: string, project_slug: string }) => void;
+  
+  /** Clear selection (added for compatibility with old appStore.jsx) */
+  clearSelection: () => void;
 }
 
 // Default settings
@@ -91,12 +112,13 @@ const DEFAULT_SETTINGS = {
   projectId: null,
   selectedIssueId: null,
   selectedEventId: null,
-  statusFilter: '',
+  statusFilter: 'unresolved', // Updated default to match old stores
   searchQuery: '',
   activeAIModel: 'mistral:latest',
   darkMode: false,
   userId: null,
   apiToken: null,
+  latestEventsByIssue: {}, // Added from appStore.js
   displayPreferences: {
     expandedStackTraces: false,
     showContext: true,
@@ -118,12 +140,30 @@ const useAppStore = create<AppState>()(
       ...DEFAULT_SETTINGS,
       
       setOrgProject: (organizationSlug: string, projectSlug: string) => 
-        set({ organizationSlug, projectSlug }),
+        set({ 
+          organizationSlug, 
+          projectSlug,
+          // Clear selections when changing project (behavior from appStore.js)
+          selectedIssueId: null,
+          selectedEventId: null,
+        }),
       
       setSelectedIssue: (issueId: string | null, eventId?: string | null) => 
-        set({ selectedIssueId: issueId, selectedEventId: eventId || null }),
+        set((state) => {
+          // If no eventId provided, try to get it from stored latest events (from appStore.js)
+          const resolvedEventId = eventId || (issueId ? state.latestEventsByIssue[issueId] : null);
+          
+          return { 
+            selectedIssueId: issueId, 
+            selectedEventId: resolvedEventId || null 
+          };
+        }),
       
-      setActiveAIModel: (model: string) => set({ activeAIModel: model }),
+      setActiveAIModel: (model: string) => {
+        // Store in localStorage directly (behavior from appStore.js)
+        if (model) localStorage.setItem('activeAIModel', model);
+        return set({ activeAIModel: model });
+      },
       
       toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
       
@@ -161,7 +201,47 @@ const useAppStore = create<AppState>()(
         }
       })),
       
-      resetSettings: () => set(DEFAULT_SETTINGS)
+      resetSettings: () => set(DEFAULT_SETTINGS),
+      
+      // Added from appStore.js
+      storeLatestEventId: (issueId: string, eventId: string) => {
+        set((state) => ({
+          latestEventsByIssue: {
+            ...state.latestEventsByIssue,
+            [issueId]: eventId,
+          }
+        }));
+      },
+      
+      // Added for compatibility with appStore.jsx
+      setStatusFilter: (status: string) => set({
+        statusFilter: status,
+        searchQuery: '', // Reset search on status change
+        selectedIssueId: null, // Reset selection when filters change
+        selectedEventId: null,
+      }),
+      
+      // Added for compatibility with appStore.jsx
+      setSearchQuery: (query: string) => set({ searchQuery: query }),
+      
+      // Added from appStore.js
+      resetFilters: () => set({ 
+        statusFilter: 'unresolved',
+        searchQuery: '' 
+      }),
+      
+      // Added for compatibility with appStore.jsx
+      setConfig: ({ organization_slug, project_slug }) => {
+        set({ 
+          organizationSlug: organization_slug, 
+          projectSlug: project_slug 
+        });
+      },
+      
+      // Added for compatibility with appStore.jsx
+      clearSelection: () => {
+        set({ selectedIssueId: null, selectedEventId: null });
+      },
     }),
     {
       name: 'dexter-settings',

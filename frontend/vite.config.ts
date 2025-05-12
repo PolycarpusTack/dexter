@@ -119,6 +119,13 @@ export default defineConfig({
     esbuildOptions: {
       // Improve sourcemap generation during development
       sourcemap: process.env.NODE_ENV !== 'production',
+      // Ensure proper handling of CommonJS modules
+      format: 'esm',
+      target: 'es2020',
+      supported: {
+        'import-meta': true,
+        'dynamic-import': true
+      }
     },
   },
   resolve: {

@@ -1,0 +1,13 @@
+# Simplified mode configuration for Dexter
+# Focuses on core functionality with selective advanced features
+
+# Enable core features and selective advanced features
+ENABLE_DEADLOCK_ANALYSIS: true
+ENABLE_OLLAMA: true
+ENABLE_REAL_TIME: false
+ENABLE_CACHING: true
+
+# Performance settings for balanced usage
+WORKERS: 2
+CACHE_TTL_DEFAULT: 300
+MAX_CONNECTIONS: 100
