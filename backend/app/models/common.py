@@ -17,3 +17,12 @@ class User(BaseModel):
 class Tag(BaseModel):
     key: str
     value: str
+
+class BaseResponse(BaseModel):
+    """Base response model used across API endpoints."""
+    success: bool = True
+    message: Optional[str] = None
+    
+    model_config = {
+        "protected_namespaces": ()
+    }

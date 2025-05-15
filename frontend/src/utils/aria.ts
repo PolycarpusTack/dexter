@@ -358,28 +358,20 @@ export function getSortButtonProps(
 }
 
 /**
- * Create visually hidden, but screen reader accessible, text
+ * Create visually hidden text style object for screen reader accessible content
  */
-export function visuallyHidden(content: string): JSX.Element {
-  return (
-    <span
-      style={{
-        border: 0,
-        clip: 'rect(0 0 0 0)',
-        height: '1px',
-        margin: '-1px',
-        overflow: 'hidden',
-        padding: 0,
-        position: 'absolute',
-        width: '1px',
-        whiteSpace: 'nowrap',
-        wordWrap: 'normal',
-      }}
-    >
-      {content}
-    </span>
-  );
-}
+export const visuallyHiddenStyle = {
+  border: 0,
+  clip: 'rect(0 0 0 0)',
+  height: '1px',
+  margin: '-1px',
+  overflow: 'hidden',
+  padding: 0,
+  position: 'absolute' as const,
+  width: '1px',
+  whiteSpace: 'nowrap' as const,
+  wordWrap: 'normal' as const
+};
 
 export default {
   getTabProps,
@@ -400,5 +392,5 @@ export default {
   getSliderProps,
   getProgressProps,
   getSortButtonProps,
-  visuallyHidden,
+  visuallyHiddenStyle,
 };

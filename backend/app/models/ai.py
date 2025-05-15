@@ -74,9 +74,14 @@ class ExplainResponse(BaseModel):
                 "explanation": "This error occurs when your code tries to access a property (in this case 'foo') of an object that is undefined. Check that the object exists before attempting to access its properties.",
                 "model_used": "mistral:latest"
             }
-        }
+        },
+        "protected_namespaces": ()
     })
 
 class ModelSelectionRequest(BaseModel):
     """Request to change the active model."""
     model_name: str
+    
+    model_config = {
+        "protected_namespaces": ()
+    }

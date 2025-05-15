@@ -103,6 +103,10 @@ class ModelRequest(BaseModel):
     model_id: str = Field(..., description="ID of the model to use")
     fallback_chain_id: Optional[str] = Field(None, description="ID of fallback chain to use if specified")
     parameters: Optional[ModelParameters] = None
+    
+    model_config = {
+        "protected_namespaces": ()
+    }
 
 class ModelResponse(BaseModel):
     model: Model

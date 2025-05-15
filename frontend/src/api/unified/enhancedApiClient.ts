@@ -17,7 +17,7 @@ import {
   QueryParams
 } from './types';
 import apiConfig from './apiConfig';
-import { getFullUrl, getMethod, resolvePath } from './pathResolver';
+import { getFullUrl, getMethod, resolvePath } from './pathResolver.js';
 
 // Default axios config
 const defaultAxiosConfig: AxiosRequestConfig = {

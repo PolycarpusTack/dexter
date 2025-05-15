@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     
     # Application configuration that needs to be directly defined in the Settings class
     app_name: str = Field("Dexter API", env="APP_NAME")
-    cors_origins: list = Field(["*"], env="CORS_ORIGINS")
+    cors_origins: list = Field(["http://localhost:5173", "http://localhost:3000"], env="CORS_ORIGINS")
     
     # Sentry organization config (used in discover.py)
     SENTRY_ORG: str = Field("", env="SENTRY_ORG")

@@ -3,7 +3,7 @@
  */
 import { apiClient } from './apiClient';
 import { handleApiError } from './errorHandler';
-import { pathResolver } from './pathResolver';
+import pathResolver from './pathResolver.js';
 import { AxiosRequestConfig } from 'axios';
 
 // Type definitions

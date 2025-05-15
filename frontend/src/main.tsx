@@ -1,7 +1,8 @@
 // File: frontend/src/main.tsx
 
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+// Import createRoot directly as a named export
+import { createRoot } from 'react-dom/client';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import App from './App';
@@ -16,13 +17,15 @@ if (!rootElement) {
   throw new Error('Root element not found');
 }
 
-// Mount the app
-const root = ReactDOM.createRoot(rootElement);
+// Create root using React 18's API
+const root = createRoot(rootElement);
+
+// Render the app
 root.render(
   <React.StrictMode>
     <MantineProvider theme={dexterTheme}>
       <Notifications position="top-right" zIndex={1000} />
       <App />
     </MantineProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 );

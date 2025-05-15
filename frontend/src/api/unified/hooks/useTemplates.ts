@@ -1,7 +1,7 @@
 /**
  * React Query hooks for the template API.
  */
-import { useMutation, useQuery, useQueryClient, UseQueryOptions } from 'react-query';
+import { useMutation, useQuery, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { 
   templateApi, 
   TemplateCategory, 
@@ -234,19 +234,6 @@ export const useSetTemplateAsDefault = () => {
       },
     }
   );
-};
-
-// Export individual hooks
-export {
-  useTemplates,
-  useTemplate,
-  useTemplateVersions,
-  useDefaultTemplates,
-  useCreateTemplate,
-  useUpdateTemplate,
-  useDeleteTemplate,
-  useRenderTemplate,
-  useSetTemplateAsDefault,
 };
 
 // Re-export types

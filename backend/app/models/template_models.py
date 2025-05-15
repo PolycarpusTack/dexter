@@ -78,8 +78,11 @@ class PromptTemplate(BaseModel):
     tags: List[str] = Field(default_factory=list, description="Tags for this template")
     
     # Additional metadata
-    model_specific: Optional[Dict[str, Any]] = Field(None, description="Model-specific configuration")
+    specific_model: Optional[Dict[str, Any]] = Field(None, description="Model-specific configuration", alias="model_specific")
     provider_specific: Optional[Dict[str, Any]] = Field(None, description="Provider-specific configuration")
+    
+    class Config:
+        protected_namespaces = ()
     
     @validator('versions')
     def validate_versions(cls, v):
@@ -138,6 +141,10 @@ class TemplateResponse(BaseResponse):
 
 class CreateTemplateRequest(BaseModel):
     """Request model for creating a template."""
+    
+    class Config:
+        protected_namespaces = ()
+        
     name: str = Field(..., description="Template name")
     description: str = Field(..., description="Template description")
     category: TemplateCategory = Field(..., description="Template category")
@@ -148,12 +155,16 @@ class CreateTemplateRequest(BaseModel):
     is_default: bool = Field(False, description="Whether this is a default template")
     is_public: bool = Field(False, description="Whether this template is publicly available")
     tags: List[str] = Field(default_factory=list, description="Tags for this template")
-    model_specific: Optional[Dict[str, Any]] = Field(None, description="Model-specific configuration")
+    specific_model: Optional[Dict[str, Any]] = Field(None, description="Model-specific configuration", alias="model_specific")
     provider_specific: Optional[Dict[str, Any]] = Field(None, description="Provider-specific configuration")
 
 
 class UpdateTemplateRequest(BaseModel):
     """Request model for updating a template."""
+    
+    class Config:
+        protected_namespaces = ()
+        
     name: Optional[str] = Field(None, description="Template name")
     description: Optional[str] = Field(None, description="Template description")
     category: Optional[TemplateCategory] = Field(None, description="Template category")
@@ -164,7 +175,7 @@ class UpdateTemplateRequest(BaseModel):
     is_default: Optional[bool] = Field(None, description="Whether this is a default template")
     is_public: Optional[bool] = Field(None, description="Whether this template is publicly available")
     tags: Optional[List[str]] = Field(None, description="Tags for this template")
-    model_specific: Optional[Dict[str, Any]] = Field(None, description="Model-specific configuration")
+    specific_model: Optional[Dict[str, Any]] = Field(None, description="Model-specific configuration", alias="model_specific")
     provider_specific: Optional[Dict[str, Any]] = Field(None, description="Provider-specific configuration")
 
 

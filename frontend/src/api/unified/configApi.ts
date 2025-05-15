@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import enhancedApiClient from './enhancedApiClient';
 import { createErrorHandler } from './errorHandler';
-import { validateParams } from './pathResolver';
+import { validateParams } from './pathResolver.js';
 
 /**
  * Error handler for Config API

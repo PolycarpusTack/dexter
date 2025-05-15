@@ -2,7 +2,7 @@
 // This client uses the path resolver to make API calls
 
 import axios from 'axios';
-import { getFullUrl, getMethod } from './pathResolver';
+import { getFullUrl, getMethod } from './pathResolver.js';
 
 // Default axios config
 const axiosConfig = {
@@ -141,6 +141,10 @@ export const callEndpoint = async (
   }
 };
 
+// Export the configured axios instance and the callEndpoint function
+export const apiClient = axiosInstance;
+
 export default {
-  callEndpoint
+  callEndpoint,
+  apiClient
 };

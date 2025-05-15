@@ -2,7 +2,7 @@
 
 import apiClient from './apiClient';
 import apiConfig from './apiConfig';
-import { resolvePath, getFullUrl, getMethod } from './pathResolver';
+import { resolvePath, getFullUrl, getMethod } from './pathResolver.js';
 
 // Import individual API modules
 import issuesApi from './issuesApi';

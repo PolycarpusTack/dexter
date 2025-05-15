@@ -62,6 +62,25 @@ export const useOllamaModels = (
 };
 
 /**
+ * Hook for loading AI models (backward compatibility function)
+ */
+export function useAiModels(options?: {
+  refetchInterval?: number;
+  enabled?: boolean;
+  staleTime?: number;
+}) {
+  // Wrapper around useModelsEnhanced for backward compatibility
+  return useModelsEnhanced(options);
+}
+
+/**
+ * Hook for selecting an active model (alias for the non-enhanced model selector for backwards compatibility)
+ */
+export function useSetActiveModel() {
+  return useSelectModel();
+}
+
+/**
  * Hook for loading enhanced models list with multi-provider support
  */
 export const useModelsEnhanced = (
@@ -280,6 +299,88 @@ export const useExplainError = () => {
 };
 
 /**
+ * Hook for explaining an error in an issue
+ */
+export const useIssueErrorExplanation = () => {
+  return useMutation({
+    mutationFn: ({
+      issueId,
+      options
+    }: {
+      issueId: string;
+      options?: Record<string, any>;
+    }) => {
+      // Get the latest event for this issue and then explain it
+      return explainError({
+        type: 'issue',
+        id: issueId
+      }, options);
+    },
+    onError: (error) => {
+      showErrorNotification({
+        title: 'Issue error explanation failed',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error : undefined,
+      });
+    }
+  });
+};
+
+/**
+ * Hook for explaining an error in an event
+ */
+export const useEventErrorExplanation = () => {
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      options
+    }: {
+      eventId: string;
+      options?: Record<string, any>;
+    }) => {
+      return explainError({
+        type: 'event',
+        id: eventId
+      }, options);
+    },
+    onError: (error) => {
+      showErrorNotification({
+        title: 'Event error explanation failed',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error : undefined,
+      });
+    }
+  });
+};
+
+/**
+ * Hook for explaining error text
+ */
+export const useExplainErrorText = () => {
+  return useMutation({
+    mutationFn: ({
+      errorText,
+      options
+    }: {
+      errorText: string;
+      options?: Record<string, any>;
+    }) => {
+      return explainError({
+        type: 'text',
+        content: errorText
+      }, options);
+    },
+    onError: (error) => {
+      showErrorNotification({
+        title: 'Error text explanation failed',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error : undefined,
+      });
+    }
+  });
+};
+
+/**
  * Types for provider configuration
  */
 export interface ProviderConfig {
@@ -374,15 +475,20 @@ export const useProviderAvailability = (
 export default {
   useOllamaModels,
   useModelsEnhanced,
+  useAiModels,
   useUserPreferences,
   usePullModel,
   usePullModelEnhanced,
   useSelectModel,
   useSelectModelEnhanced,
+  useSetActiveModel,
   useCreateFallbackChain,
   useSetDefaultFallbackChain,
   useSetUserPreferences,
   useExplainError,
+  useIssueErrorExplanation,
+  useEventErrorExplanation,
+  useExplainErrorText,
   useSetProviderConfig,
   useTestProviderConnection,
   useProviderAvailability

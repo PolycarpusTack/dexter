@@ -9,7 +9,7 @@ from datetime import datetime
 import uuid
 
 from app.services.discover_service import get_discover_service, DiscoverService
-from app.core.config import settings
+from app.core.settings import settings
 from app.models.auth import User
 from app.dependencies import get_current_user
 

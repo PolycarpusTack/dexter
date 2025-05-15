@@ -115,8 +115,8 @@ def create_app(settings: Optional[AppSettings] = None) -> FastAPI:
             "openapi_url": None,
         })
     
-    # Create the FastAPI app
-    app = FastAPI(**app_kwargs)
+    # Create the FastAPI app - adding debug=True to avoid CORS origin warning
+    app = FastAPI(debug=True, **app_kwargs)
     
     # Setup middlewares
     setup_middlewares(app, settings)

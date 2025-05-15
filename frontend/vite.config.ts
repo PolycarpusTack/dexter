@@ -4,26 +4,7 @@ import autoprefixer from 'autoprefixer';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    react({
-      // Add TypeScript with Babel
-      babel: {
-        presets: [
-          ['@babel/preset-env', { targets: { node: 'current' } }],
-          ['@babel/preset-react', { runtime: 'automatic' }],
-          ['@babel/preset-typescript', { isTSX: true, allExtensions: true }]
-        ],
-        plugins: [
-          ["@babel/plugin-transform-typescript", { 
-            allowDeclareFields: true,
-            isTSX: true,
-            allExtensions: true
-          }],
-          "@babel/plugin-transform-react-jsx"
-        ]
-      }
-    })
-  ],
+  plugins: [react()],
   esbuild: {
     // Enable JSX in .js files
     jsx: 'automatic',
@@ -43,8 +24,8 @@ export default defineConfig({
     }
   },
   define: {
-    // Fix for "exports is not defined" error
-    'global': 'window',
+    // Define globals properly
+    'global': 'globalThis',
     'process.env': process.env
   },
   server: {
@@ -133,11 +114,17 @@ export default defineConfig({
         'dynamic-import': true
       }
     },
-    include: ['react', 'react-dom'] // Force pre-bundling of React
+    include: [
+      'react', 
+      'react-dom', 
+      '@mantine/core', 
+      '@mantine/notifications',
+      '@tanstack/react-query'
+    ] // Force pre-bundling of critical dependencies
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
     // Ensure proper resolution of CommonJS and ESM modules
-    mainFields: ['module', 'browser', 'main']
+    mainFields: ['browser', 'module', 'jsnext:main', 'main']
   }
 });

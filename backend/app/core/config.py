@@ -24,6 +24,9 @@ if PYDANTIC_V2:
 else:
     from pydantic import validator as field_validator
 
+# Import settings from settings.py
+from .settings import settings
+
 
 class AppMode(str, Enum):
     """Available application modes."""

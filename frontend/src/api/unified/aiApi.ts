@@ -279,3 +279,23 @@ export const getProviderAvailability = async (): Promise<Record<string, boolean>
     { cache: 'stale-while-revalidate' }
   );
 };
+
+// Default export with all functions
+export default {
+  fetchModelsList,
+  fetchEnhancedModelsList,
+  pullModel,
+  pullModelEnhanced,
+  selectModel,
+  selectModelEnhanced,
+  createFallbackChain,
+  setDefaultFallbackChain,
+  getUserPreferences,
+  setUserPreferences,
+  explainError,
+  setProviderConfig,
+  testProviderConnection,
+  getProviderAvailability,
+  // Constants
+  AI_ENDPOINTS
+};
