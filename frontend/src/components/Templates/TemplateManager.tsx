@@ -155,7 +155,7 @@ export const TemplateManager: React.FC = () => {
         </Stack>
       </Card>
 
-      <Tabs value={activeTab} onTabChange={setActiveTab}>
+      <Tabs value={activeTab} onChange={setActiveTab}>
         <Tabs.List>
           <Tabs.Tab value="all">
             All ({data?.templates.length || 0})

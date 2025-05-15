@@ -204,10 +204,24 @@ function isAxiosError(error: any): error is AxiosError {
   return error.isAxiosError === true;
 }
 
+// Import the real notification system
+import {
+  showErrorNotification as displayErrorNotification,
+  NotificationOptions
+} from '../../utils/errorHandling/notifications';
+
 /**
  * Show an error notification to the user
+ * 
+ * @param options - Notification options with title and error
  */
-export function showErrorNotification(error: ApiError) {
-  console.error('[Error Notification]', error.message);
-  // In a real app, this would integrate with a notification system
+export function showErrorNotification(options: NotificationOptions) {
+  // Check if this error should be suppressed from notifications
+  if (options.error && (options.error as any).suppressNotifications) {
+    console.debug('Suppressing error notification:', options.title);
+    return;
+  }
+  
+  // Forward to the real notification system
+  return displayErrorNotification(options);
 }

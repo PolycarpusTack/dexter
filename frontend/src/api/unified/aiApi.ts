@@ -62,14 +62,27 @@ export const fetchModelsList = async (): Promise<any> => {
  * Fetch list of available models from all providers (enhanced)
  */
 export const fetchEnhancedModelsList = async (): Promise<ModelsResponse> => {
-  return enhancedApiClient.callEndpoint<ModelsResponse>(
-    'ai-enhanced',
-    'models',
-    {},
-    {},
-    undefined,
-    { cache: 'stale-while-revalidate' }
-  );
+  try {
+    // Try the API call with error suppression
+    return await enhancedApiClient.callEndpoint<ModelsResponse>(
+      'ai',
+      'models',
+      {},
+      {},
+      undefined,
+      { 
+        cache: 'stale-while-revalidate',
+        errorHandling: {
+          suppressNotifications: true,
+          logToConsole: false
+        }
+      }
+    );
+  } catch (error) {
+    // If the endpoint fails, return an empty models response
+    console.debug('Models API endpoint not available - returning empty list');
+    return { models: [] } as ModelsResponse;
+  }
 };
 
 /**

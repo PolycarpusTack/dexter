@@ -30,8 +30,18 @@ const QUERY_KEYS = {
 export const useConfig = (options = {}) => {
   return useQuery({
     queryKey: [QUERY_KEYS.config],
-    queryFn: () => getConfig(),
+    queryFn: () => getConfig({
+      // Add error handling options to suppress API error notifications
+      errorHandling: {
+        suppressNotifications: true,
+        logToConsole: false
+      },
+      retry: {
+        maxRetries: 1
+      }
+    }),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1, // Limit retries for this query since it often 404s when backend is not running
     ...options
   });
 };

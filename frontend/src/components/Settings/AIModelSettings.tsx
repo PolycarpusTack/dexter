@@ -44,8 +44,11 @@ import { validateForm, required, oneOf } from '../../utils/formValidation';
 // Import from the unified API client
 import { hooks } from '../../api/unified';
 
-// Destructure the hooks we need
-const { useAiModels, useAi } = hooks;
+// Import the hooks we need
+const { useAiModels } = hooks;
+
+// Import the AI hooks using namespace
+import useAi from '../../api/unified/hooks/useAi';
 
 // Define window interface to add our custom global function
 declare global {

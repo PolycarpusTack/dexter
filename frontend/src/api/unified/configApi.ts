@@ -63,25 +63,47 @@ export interface ConfigParams {
  */
 export const getConfig = async (options?: Record<string, any>): Promise<Config> => {
   try {
-    // Call the API
-    const response = await enhancedApiClient.callEndpoint<unknown>(
-      'config',
-      'getConfig',
-      {},
-      {},
-      null,
-      options
-    );
+    // Call the API with error handling options
+    const enhancedOptions = {
+      ...options,
+      errorHandling: {
+        ...(options?.errorHandling || {}),
+        suppressNotifications: true,
+        logToConsole: false
+      }
+    };
     
-    // Validate and return
+    // Try to call the API endpoint
     try {
-      return configSchema.parse(response);
-    } catch (validationError) {
-      // Log validation error but return unvalidated response
-      console.warn('Config validation failed:', validationError);
-      return response as Config;
+      const response = await enhancedApiClient.callEndpoint<unknown>(
+        'config',
+        'get',
+        {},
+        {},
+        null,
+        enhancedOptions
+      );
+      
+      // Validate and return
+      try {
+        return configSchema.parse(response);
+      } catch (validationError) {
+        // Log validation error but return unvalidated response
+        console.warn('Config validation failed:', validationError);
+        return response as Config;
+      }
+    } catch (apiError) {
+      // Handle 404 gracefully by returning default config
+      console.debug('Config API endpoint not available - returning default config');
+      return {
+        organization_slug: '',
+        project_slug: '',
+        ai_models: [],
+        current_model: ''
+      };
     }
   } catch (error) {
+    // This will catch any other errors that might occur
     handleConfigError(error, {
       operation: 'getConfig',
       context: {}

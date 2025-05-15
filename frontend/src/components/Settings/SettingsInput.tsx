@@ -46,7 +46,7 @@ import {
 // Import the new API client
 import { 
   hooks,
-  showErrorNotification
+  utils
 } from '../../api/unified';
 
 // Destructure the hooks for better readability
@@ -203,7 +203,7 @@ function SettingsInput(): JSX.Element {
           message: `Connected to Sentry project: ${projectInput}`,
         });
       } else {
-        showErrorNotification({
+        utils.showErrorNotification({
           title: 'Configuration Error',
           error: new Error('Invalid response from server'),
         });
@@ -227,7 +227,7 @@ function SettingsInput(): JSX.Element {
         }));
       }
       
-      showErrorNotification({
+      utils.showErrorNotification({
         title: 'Configuration Error',
         error,
       });
@@ -238,7 +238,7 @@ function SettingsInput(): JSX.Element {
   const handleSave = async (): Promise<void> => {
     // First validate all fields
     if (!validateAllFields()) {
-      showErrorNotification({
+      utils.showErrorNotification({
         title: 'Validation Error',
         error: new Error('Please correct the validation errors'),
       });
@@ -337,6 +337,7 @@ function SettingsInput(): JSX.Element {
                 rightSection={opened ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
                 aria-expanded={opened}
                 aria-label={opened ? "Hide settings" : "Show settings"}
+                sx={{ '&:focus': { outline: 'none' } }} // Fix for button focus styles
               >
                 {opened ? "Hide" : "Settings"}
               </Button>

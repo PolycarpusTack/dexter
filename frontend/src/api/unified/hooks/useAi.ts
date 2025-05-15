@@ -92,13 +92,17 @@ export const useModelsEnhanced = (
 ) => {
   return useQuery<ModelsResponse>({
     queryKey: aiKeys.enhancedModels(),
-    queryFn: fetchEnhancedModelsList,
+    queryFn: () => fetchEnhancedModelsList(),
     // Refresh every 30 seconds to update download status by default
     refetchInterval: options?.refetchInterval ?? 30000,
     // Consider stale after 15 seconds by default
     staleTime: options?.staleTime ?? 15000,
-    retry: 2,
+    retry: 1, // Reduce retries for this endpoint since it often 404s when backend is not running
     enabled: options?.enabled ?? true,
+    // Suppress error notifications in the UI
+    meta: {
+      suppressErrorNotification: true
+    }
   });
 };
 

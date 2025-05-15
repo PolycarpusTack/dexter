@@ -7,8 +7,7 @@ import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import App from './App';
 import dexterTheme from './theme/theme';
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css';
+// Import only our custom styles since other CSS is imported there
 import './styles.css';
 
 // Get the root element and check if it exists
@@ -23,7 +22,7 @@ const root = createRoot(rootElement);
 // Render the app
 root.render(
   <React.StrictMode>
-    <MantineProvider theme={dexterTheme}>
+    <MantineProvider theme={dexterTheme} withCssVariables defaultColorScheme="light">
       <Notifications position="top-right" zIndex={1000} />
       <App />
     </MantineProvider>

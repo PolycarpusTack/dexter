@@ -26,6 +26,68 @@ export enum ErrorCategory {
   Unknown = 'unknown'
 }
 
+// Model-related enums
+export enum ModelStatus {
+  AVAILABLE = 'available',
+  UNAVAILABLE = 'unavailable',
+  DOWNLOADING = 'downloading',
+  ERROR = 'error'
+}
+
+export enum ModelSize {
+  TINY = 'tiny',
+  SMALL = 'small',
+  MEDIUM = 'medium',
+  LARGE = 'large',
+  XLARGE = 'xlarge'
+}
+
+export enum ModelCapability {
+  TEXT = 'text',
+  CODE = 'code',
+  VISION = 'vision',
+  STRUCTURED = 'structured',
+  MULTILINGUAL = 'multilingual'
+}
+
+export enum ModelProvider {
+  OLLAMA = 'ollama',
+  OPENAI = 'openai',
+  ANTHROPIC = 'anthropic',
+  HUGGINGFACE = 'huggingface',
+  CUSTOM = 'custom'
+}
+
+// AI Model interfaces
+export interface Model {
+  id: string;
+  name: string;
+  description?: string;
+  provider: ModelProvider;
+  status: ModelStatus;
+  size: ModelSize;
+  size_mb?: number;
+  capabilities: ModelCapability[];
+  metrics?: {
+    avg_response_time?: number;
+    tokens_per_second?: number;
+  };
+  error?: string;
+}
+
+export interface ModelGroup {
+  name: string;
+  description?: string;
+  models: { id: string; priority?: number }[];
+}
+
+export interface FallbackChain {
+  name: string;
+  description?: string;
+  models: string[];
+  is_default: boolean;
+}
+
 // API Client interface
 export interface ApiClient {
   request<T = any>(config: ApiCallOptions): Promise<ApiResponse<T>>;
@@ -96,6 +158,7 @@ export interface ApiError {
   details?: any;
   originalError?: Error;
   isRetryable: boolean;
+  suppressNotifications?: boolean;  // Whether to suppress UI notifications for this error
 }
 
 // API Response interface
@@ -144,4 +207,57 @@ export interface AlertRule {
   name: string;
   conditions: any[];
   actions: any[];
+}
+
+// AI Model request and response types
+export interface ModelRequest {
+  model_id: string;
+  options?: Record<string, any>;
+}
+
+export interface ModelResponse {
+  model: Model;
+  status: string;
+  message?: string;
+}
+
+export interface ModelsResponse {
+  models: Model[];
+  groups: ModelGroup[];
+  fallback_chains: FallbackChain[];
+  current_model?: string;
+  current_fallback_chain?: string;
+  providers: string[];
+  status: Record<string, boolean>;
+}
+
+export interface ModelPreferences {
+  default_model_id?: string;
+  default_fallback_chain?: string;
+  provider_settings?: Record<string, any>;
+  ui_settings?: {
+    compact_view?: boolean;
+    advanced_mode?: boolean;
+  };
+}
+
+export interface AiModel {
+  id: string;
+  name: string;
+  provider: string;
+  capabilities: string[];
+}
+
+export interface ErrorExplanationRequest {
+  type: 'event' | 'issue' | 'text';
+  id?: string;
+  content?: string;
+  context?: Record<string, any>;
+}
+
+export interface ErrorExplanationResponse {
+  explanation: string;
+  model?: string;
+  processing_time?: number;
+  debug?: Record<string, any>;
 }

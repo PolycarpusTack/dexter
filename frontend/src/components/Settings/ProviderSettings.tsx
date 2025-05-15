@@ -204,9 +204,9 @@ const ProviderSettings: React.FC = () => {
         To use external AI providers like OpenAI and Anthropic, you need to provide valid API keys. These keys are stored on the server and never exposed to clients.
       </Alert>
       
-      <Tabs value={activeTab} onTabChange={setActiveTab}>
+      <Tabs value={activeTab} onChange={setActiveTab}>
         <Tabs.List>
-          <Tabs.Tab value="openai" icon={<IconApi size={14} />}>
+          <Tabs.Tab value="openai" leftSection={<IconApi size={14} />}>
             OpenAI
             {openAiConnectionStatus === 'success' && (
               <Badge color="green" size="xs" ml={5}>Connected</Badge>
@@ -215,7 +215,7 @@ const ProviderSettings: React.FC = () => {
               <Badge color="red" size="xs" ml={5}>Error</Badge>
             )}
           </Tabs.Tab>
-          <Tabs.Tab value="anthropic" icon={<IconApi size={14} />}>
+          <Tabs.Tab value="anthropic" leftSection={<IconApi size={14} />}>
             Anthropic
             {anthropicConnectionStatus === 'success' && (
               <Badge color="green" size="xs" ml={5}>Connected</Badge>
@@ -224,7 +224,7 @@ const ProviderSettings: React.FC = () => {
               <Badge color="red" size="xs" ml={5}>Error</Badge>
             )}
           </Tabs.Tab>
-          <Tabs.Tab value="ollama" icon={<IconServer size={14} />}>
+          <Tabs.Tab value="ollama" leftSection={<IconServer size={14} />}>
             Ollama
           </Tabs.Tab>
         </Tabs.List>

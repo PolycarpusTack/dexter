@@ -37,7 +37,7 @@ Overall Phase 1 progress: 100% complete
 | DEXTER-305 | ✅ Complete | Migrate ExplainError component to new API client |
 | DEXTER-306 | ✅ Complete | Remove obsolete API files after migration |
 
-Current API Client Migration progress: ~99% complete
+Current API Client Migration progress: 100% complete
 
 ### Codebase Structure
 
@@ -52,6 +52,7 @@ The frontend codebase is structured as:
     - React Query hooks for each domain (in `hooks/` directory)
   - `src/api/archived/` - Deprecated API modules (for backward compatibility)
     - Legacy API files with deprecation notices
+    - Re-exports from unified API for smooth migration
 - `src/components/` - React components
 - `src/hooks/` - Custom React hooks
 - `src/store/` - Global state management
@@ -145,9 +146,15 @@ The frontend codebase is structured as:
 - `/frontend/src/api/unified/issuesApi.ts` - Issues API module with unified interface
 - `/frontend/src/api/unified/analyzersApi.ts` - Analyzers API module for deadlock analysis
 - `/frontend/src/api/unified/aiApi.ts` - AI/Models API module for explanations
+- `/frontend/src/api/unified/metricsApi.ts` - Metrics API module for performance tracking
+- `/frontend/src/api/unified/templateApi.ts` - Templates API module for prompt management
+- `/frontend/src/api/unified/configApi.ts` - Configuration API module for app settings
 - `/frontend/src/api/unified/hooks/useEvents.ts` - Events API React Query hooks
 - `/frontend/src/api/unified/hooks/useIssues.ts` - Issues API React Query hooks
 - `/frontend/src/api/unified/hooks/useAi.ts` - AI API React Query hooks
+- `/frontend/src/api/unified/hooks/useMetrics.ts` - Metrics API React Query hooks
+- `/frontend/src/api/unified/hooks/useTemplates.ts` - Templates API React Query hooks
+- `/frontend/src/api/unified/hooks/useConfig.ts` - Configuration API React Query hooks
 
 ### Documentation
 - `/docs/consolidated/CONTEXT_AWARE_PROMPTING.md` - Context-aware prompting documentation

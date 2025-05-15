@@ -41,7 +41,7 @@ import {
   IconArrowDown,
   IconPlus,
   IconChartLine,
-  IconSort,
+  IconArrowsSort,
   IconCategory,
   IconLink,
   IconArrowsShuffle,
@@ -52,6 +52,8 @@ import {
 
 // Import from unified API
 import { api, hooks } from '../../api/unified';
+// Import useAi directly from the hooks file
+import useAi from '../../api/unified/hooks/useAi';
 import { 
   Model, 
   ModelCapability, 
@@ -66,7 +68,8 @@ import {
 import useAppStore from '../../store/appStore';
 import { notifications } from '@mantine/notifications';
 
-const { useAi } = hooks;
+// Remove this line that's causing the error
+// const { useAi } = hooks;
 
 interface ModelSelectorProps {
   onModelChange?: () => void;
@@ -627,7 +630,7 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                   { value: 'status', label: 'Status' },
                   { value: 'provider', label: 'Provider' }
                 ]}
-                icon={<IconSort size={14} />}
+                icon={<IconArrowsSort size={14} />}
               />
             </Group>
           </Paper>

@@ -156,11 +156,11 @@ export const TemplateDetail: React.FC = () => {
         />
       </Group>
 
-      <Tabs value={activeTab} onTabChange={setActiveTab}>
+      <Tabs value={activeTab} onChange={setActiveTab}>
         <Tabs.List>
-          <Tabs.Tab value="details" icon={<IconHistory size={14} />}>Template Details</Tabs.Tab>
-          <Tabs.Tab value="test" icon={<IconRocket size={14} />}>Test Template</Tabs.Tab>
-          <Tabs.Tab value="preview" icon={<IconRocket size={14} />}>Preview</Tabs.Tab>
+          <Tabs.Tab value="details" leftSection={<IconHistory size={14} />}>Template Details</Tabs.Tab>
+          <Tabs.Tab value="test" leftSection={<IconRocket size={14} />}>Test Template</Tabs.Tab>
+          <Tabs.Tab value="preview" leftSection={<IconRocket size={14} />}>Preview</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="details" pt="xs">

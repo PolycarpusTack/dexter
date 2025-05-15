@@ -280,16 +280,34 @@ export class EnhancedApiClient implements ApiClient {
           }
         }
         
-        // Log API errors
-        if (error.response) {
-          console.error(`API Error: ${error.response.status} ${error.response.statusText}`, error.config?.url);
-        } else if (error.request) {
-          console.error('API Error: No response received', error.config?.url);
-        } else {
-          console.error('API Error:', error.message);
+        // Get URL for analysis and specific error handling
+        const url = error.config?.url || '';
+        const status = error.response?.status;
+        // Update to include both ai and ai-enhanced paths, and both config/get and config/getConfig
+        const isCommonAPIEndpoint = url.includes('/api/config') || 
+                                   url.includes('/api/ai-enhanced/models') ||
+                                   url.includes('/api/ai/models');
+        
+        // Only log detailed error information for non-404 errors or if the endpoint
+        // isn't one of our common API endpoints that might not be available
+        if (!(status === 404 && isCommonAPIEndpoint)) {
+          if (error.response) {
+            console.error(`API Error: ${status} ${error.response.statusText}`, url);
+          } else if (error.request) {
+            console.error('API Error: No response received', url);
+          } else {
+            console.error('API Error:', error.message);
+          }
         }
         
-        return Promise.reject(this.createApiError(error));
+        const apiError = this.createApiError(error);
+        
+        // For certain common endpoints, add a flag to suppress notifications
+        if (isCommonAPIEndpoint && status === 404) {
+          apiError.suppressNotifications = true;
+        }
+        
+        return Promise.reject(apiError);
       }
     );
   }
@@ -348,6 +366,13 @@ export class EnhancedApiClient implements ApiClient {
       }
     }
     
+    // Determine if we should suppress notifications for this error
+    // Suppress common expected errors like missing endpoints
+    const shouldSuppressNotification = 
+      (status === 404 && (error.config?.url?.includes('/api/ai/models') || 
+                         error.config?.url?.includes('/api/config'))) || 
+      options?.errorHandling?.suppressNotifications;
+
     // Create the error object
     const apiError = new Error(message) as ApiError;
     apiError.name = 'ApiError';
@@ -357,6 +382,7 @@ export class EnhancedApiClient implements ApiClient {
     apiError.retryable = retryable;
     apiError.retryCount = 0;
     apiError.originalError = error;
+    apiError.suppressNotifications = !!shouldSuppressNotification;
     apiError.metadata = {
       url: error.config?.url,
       method: error.config?.method

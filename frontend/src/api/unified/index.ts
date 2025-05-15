@@ -20,6 +20,7 @@ import aiApi from './aiApi';
 import analyzersApi from './analyzersApi';
 import configApi from './configApi';
 import templateApi from './templateApi';
+import metricsApi from './metricsApi';
 
 // API hooks
 import { 
@@ -80,6 +81,16 @@ import {
   useRenderTemplate,
   useSetTemplateAsDefault
 } from './hooks/useTemplates';
+
+import {
+  useModelMetrics,
+  useModelMetricsByPeriod,
+  useTimeSeriesData,
+  useProviderMetrics,
+  useModelComparison,
+  useOverallMetrics,
+  useRecordUsage
+} from './hooks/useMetrics';
 
 // Types
 import {
@@ -151,7 +162,8 @@ export const api = {
   ai: aiApi,
   analyzers: analyzersApi,
   config: configApi,
-  templates: templateApi
+  templates: templateApi,
+  metrics: metricsApi
 };
 
 // Export all API hooks
@@ -206,7 +218,16 @@ export const hooks = {
   useUpdateTemplate,
   useDeleteTemplate,
   useRenderTemplate,
-  useSetTemplateAsDefault
+  useSetTemplateAsDefault,
+  
+  // Metrics hooks
+  useModelMetrics,
+  useModelMetricsByPeriod,
+  useTimeSeriesData,
+  useProviderMetrics,
+  useModelComparison,
+  useOverallMetrics,
+  useRecordUsage
 };
 
 // Export utilities
@@ -239,6 +260,17 @@ import {
   TemplateSearchParams,
   RenderTemplateResponse
 } from './templateApi';
+
+// Import metric types
+import type { 
+  MetricType, 
+  TimePeriod, 
+  TimeInterval, 
+  ModelMetrics,
+  TimeSeriesData,
+  ModelComparison,
+  UsageRecordRequest 
+} from '../../types/metrics';
 
 // Export types
 export type {
@@ -301,7 +333,16 @@ export type {
   CreateTemplateRequest,
   UpdateTemplateRequest,
   TemplateSearchParams,
-  RenderTemplateResponse
+  RenderTemplateResponse,
+  
+  // Metrics types
+  MetricType,
+  TimePeriod,
+  TimeInterval,
+  ModelMetrics,
+  TimeSeriesData,
+  ModelComparison,
+  UsageRecordRequest
 };
 
 // Export enums

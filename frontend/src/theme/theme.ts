@@ -289,6 +289,32 @@ export const dexterTheme: MantineThemeOverride = {
       colors.accent[800],
       colors.accent[900],
     ],
+    // Adding success color array
+    emerald: [
+      colors.success[50],
+      colors.success[100],
+      colors.success[200],
+      colors.success[300],
+      colors.success[400],
+      colors.success[500],
+      colors.success[600],
+      colors.success[700],
+      colors.success[800],
+      colors.success[900],
+    ],
+    // Adding info color array
+    indigo: [
+      colors.info[50],
+      colors.info[100],
+      colors.info[200],
+      colors.info[300],
+      colors.info[400],
+      colors.info[500],
+      colors.info[600],
+      colors.info[700],
+      colors.info[800],
+      colors.info[900],
+    ],
     red: [
       colors.error[50],
       colors.error[100],
@@ -326,10 +352,25 @@ export const dexterTheme: MantineThemeOverride = {
       colors.neutral[900],
     ],
     
-    // Custom semantic colors
-    background: colors.neutral[50],
-    surface: colors.neutral[100],
-    border: colors.neutral[300],
+    // Custom semantic colors - using proper 10-shade arrays
+    background: [
+      colors.neutral[50], colors.neutral[50], colors.neutral[50], 
+      colors.neutral[50], colors.neutral[50], colors.neutral[50],
+      colors.neutral[50], colors.neutral[50], colors.neutral[50], 
+      colors.neutral[50]
+    ],
+    surface: [
+      colors.neutral[100], colors.neutral[100], colors.neutral[100], 
+      colors.neutral[100], colors.neutral[100], colors.neutral[100],
+      colors.neutral[100], colors.neutral[100], colors.neutral[100], 
+      colors.neutral[100]
+    ],
+    border: [
+      colors.neutral[300], colors.neutral[300], colors.neutral[300], 
+      colors.neutral[300], colors.neutral[300], colors.neutral[300],
+      colors.neutral[300], colors.neutral[300], colors.neutral[300], 
+      colors.neutral[300]
+    ],
   },
   
   // Set primary color name (used by Mantine)
@@ -383,7 +424,8 @@ export const dexterTheme: MantineThemeOverride = {
           color: colors.neutral[700],
           fontWeight: 500,
           
-          '&[data-active]': {
+          // Changed to use camelCase dataActive as Mantine expects
+          '&[dataActive="true"]': {
             backgroundColor: theme.colors.blue[0],
             color: theme.colors.blue[7],
             fontWeight: 600,
@@ -454,7 +496,8 @@ export const dexterTheme: MantineThemeOverride = {
           fontWeight: 500,
           borderBottom: '2px solid transparent',
           
-          '&[data-active]': {
+          // Changed to use camelCase dataActive as Mantine expects
+          '&[dataActive="true"]': {
             borderBottomColor: theme.colors.blue[6],
           },
         },
@@ -486,7 +529,8 @@ export const dexterTheme: MantineThemeOverride = {
           fontSize: fontConfig.fontSizes.sm,
           color: colors.neutral[700],
           
-          '&[data-hovered]': {
+          // Changed to use camelCase dataHovered as Mantine expects
+          '&[dataHovered="true"]': {
             backgroundColor: colors.neutral[100],
           },
         },
@@ -574,6 +618,26 @@ export const dexterTheme: MantineThemeOverride = {
       size: 'sm',
       variant: 'light',
     },
+  },
+  
+  // Add CSS Variables Configuration - correctly configured for MantineCssVariables
+  cssVariables: {
+    include: ['color', 'fontFamily', 'fontSize', 'radius', 'spacing', 'shadow'],
+    variables: {
+      // Add explicit color mappings for light mode
+      '--mantine-color-primary': colors.primary[500],
+      '--mantine-color-accent': colors.accent[500],
+      '--mantine-color-success': colors.success[500],
+      '--mantine-color-error': colors.error[500],
+      '--mantine-color-warning': colors.warning[500],
+      '--mantine-color-info': colors.info[500],
+      '--mantine-color-text': colors.neutral[800],
+      '--mantine-color-background': colors.neutral[50],
+      '--mantine-color-surface': colors.neutral[100],
+      '--mantine-color-border': colors.neutral[300],
+    },
+    darkVariables: {},
+    defaultColorScheme: 'light',
   },
   
   // Global styles
