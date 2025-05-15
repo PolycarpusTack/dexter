@@ -1,6 +1,6 @@
 // File: frontend/src/components/Settings/SettingsInput.tsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   TextInput, 
   Button,
@@ -27,15 +27,30 @@ import {
   IconChevronUp,
   IconRefresh,
   IconBrain,
-  IconCheck
+  IconCheck,
+  IconAlertCircle
 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import useAppStore from '../../store/appStore';
-import { checkConfig } from '../../api/configApi';
-import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling';
 import InfoTooltip from '../UI/InfoTooltip';
 import AccessibleIcon from '../UI/AccessibleIcon';
 import ModelSelector from '../ModelSelector/ModelSelector';
+import { 
+  validateForm, 
+  required,
+  slug,
+  minLength,
+  maxLength
+} from '../../utils/formValidation';
+
+// Import the new API client
+import { 
+  hooks,
+  showErrorNotification
+} from '../../api/unified';
+
+// Destructure the hooks for better readability
+const { useCheckConfig } = hooks;
 
 // Define window interface to add our custom global function
 declare global {
@@ -44,15 +59,12 @@ declare global {
   }
 }
 
-interface ConfigResponse {
-  organization_slug: string;
-  project_slug: string;
-  [key: string]: any;
-}
+// Import types from unified API client
+import { Config, ConfigParams } from '../../api/unified';
 
-interface ConfigPayload {
-  organization_slug: string;
-  project_slug: string;
+interface FormErrors {
+  organization_slug: string | null;
+  project_slug: string | null;
 }
 
 /**
@@ -87,15 +99,106 @@ function SettingsInput(): JSX.Element {
   const [orgInput, setOrgInput] = useState<string>(organizationSlug || '');
   const [projectInput, setProjectInput] = useState<string>(projectSlug || '');
   const [activeTab, setActiveTab] = useState<string>('sentry');
+  const [formErrors, setFormErrors] = useState<FormErrors>({
+    organization_slug: null,
+    project_slug: null
+  });
+  const [touched, setTouched] = useState<Record<string, boolean>>({
+    organization_slug: false,
+    project_slug: false
+  });
   
-  // Mutation for checking configuration
-  const configMutation = useMutation<ConfigResponse, Error, ConfigPayload>({
-    mutationFn: checkConfig,
-    onSuccess: (data) => {
-      // Backend returns the updated config directly
+  // Define validation rules for our form fields
+  const validationRules = {
+    organization_slug: [
+      required('Organization slug is required'),
+      slug('Organization slug must contain only lowercase letters, numbers, and hyphens'),
+      minLength(2, 'Organization slug must be at least 2 characters'),
+      maxLength(64, 'Organization slug cannot exceed 64 characters')
+    ],
+    project_slug: [
+      required('Project slug is required'),
+      slug('Project slug must contain only lowercase letters, numbers, and hyphens'),
+      minLength(2, 'Project slug must be at least 2 characters'),
+      maxLength(64, 'Project slug cannot exceed 64 characters')
+    ]
+  };
+  
+  // Validate a specific field and update errors
+  const validateField = useCallback((field: keyof FormErrors, value: string) => {
+    const fieldRules = validationRules[field];
+    if (fieldRules) {
+      for (const rule of fieldRules) {
+        if (!rule.test(value)) {
+          setFormErrors(prev => ({ ...prev, [field]: rule.message }));
+          return false;
+        }
+      }
+      setFormErrors(prev => ({ ...prev, [field]: null }));
+      return true;
+    }
+    return true;
+  }, [validationRules]);
+  
+  // Update organization slug with validation
+  const handleOrgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.currentTarget.value;
+    setOrgInput(newValue);
+    if (touched.organization_slug) {
+      validateField('organization_slug', newValue);
+    }
+  };
+  
+  // Update project slug with validation
+  const handleProjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.currentTarget.value;
+    setProjectInput(newValue);
+    if (touched.project_slug) {
+      validateField('project_slug', newValue);
+    }
+  };
+  
+  // Mark field as touched when blur event occurs
+  const handleBlur = (field: keyof FormErrors) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    
+    if (field === 'organization_slug') {
+      validateField(field, orgInput);
+    } else if (field === 'project_slug') {
+      validateField(field, projectInput);
+    }
+  };
+  
+  // Validate entire form
+  const validateAllFields = () => {
+    const formValues = {
+      organization_slug: orgInput,
+      project_slug: projectInput
+    };
+    
+    const result = validateForm(formValues, validationRules);
+    setFormErrors(result.errors);
+    
+    // Mark all fields as touched
+    setTouched({
+      organization_slug: true,
+      project_slug: true
+    });
+    
+    return result.isValid;
+  };
+  
+  // Use the mutation hook from the unified API
+  const configMutation = useCheckConfig();
+  
+  // Hook for handling success and error cases
+  useEffect(() => {
+    // Handle success
+    if (configMutation.isSuccess && configMutation.data) {
+      const data = configMutation.data;
       if (data && data.organization_slug && data.project_slug) {
         setOrgProject(orgInput, projectInput);
-        showSuccessNotification({
+        hooks.utils.showSuccessNotification({
           title: 'Configuration Saved',
           message: `Connected to Sentry project: ${projectInput}`,
         });
@@ -105,21 +208,39 @@ function SettingsInput(): JSX.Element {
           error: new Error('Invalid response from server'),
         });
       }
-    },
-    onError: (error) => {
+    }
+    
+    // Handle error
+    if (configMutation.isError && configMutation.error) {
+      const error = configMutation.error as Error;
+      
+      // Check if the error message indicates an invalid org or project
+      if (error.message?.toLowerCase().includes('organization')) {
+        setFormErrors(prev => ({
+          ...prev,
+          organization_slug: 'Invalid organization slug'
+        }));
+      } else if (error.message?.toLowerCase().includes('project')) {
+        setFormErrors(prev => ({
+          ...prev,
+          project_slug: 'Invalid project slug'
+        }));
+      }
+      
       showErrorNotification({
         title: 'Configuration Error',
         error,
       });
-    },
-  });
+    }
+  }, [configMutation.isSuccess, configMutation.isError, configMutation.data, configMutation.error]);
   
   // Handler for saving configuration
   const handleSave = async (): Promise<void> => {
-    if (!orgInput.trim() || !projectInput.trim()) {
+    // First validate all fields
+    if (!validateAllFields()) {
       showErrorNotification({
         title: 'Validation Error',
-        error: new Error('Organization slug and project slug are required'),
+        error: new Error('Please correct the validation errors'),
       });
       return;
     }
@@ -128,6 +249,20 @@ function SettingsInput(): JSX.Element {
     configMutation.mutate({
       organization_slug: orgInput.trim(),
       project_slug: projectInput.trim(),
+    } as ConfigParams);
+  };
+  
+  // Reset form and errors
+  const handleReset = () => {
+    setOrgInput(organizationSlug || '');
+    setProjectInput(projectSlug || '');
+    setFormErrors({
+      organization_slug: null,
+      project_slug: null
+    });
+    setTouched({
+      organization_slug: false,
+      project_slug: false
     });
   };
   
@@ -155,6 +290,10 @@ function SettingsInput(): JSX.Element {
       </Badge>
     );
   };
+  
+  // Compute whether form is valid
+  const isFormValid = !formErrors.organization_slug && !formErrors.project_slug && 
+                      orgInput.trim() !== '' && projectInput.trim() !== '';
   
   return (
     <Paper 
@@ -285,38 +424,59 @@ function SettingsInput(): JSX.Element {
               />
             </Group>
             
-            {/* Form fields */}
+            {/* Form validation message */}
+            {(!isFormValid && (touched.organization_slug || touched.project_slug)) && (
+              <Alert
+                color="red"
+                variant="light"
+                icon={<IconAlertCircle size={16} />}
+                title="Please fix the following errors:"
+                mb="xs"
+              >
+                <Stack gap="xs">
+                  {formErrors.organization_slug && (
+                    <Text size="xs">• {formErrors.organization_slug}</Text>
+                  )}
+                  {formErrors.project_slug && (
+                    <Text size="xs">• {formErrors.project_slug}</Text>
+                  )}
+                </Stack>
+              </Alert>
+            )}
+            
+            {/* Form fields with enhanced validation */}
             <TextInput
               label="Organization Slug"
               placeholder="e.g., acme-corp"
               value={orgInput}
-              onChange={(e) => setOrgInput(e.currentTarget.value)}
+              onChange={handleOrgChange}
+              onBlur={() => handleBlur('organization_slug')}
               required
               leftSection={<IconDatabase size={16} />}
-              description="The slug of your Sentry organization"
+              description="The slug of your Sentry organization (lowercase letters, numbers, and hyphens)"
               aria-label="Sentry organization slug"
-              error={configMutation.isError && configMutation.error?.message?.includes('organization') ? 'Invalid organization' : null}
+              error={touched.organization_slug ? formErrors.organization_slug : null}
+              withAsterisk
             />
             
             <TextInput
               label="Project Slug"
               placeholder="e.g., frontend"
               value={projectInput}
-              onChange={(e) => setProjectInput(e.currentTarget.value)}
+              onChange={handleProjectChange}
+              onBlur={() => handleBlur('project_slug')}
               required
               leftSection={<IconDatabase size={16} />}
-              description="The slug of your Sentry project"
+              description="The slug of your Sentry project (lowercase letters, numbers, and hyphens)"
               aria-label="Sentry project slug"
-              error={configMutation.isError && configMutation.error?.message?.includes('project') ? 'Invalid project' : null}
+              error={touched.project_slug ? formErrors.project_slug : null}
+              withAsterisk
             />
             
             <Group justify="flex-end" mt="md">
               <Button
                 leftSection={<IconRefresh size={16} />}
-                onClick={() => {
-                  setOrgInput(organizationSlug || '');
-                  setProjectInput(projectSlug || '');
-                }}
+                onClick={handleReset}
                 variant="subtle"
                 color="gray"
                 disabled={configMutation.isPending}
@@ -328,6 +488,8 @@ function SettingsInput(): JSX.Element {
                 onClick={handleSave}
                 loading={configMutation.isPending}
                 leftSection={<IconCheck size={16} />}
+                disabled={!isFormValid}
+                color={isFormValid ? 'blue' : 'gray'}
               >
                 Save Configuration
               </Button>

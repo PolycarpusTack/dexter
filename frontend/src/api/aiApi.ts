@@ -3,6 +3,8 @@
 import { apiClient } from './apiClient';
 import ErrorFactory from '../utils/errorFactory';
 import { createErrorHandler } from '../utils/errorHandling';
+import { createPromptBundle } from '../utils/promptEngineering';
+import { EventDetails } from '../types/eventDetails';
 
 // Configure a longer timeout for AI requests (20 minutes)
 const AI_REQUEST_TIMEOUT = 20 * 60 * 1000; // 20 minutes in milliseconds, overriding LLM_TIMEOUT from config if needed
@@ -19,7 +21,7 @@ const handleAiError = createErrorHandler('AI Explanation Failed', {
  */
 export interface ExplainErrorParams {
   /** Sentry event data */
-  event_data: any;
+  event_data: EventDetails;
   /** Error type */
   error_type: string;
   /** Error message */
@@ -30,6 +32,12 @@ export interface ExplainErrorParams {
   model?: string;
   /** Whether to generate only a summary */
   summarize_only?: boolean;
+  /** Optional custom system prompt */
+  system_prompt?: string;
+  /** Optional custom user prompt */
+  user_prompt?: string;
+  /** Whether to use context-aware prompting */
+  use_context_aware_prompting?: boolean;
 }
 
 /**
@@ -55,18 +63,56 @@ export interface ExplainErrorResponse {
  * @returns The explanation response
  */
 export const explainError = async (params: ExplainErrorParams): Promise<ExplainErrorResponse> => {
-  const { event_data, error_type, error_message, retry_count = 0, model } = params;
+  const { 
+    event_data, 
+    error_type, 
+    error_message, 
+    retry_count = 0, 
+    model,
+    summarize_only = false,
+    system_prompt,
+    user_prompt,
+    use_context_aware_prompting = true
+  } = params;
   
   try {
+    // When context-aware prompting is enabled, generate specialized prompts
+    let requestParams: Record<string, any> = {
+      event_data,
+      error_type,
+      error_message,
+      retry_count,
+      model,
+      summarize_only
+    };
+
+    // If context-aware prompting is enabled and no custom prompts provided
+    if (use_context_aware_prompting && !system_prompt && !user_prompt) {
+      // Generate prompts based on error context
+      const { systemPrompt, userPrompt, errorContext } = createPromptBundle(event_data);
+      
+      // Add the generated prompts to the request
+      requestParams.system_prompt = systemPrompt;
+      requestParams.user_prompt = userPrompt;
+      
+      // Add context for analytics
+      requestParams.error_category = errorContext.category;
+      requestParams.error_context = {
+        category: errorContext.category,
+        subtype: errorContext.subtype,
+        severity: errorContext.severity,
+        hasSufficientDetails: errorContext.hasSufficientDetails
+      };
+    } 
+    // If custom prompts are provided, use them instead
+    else if (system_prompt || user_prompt) {
+      if (system_prompt) requestParams.system_prompt = system_prompt;
+      if (user_prompt) requestParams.user_prompt = user_prompt;
+    }
+    
     return await apiClient.post<ExplainErrorResponse>(
       `/explain`,
-      {
-        event_data,
-        error_type,
-        error_message,
-        retry_count,
-        model
-      },
+      requestParams,
       { 
         // Set a much longer timeout for AI explanation requests
         timeout: AI_REQUEST_TIMEOUT 
@@ -93,7 +139,8 @@ export const explainError = async (params: ExplainErrorParams): Promise<ExplainE
       metadata: {
         operation: 'explainError',
         errorType: error_type,
-        modelRequested: model
+        modelRequested: model,
+        useContextAwarePrompting: use_context_aware_prompting
       }
     });
   }

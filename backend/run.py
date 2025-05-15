@@ -12,9 +12,10 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         mode = sys.argv[1]
     
-    # Set environment variable
+    # Set environment variables for development
     os.environ["APP_MODE"] = mode
-    print(f"Starting Dexter in {mode} mode...")
+    os.environ["DEBUG"] = "true"  # Enable debug mode for development
+    print(f"Starting Dexter in {mode} mode (debug enabled)...")
     
     uvicorn.run(
         "app.main:app",

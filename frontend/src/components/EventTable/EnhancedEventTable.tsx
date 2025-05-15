@@ -1,4 +1,4 @@
-// frontend/src/components/EventTable/EnhancedEventTable.keyboard.tsx
+// frontend/src/components/EventTable/EnhancedEventTable.tsx
 
 import React, { useCallback, useMemo, useEffect, forwardRef, useImperativeHandle, useState, useRef } from 'react';
 import { 
@@ -41,7 +41,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
 import useAppStore from '../../store/appStore';
-import { fetchIssues } from '../../api/issuesApi';
+import { api } from '../../api/unified';
 import ExportControl from '../Export/ExportControl';
 import EmptyState from '../UI/EmptyState';
 import LoadingSkeleton from '../UI/LoadingSkeleton';
@@ -52,7 +52,8 @@ import EventRow from './EventRow';
 import { useAuditLog } from '../../hooks/useAuditLog';
 import { EventTableProps, EventTableRef } from './types';
 import { EventType, SortDirection, EventsResponse } from '../../types/eventTypes';
-import useEventTableKeyboardNav from './useKeyboardNav';
+import useTableKeyboardNavigation from '../../hooks/useTableKeyboardNavigation';
+import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
 import KeyboardShortcutsGuide from '../UI/KeyboardShortcutsGuide';
 import './EventTable.css';
 
@@ -100,16 +101,17 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
     }
   }, [effectiveOrgId, effectiveProjectId]);
   
-  // Fetch events/issues data
+  // Fetch events/issues data using the unified API client
   const { 
     data, 
     isLoading, 
     error, 
     refetch 
   } = useQuery<EventsResponse, Error>({
-    queryKey: ['issues', effectiveProjectId, page, search, levelFilter, sortBy, sortDirection, timeRange],
+    queryKey: ['issues', effectiveOrgId, effectiveProjectId, page, search, levelFilter, sortBy, sortDirection, timeRange],
     queryFn: async () => {
-      const issuesResponse = await fetchIssues({
+      // Use the getIssues method from our unified API
+      return api.events.getIssues({
         organization: effectiveOrgId || 'default',
         projectId: effectiveProjectId || 'default',
         timeRange,
@@ -120,28 +122,6 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
         page,
         perPage: maxItems
       });
-      
-      // Transform Issue[] to EventType[]
-      const events: EventType[] = issuesResponse.items.map(issue => ({
-        ...issue, // Spread first
-        id: issue.id,
-        title: issue.title,
-        message: issue.title || 'Unknown error', // Use title as message
-        level: issue.level || 'error', // Default to error if not present
-        timestamp: issue.lastSeen || issue.firstSeen || new Date().toISOString(),
-        count: issue.count || 1,
-        firstSeen: issue.firstSeen,
-        lastSeen: issue.lastSeen,
-        tags: issue.tags || [],
-        status: issue.status as 'unresolved' | 'resolved' | 'ignored' | undefined,
-        project: issue.project?.id || issue.project?.name
-      }));
-      
-      return {
-        items: events,
-        count: issuesResponse.count,
-        hasMore: !!issuesResponse.links?.next
-      };
     },
     // Allow the query to run even if we don't have real org/project IDs
     // This will use mock data in development mode
@@ -273,47 +253,113 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
       : <IconSortDescending size={14} />;
   };
   
-  // Set up keyboard navigation
-  const { selectedIndex, setSelectedIndex, selectedEvent } = useEventTableKeyboardNav(
-    data?.items,
-    tableContainerRef,
-    handleEventClick
-  );
+  // Setup enhanced keyboard navigation using our new hook
+  const {
+    focusedIndex,
+    handleKeyDown,
+    getRowProps,
+    getTableProps,
+    focusItem,
+    isSelected,
+    toggleSelection
+  } = useTableKeyboardNavigation<EventType>({
+    items: data?.items || [],
+    containerRef: tableContainerRef as React.RefObject<HTMLElement>,
+    onActivate: handleEventClick,
+    onToggle: (event, index, selected) => handleItemSelectToggle(event.id),
+    rowSelector: 'tbody tr',
+    listId: 'enhanced-event-table'
+  });
   
-  // Show current selected event in development
+  // Register component-specific shortcuts
+  const tableShortcuts = [
+    {
+      key: 'j',
+      action: () => {
+        if (data?.items?.length) {
+          focusItem(Math.min(focusedIndex + 1, data.items.length - 1));
+        }
+      },
+      description: 'Move to next event',
+      scope: 'event-table',
+      preventDefault: true
+    },
+    {
+      key: 'k',
+      action: () => {
+        if (data?.items?.length) {
+          focusItem(Math.max(focusedIndex - 1, 0));
+        }
+      },
+      description: 'Move to previous event',
+      scope: 'event-table',
+      preventDefault: true
+    },
+    {
+      key: 'o',
+      action: () => {
+        if (data?.items?.length && focusedIndex >= 0) {
+          handleEventClick(data.items[focusedIndex]);
+        }
+      },
+      description: 'Open selected event',
+      scope: 'event-table',
+      preventDefault: true
+    },
+    {
+      key: 'a',
+      action: handleSelectAllToggle,
+      description: 'Select/deselect all events',
+      scope: 'event-table',
+      preventDefault: true
+    },
+    {
+      key: 'r',
+      ctrl: true,
+      action: () => {
+        refetch();
+        logEvent('refresh', { method: 'keyboard' });
+      },
+      description: 'Refresh data',
+      scope: 'event-table',
+      preventDefault: true
+    }
+  ];
+  
+  // Initialize global shortcuts
+  const { setActiveScope, resetScope } = useGlobalShortcuts(tableShortcuts);
+  
+  // Set active scope when table receives focus
+  useEffect(() => {
+    const handleFocus = () => setActiveScope('event-table');
+    const handleBlur = () => resetScope();
+    
+    const element = tableContainerRef.current;
+    if (element) {
+      element.addEventListener('focus', handleFocus);
+      element.addEventListener('blur', handleBlur);
+      
+      return () => {
+        element.removeEventListener('focus', handleFocus);
+        element.removeEventListener('blur', handleBlur);
+      };
+    }
+  }, [setActiveScope, resetScope]);
+  
+  // Get the currently selected event
+  const selectedEvent = useMemo(() => {
+    if (!data?.items || focusedIndex < 0 || focusedIndex >= data.items.length) {
+      return null;
+    }
+    return data.items[focusedIndex];
+  }, [data, focusedIndex]);
+  
+  // Log selected event in development
   useEffect(() => {
     if (selectedEvent) {
       console.debug('Currently selected event:', selectedEvent.id);
     }
   }, [selectedEvent]);
-  
-  // Keyboard shortcut for refresh
-  useEffect(() => {
-    const handleKeyboardShortcuts = (e: KeyboardEvent) => {
-      // Check if we're in an input field
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-        return;
-      }
-      
-      // Ctrl+R or Cmd+R to refresh
-      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-        e.preventDefault(); // Prevent browser refresh
-        refetch();
-      }
-      
-      // ? key to show keyboard shortcuts
-      if (e.key === '?' && !e.ctrlKey && !e.altKey && !e.metaKey) {
-        e.preventDefault();
-        openKeyboardShortcuts();
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyboardShortcuts);
-    return () => {
-      window.removeEventListener('keydown', handleKeyboardShortcuts);
-    };
-  }, [refetch, openKeyboardShortcuts]);
   
   return (
     <ErrorBoundary
@@ -388,7 +434,7 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
               <IconKeyboard size={12} />
             </ThemeIcon>
             <Text size="xs">
-              <Text span fw={500}>Keyboard Navigation:</Text> Use arrow keys to navigate, Enter to select. Press ? for more shortcuts.
+              <Text span fw={500}>Keyboard Navigation:</Text> Use arrow keys to navigate, Enter to select, Space to mark. Press ? for more shortcuts.
             </Text>
             {selectedEvent && (
               <Badge size="xs" color="blue">
@@ -407,7 +453,13 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
         )}
         
         {/* Table */}
-        <Box ref={tableContainerRef} tabIndex={0} className="keyboard-navigable-table">
+        <Box
+          ref={tableContainerRef}
+          tabIndex={0}
+          className="keyboard-navigable-table"
+          onKeyDown={handleKeyDown}
+          {...getTableProps()}
+        >
           <ScrollArea>
             <Table style={{ minWidth: 800 }}>
               <thead>
@@ -512,11 +564,12 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
                       event={event}
                       onClick={handleEventClick}
                       onAction={handleEventAction}
-                      isSelected={index === selectedIndex}
-                      aria-selected={index === selectedIndex}
-                      onMouseEnter={() => setSelectedIndex(index)}
+                      isSelected={index === focusedIndex}
+                      aria-selected={index === focusedIndex}
+                      onMouseEnter={() => focusItem(index)}
                       isRowSelected={selectedItems.includes(event.id)}
                       onSelectToggle={handleItemSelectToggle}
+                      {...getRowProps(index)}
                     />
                   ))
                 )}
@@ -543,7 +596,10 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
               value={page}
               onChange={(newPage: number) => {
                 setPage(newPage);
-                setSelectedIndex(-1); // Reset selection when page changes
+                // Reset focus when page changes
+                setTimeout(() => {
+                  focusItem(0);
+                }, 100);
                 logEvent('pagination', { page: newPage });
               }}
               size="sm"
@@ -551,7 +607,7 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
           </Group>
         )}
         
-        {/* Keyboard shortcuts modal */}
+        {/* Keyboard shortcuts guide */}
         <KeyboardShortcutsGuide 
           opened={showKeyboardShortcuts}
           onClose={closeKeyboardShortcuts}

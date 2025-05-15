@@ -26,7 +26,8 @@ export default defineConfig({
   ],
   esbuild: {
     // Enable JSX in .js files
-    jsx: 'react',
+    jsx: 'automatic',
+    jsxImportSource: 'react',
     // Handle TypeScript
     include: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx']
   },
@@ -40,6 +41,11 @@ export default defineConfig({
         })
       ]
     }
+  },
+  define: {
+    // Fix for "exports is not defined" error
+    'global': 'window',
+    'process.env': process.env
   },
   server: {
     port: 5175,
@@ -127,8 +133,11 @@ export default defineConfig({
         'dynamic-import': true
       }
     },
+    include: ['react', 'react-dom'] // Force pre-bundling of React
   },
   resolve: {
-    extensions: ['.ts', '.tsx', '.js', '.jsx']
+    extensions: ['.ts', '.tsx', '.js', '.jsx'],
+    // Ensure proper resolution of CommonJS and ESM modules
+    mainFields: ['module', 'browser', 'main']
   }
 });

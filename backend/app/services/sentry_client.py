@@ -8,6 +8,20 @@ from ..models.sentry import SentryIssue, SentryEvent
 
 logger = logging.getLogger(__name__)
 
+# Global client instance
+_sentry_client = None
+
+def get_sentry_client() -> "SentryApiClient":
+    """Get the global SentryApiClient instance.
+    
+    Returns:
+        Global SentryApiClient instance
+    """
+    global _sentry_client
+    if _sentry_client is None:
+        _sentry_client = SentryApiClient(token=settings.sentry_token)
+    return _sentry_client
+
 
 class SentryApiClient:
     """Sentry API client using the unified API configuration system.

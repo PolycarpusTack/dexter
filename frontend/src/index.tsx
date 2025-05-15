@@ -1,7 +1,11 @@
 // File: frontend/src/index.tsx
 
+// Import ESM compatibility helpers FIRST
+import './esm-compat';
 // Import module polyfill to fix "exports is not defined" error
 import './modulePolyfill';
+// Import JSX runtime fix to handle JSX in TypeScript files
+import './fix-jsx-runtime';
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -11,6 +15,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import App from './App';
 import dexterTheme from './theme/theme';
+import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
 import './styles.css';
 
 // Create a QueryClient with proper error handling
@@ -61,5 +67,5 @@ root.render(
   </React.StrictMode>
 );
 
-// Export default component for compatibility
-export default App;
+// Do not export App again since this is an entry point
+// Just render the app to the DOM

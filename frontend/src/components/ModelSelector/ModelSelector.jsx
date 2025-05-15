@@ -27,9 +27,9 @@ import {
   IconChevronDown,
   IconInfoCircle
 } from '@tabler/icons-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchModelsList, pullModel, setActiveModel } from '../../api/modelApi';
-import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling';
+import { useQueryClient } from '@tanstack/react-query';
+import { useOllamaModels, usePullModel, useSetActiveModel } from '../../api/unified/hooks/useAi';
+import { showSuccessNotification } from '../../utils/errorHandling';
 import useAppStore from '../../store/appStore';
 
 /**
@@ -47,17 +47,14 @@ function ModelSelector({ onModelChange }) {
     setActiveAIModel: state.setActiveAIModel
   }));
   
-  // Fetch available models
+  // Fetch available models using the unified API hook
   const { 
     data: modelsData, 
     isLoading: isLoadingModels,
     isError: isModelsError,
     refetch: refetchModels
-  } = useQuery({
-    queryKey: ['ollamaModels'],
-    queryFn: fetchModelsList,
+  } = useOllamaModels({
     refetchInterval: 30000, // Refresh every 30 seconds to update download status
-    retry: 2,
     staleTime: 15000 // Consider stale after 15 seconds
   });
   
@@ -69,58 +66,11 @@ function ModelSelector({ onModelChange }) {
     }
   }, [modelsData, activeAIModel, setActiveAIModel]);
   
-  // Pull model mutation
-  const pullModelMutation = useMutation({
-    mutationFn: (modelName) => pullModel(modelName),
-    onSuccess: (data) => {
-      showSuccessNotification({
-        title: 'Model Download Started',
-        message: `Started downloading ${data.name || 'model'}. This may take several minutes to complete in the background.`,
-        autoClose: 8000
-      });
-      
-      // Show estimated download time if available
-      if (data.estimated_time) {
-        showSuccessNotification({
-          title: 'Download Time Estimate',
-          message: `Estimated download time: ${data.estimated_time} depending on your internet connection.`,
-          autoClose: 8000
-        });
-      }
-      
-      // Show a helpful message about download size
-      const modelSize = getEstimatedModelSize(data.name || '');
-      if (modelSize) {
-        showSuccessNotification({
-          title: 'Download Information',
-          message: `This model is approximately ${modelSize} in size. Please be patient while downloading.`,
-          autoClose: 8000
-        });
-      }
-      
-      // Automatically refresh the model list after a delay 
-      // to show the download status
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['ollamaModels'] });
-      }, 5000); // Check after 5 seconds
-      
-      // Also set up periodic checks for download status
-      const checkInterval = setInterval(() => {
-        queryClient.invalidateQueries({ queryKey: ['ollamaModels'] });
-      }, 30000); // Check every 30 seconds
-      
-      // Clear interval after 30 minutes (assuming any download would finish by then)
-      setTimeout(() => {
-        clearInterval(checkInterval);
-      }, 30 * 60 * 1000);
-    },
-    onError: (error) => {
-      showErrorNotification({
-        title: 'Model Download Failed',
-        error
-      });
-    }
-  });
+  // Pull model mutation from unified API hook
+  const pullModelMutation = usePullModel();
+  
+  // Set active model mutation from unified API hook
+  const selectModelMutation = useSetActiveModel();
   
   // Get estimated model size for information display
   const getEstimatedModelSize = (modelName) => {
@@ -134,42 +84,81 @@ function ModelSelector({ onModelChange }) {
     return null; // Unknown size
   };
   
-  // Select model mutation
-  const selectModelMutation = useMutation({
-    mutationFn: (modelName) => setActiveModel(modelName),
-    onSuccess: (data) => {
+  // Success handler for pull model
+  const handlePullModelSuccess = (data) => {
+    showSuccessNotification({
+      title: 'Model Download Started',
+      message: `Started downloading ${data.name || 'model'}. This may take several minutes to complete in the background.`,
+      autoClose: 8000
+    });
+    
+    // Show estimated download time if available
+    if (data.estimated_time) {
       showSuccessNotification({
-        title: 'Model Changed',
-        message: `Active model set to ${data.model}`
-      });
-      
-      // Update our local store
-      setActiveAIModel(data.model);
-      
-      // Invalidate cache
-      queryClient.invalidateQueries({ queryKey: ['ollamaModels'] });
-      
-      // Call the optional callback
-      if (onModelChange) {
-        onModelChange(data.model);
-      }
-    },
-    onError: (error) => {
-      showErrorNotification({
-        title: 'Failed to Change Model',
-        error
+        title: 'Download Time Estimate',
+        message: `Estimated download time: ${data.estimated_time} depending on your internet connection.`,
+        autoClose: 8000
       });
     }
-  });
+    
+    // Show a helpful message about download size
+    const modelSize = getEstimatedModelSize(data.name || '');
+    if (modelSize) {
+      showSuccessNotification({
+        title: 'Download Information',
+        message: `This model is approximately ${modelSize} in size. Please be patient while downloading.`,
+        autoClose: 8000
+      });
+    }
+    
+    // Automatically refresh the model list after a delay 
+    // to show the download status
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['ai', 'ollamaModels'] });
+    }, 5000); // Check after 5 seconds
+    
+    // Also set up periodic checks for download status
+    const checkInterval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['ai', 'ollamaModels'] });
+    }, 30000); // Check every 30 seconds
+    
+    // Clear interval after 30 minutes (assuming any download would finish by then)
+    setTimeout(() => {
+      clearInterval(checkInterval);
+    }, 30 * 60 * 1000);
+  };
+  
+  // Success handler for select model
+  const handleSelectModelSuccess = (data) => {
+    showSuccessNotification({
+      title: 'Model Changed',
+      message: `Active model set to ${data.model}`
+    });
+    
+    // Update our local store
+    setActiveAIModel(data.model);
+    
+    // Invalidate cache
+    queryClient.invalidateQueries({ queryKey: ['ai', 'ollamaModels'] });
+    
+    // Call the optional callback
+    if (onModelChange) {
+      onModelChange(data.model);
+    }
+  };
   
   // Handler for model selection
   const handleModelSelect = (modelName) => {
-    selectModelMutation.mutate(modelName);
+    selectModelMutation.mutate(modelName, {
+      onSuccess: handleSelectModelSuccess
+    });
   };
   
   // Handler for model download
   const handlePullModel = (modelName) => {
-    pullModelMutation.mutate(modelName);
+    pullModelMutation.mutate(modelName, {
+      onSuccess: handlePullModelSuccess
+    });
   };
   
   // Get traffic light status indicator for Ollama

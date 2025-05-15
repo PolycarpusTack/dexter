@@ -80,6 +80,8 @@ def _include_optional_routers(api_router: APIRouter, settings: AppSettings) -> N
         ("analyzers", "analyzers", settings.ENABLE_DEADLOCK_ANALYSIS),
         ("discover", "discover", True),  # Always enabled for now
         ("alerts", "alerts", True),      # Always enabled for now
+        ("templates", "templates", True),  # Template management system
+        ("metrics", "metrics", True),     # AI Performance Metrics
     ]
     
     for module_name, prefix, is_enabled in optional_routers:

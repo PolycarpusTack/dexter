@@ -15,8 +15,8 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { IconChevronDown, IconChevronUp, IconBrain } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
-import { explainError } from '../../../api/aiApi';
-import { showErrorNotification } from '../../../utils/errorHandling';
+import { api } from '../../../api/unified';
+import { utils } from '../../../api/unified';
 import { SentryEvent } from '../../../types/deadlock';
 import { EventType } from '../../../types/eventTypes';
 import { extractErrorType, extractErrorMessage } from '../../../utils/eventUtils';
@@ -65,16 +65,18 @@ const SummaryCell: React.FC<SummaryCellProps> = ({
     }
   }, [expanded, localExpanded, event.id, onExpand]);
   
-  // AI error summary mutation
+  // AI error summary mutation using unified API
   const aiSummaryMutation = useMutation({
-    mutationFn: () => explainError({ 
-      event_data: event,
-      error_type: errorType,
-      error_message: errorMessage,
-      summarize_only: true
+    mutationFn: () => api.ai.explainError({
+      eventData: event,
+      errorType: errorType,
+      errorMessage: errorMessage,
+      summarizeOnly: true,
+      model: 'default',
+      maxTokens: 150
     }),
     onError: (error) => {
-      showErrorNotification({
+      utils.showErrorNotification({
         title: 'AI Summary Failed',
         error: error as Error
       });

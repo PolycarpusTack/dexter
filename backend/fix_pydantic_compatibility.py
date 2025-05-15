@@ -39,7 +39,7 @@ def fix_file_for_pydantic_v2(file_path, dry_run=False):
     
     # Replace schema_extra with json_schema_extra
     schema_extra_pattern = r'schema_extra\s*='
-    replacement = r'json_json_json_json_schema_extra='
+    replacement = r'json_json_schema_extra='
     new_content, schema_extra_count = re.subn(schema_extra_pattern, replacement, content)
     if schema_extra_count > 0:
         modified = True

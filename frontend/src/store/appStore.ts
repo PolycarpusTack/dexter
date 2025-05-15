@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { PromptEngineeringLevel } from '../context/PromptEngineeringContext';
 
 /**
  * Interface for app store state
@@ -38,7 +39,7 @@ interface AppState {
     expandedStackTraces: boolean;
     /** Show context data */
     showContext: boolean;
-    /** Show raw event data */
+    /** Show raw data */
     showRawData: boolean;
     /** Default masking of sensitive data */
     defaultMasking: boolean;
@@ -49,6 +50,13 @@ interface AppState {
     enabled: boolean;
     /** Custom keyboard shortcuts */
     customShortcuts: Record<string, string>;
+  };
+  /** Prompt engineering preferences */
+  promptEngineeringPreferences?: {
+    /** Context-aware prompting level */
+    level: PromptEngineeringLevel;
+    /** Debug mode for prompt development */
+    debugMode: boolean;
   };
   
   // Actions
@@ -82,6 +90,8 @@ interface AppState {
   ) => void;
   /** Set custom keyboard shortcut */
   setCustomShortcut: (action: string, shortcut: string) => void;
+  /** Set prompt engineering preferences */
+  setPromptEngineeringPreferences: (preferences: AppState['promptEngineeringPreferences']) => void;
   /** Reset all settings to defaults */
   resetSettings: () => void;
   
@@ -128,6 +138,10 @@ const DEFAULT_SETTINGS = {
   keyboard: {
     enabled: true,
     customShortcuts: {}
+  },
+  promptEngineeringPreferences: {
+    level: PromptEngineeringLevel.ENHANCED,
+    debugMode: false
   }
 };
 
@@ -200,6 +214,10 @@ const useAppStore = create<AppState>()(
           }
         }
       })),
+      
+      setPromptEngineeringPreferences: (preferences) => set({ 
+        promptEngineeringPreferences: preferences 
+      }),
       
       resetSettings: () => set(DEFAULT_SETTINGS),
       

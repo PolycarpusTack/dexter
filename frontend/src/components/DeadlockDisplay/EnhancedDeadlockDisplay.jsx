@@ -47,8 +47,8 @@ import EnhancedGraphView from './EnhancedGraphView';
 import TableInfo from './TableInfo';
 import RecommendationPanel from './RecommendationPanel';
 
-// Import API functions - Use the enhanced API
-import { analyzeDeadlock, exportDeadlockSVG } from '../../api/enhancedDeadlockApi';
+// Import API functions from unified API
+import { api } from '../../api/unified';
 import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling';
 
 /**
@@ -102,7 +102,7 @@ function EnhancedDeadlockDisplay({ eventId, eventDetails }) {
     refetch
   } = useQuery({
     queryKey: ['deadlockAnalysis', uniqueId, useEnhancedAnalysis], // Include enhancement flag in the key
-    queryFn: () => analyzeDeadlock(eventId, { 
+    queryFn: () => api.analyzers.analyzeDeadlock(eventId, { 
       useEnhancedAnalysis,
       apiPath: useEnhancedAnalysis ? 'enhanced-analyzers' : 'analyzers'
     }),
@@ -124,7 +124,7 @@ function EnhancedDeadlockDisplay({ eventId, eventDetails }) {
     // Get the SVG element
     const svgElement = document.querySelector('.deadlock-graph svg');
     if (svgElement) {
-      exportDeadlockSVG(eventId, svgElement);
+      api.analyzers.exportDeadlockSVG(eventId, svgElement);
       showSuccessNotification({
         title: 'SVG Exported',
         message: 'Deadlock visualization has been exported as SVG'

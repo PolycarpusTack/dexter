@@ -80,15 +80,21 @@ const TableInfo: React.FC<TableInfoProps> = ({
     return data.processes.filter(process => process.inCycle);
   }, [data?.processes]);
   
-  // Filter relations involved in deadlock
+  // Memoized map of process PIDs for fast lookups
+  const cycleProcessIds = useMemo(() => {
+    const idMap = new Set<number>();
+    processesInCycle.forEach(p => idMap.add(p.pid));
+    return idMap;
+  }, [processesInCycle]);
+  
+  // Filter relations involved in deadlock with optimized lookup
   const relationsInDeadlock = useMemo(() => {
     if (!data?.relations) return [];
-    const processIds = processesInCycle.map(p => p.pid);
     
     return data.relations.filter(relation => 
-      relation.lockingProcesses?.some(pid => processIds.includes(pid))
+      relation.lockingProcesses?.some(pid => cycleProcessIds.has(pid))
     );
-  }, [data?.relations, processesInCycle]);
+  }, [data?.relations, cycleProcessIds]);
   
   // Process row component
   const ProcessRow = React.memo<{ process: Process }>(({ process }) => {
@@ -181,101 +187,162 @@ const TableInfo: React.FC<TableInfoProps> = ({
       );
     }
     
+    // Create a map of process wait events for fast lookup
+    const processWaitEvents = useMemo(() => {
+      if (!data?.processes) return new Map<number, string>();
+      
+      const eventMap = new Map<number, string>();
+      data.processes.forEach(process => {
+        if (process.waitEvent) {
+          eventMap.set(process.pid, process.waitEvent);
+        }
+      });
+      return eventMap;
+    }, [data?.processes]);
+    
+    // Memoize the process node renderer
+    const renderProcessNode = useCallback((pid: number, isFirstAgain: boolean = false) => (
+      <Box
+        p="sm"
+        style={{
+          backgroundColor: theme.fn.rgba(theme.colors.red[6], 0.1),
+          borderRadius: theme.radius.sm,
+          border: `1px solid ${theme.colors.red[3]}`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: '4px 8px',
+        }}
+      >
+        <Group spacing={5}>
+          <IconUserCode size={14} />
+          <Text fw={500} size="sm">Process {pid}</Text>
+        </Group>
+        
+        {!isFirstAgain && processWaitEvents.get(pid) && (
+          <Text size="xs" color="dimmed">
+            Waiting for: {processWaitEvents.get(pid)}
+          </Text>
+        )}
+      </Box>
+    ), [theme, processWaitEvents]);
+    
+    // Memoize chain nodes for stable rendering
+    const chainNodes = useMemo(() => {
+      return data.deadlockChain.map((pid: number, index: number) => (
+        <React.Fragment key={index}>
+          {index > 0 && (
+            <IconArrowRight size={16} color={theme.colors.gray[6]} />
+          )}
+          {renderProcessNode(pid)}
+        </React.Fragment>
+      ));
+    }, [data.deadlockChain, renderProcessNode, theme.colors.gray]);
+    
+    // Create cyclic connection if needed
+    const cyclicConnection = useMemo(() => {
+      if (data.deadlockChain.length <= 1) return null;
+      
+      return (
+        <>
+          <IconArrowRight size={16} color={theme.colors.gray[6]} />
+          {renderProcessNode(data.deadlockChain[0], true)}
+        </>
+      );
+    }, [data.deadlockChain, renderProcessNode, theme.colors.gray]);
+    
     return (
       <Paper p="md" withBorder>
         <Text fw={600} mb="sm">Deadlock Chain</Text>
         <Box style={{ maxWidth: '100%', overflowX: 'auto' }}>
           <Group spacing="xs" position="center" style={{ flexWrap: 'nowrap' }}>
-            {data.deadlockChain.map((pid: number, index: number) => (
-              <React.Fragment key={index}>
-                {index > 0 && (
-                  <IconArrowRight size={16} color={theme.colors.gray[6]} />
-                )}
-                <Box
-                  p="sm"
-                  style={{
-                    backgroundColor: theme.fn.rgba(theme.colors.red[6], 0.1),
-                    borderRadius: theme.radius.sm,
-                    border: `1px solid ${theme.colors.red[3]}`,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    padding: '4px 8px',
-                  }}
-                >
-                  <Group spacing={5}>
-                    <IconUserCode size={14} />
-                    <Text fw={500} size="sm">Process {pid}</Text>
-                  </Group>
-                  
-                  {data.processes?.find(p => p.pid === pid)?.waitEvent && (
-                    <Text size="xs" color="dimmed">
-                      Waiting for: {data.processes.find(p => p.pid === pid)?.waitEvent}
-                    </Text>
-                  )}
-                </Box>
-              </React.Fragment>
-            ))}
-            
-            {/* If it's a cycle, show the arrow back to the first process */}
-            {data.deadlockChain.length > 1 && (
-              <>
-                <IconArrowRight size={16} color={theme.colors.gray[6]} />
-                <Box
-                  p="sm"
-                  style={{
-                    backgroundColor: theme.fn.rgba(theme.colors.red[6], 0.1),
-                    borderRadius: theme.radius.sm,
-                    border: `1px solid ${theme.colors.red[3]}`,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    padding: '4px 8px',
-                  }}
-                >
-                  <Group spacing={5}>
-                    <IconUserCode size={14} />
-                    <Text fw={500} size="sm">Process {data.deadlockChain[0]}</Text>
-                  </Group>
-                </Box>
-              </>
-            )}
+            {chainNodes}
+            {cyclicConnection}
           </Group>
         </Box>
       </Paper>
     );
-  };
+  });
+  
+  // Lock compatibility matrix data - defined outside component for constant memory reference
+  const lockTypes = useMemo(() => [
+    'AccessShare', 'RowShare', 'RowExclusive', 'ShareUpdateExclusive', 
+    'Share', 'ShareRowExclusive', 'Exclusive', 'AccessExclusive'
+  ], []);
+  
+  // Compatibility matrix: true means compatible
+  const compatibilityMatrix = useMemo<Record<string, Record<string, boolean>>>(() => ({
+    'AccessShare': {
+      'AccessShare': true,
+      'RowShare': true,
+      'RowExclusive': true,
+      'ShareUpdateExclusive': true,
+      'Share': true,
+      'ShareRowExclusive': true,
+      'Exclusive': true,
+      'AccessExclusive': false
+    },
+    'RowShare': {
+      'AccessShare': true,
+      'RowShare': true,
+      'RowExclusive': true,
+      'ShareUpdateExclusive': true,
+      'Share': true,
+      'ShareRowExclusive': true,
+      'Exclusive': false,
+      'AccessExclusive': false
+    },
+    // ... and so on for all lock types
+  }), []);
   
   // Lock compatibility matrix component
-  const LockCompatibilityMatrix: React.FC = React.memo(() => {
-    // This is a simplified lock compatibility matrix for PostgreSQL
-    // In a full implementation, this would be fetched from the backend
-    const lockTypes = ['AccessShare', 'RowShare', 'RowExclusive', 'ShareUpdateExclusive', 'Share', 'ShareRowExclusive', 'Exclusive', 'AccessExclusive'];
+  const LockCompatibilityMatrix = React.memo(() => {
+    // Callback to determine compatibility, memoized to preserve reference
+    const getIsCompatible = React.useCallback((rowType: string, colType: string) => {
+      return compatibilityMatrix[rowType]?.[colType] ?? false;
+    }, [compatibilityMatrix]);
     
-    // Compatibility matrix: true means compatible
-    const compatibilityMatrix: Record<string, Record<string, boolean>> = {
-      'AccessShare': {
-        'AccessShare': true,
-        'RowShare': true,
-        'RowExclusive': true,
-        'ShareUpdateExclusive': true,
-        'Share': true,
-        'ShareRowExclusive': true,
-        'Exclusive': true,
-        'AccessExclusive': false
-      },
-      'RowShare': {
-        'AccessShare': true,
-        'RowShare': true,
-        'RowExclusive': true,
-        'ShareUpdateExclusive': true,
-        'Share': true,
-        'ShareRowExclusive': true,
-        'Exclusive': false,
-        'AccessExclusive': false
-      },
-      // ... and so on for all lock types
-    };
+    // Memoize the row rendering function
+    const renderMatrixRow = React.useCallback((rowLockType: string) => (
+      <tr key={rowLockType}>
+        <td>
+          <Tooltip label={rowLockType}>
+            <Text size="xs">{rowLockType.substring(0, 3)}</Text>
+          </Tooltip>
+        </td>
+        {lockTypes.map(colLockType => {
+          const isCompatible = getIsCompatible(rowLockType, colLockType);
+          
+          return (
+            <td key={colLockType} style={{ textAlign: 'center' }}>
+              <ThemeIcon 
+                size="sm" 
+                color={isCompatible ? 'green' : 'red'} 
+                variant="light"
+                radius="xl"
+              >
+                {isCompatible ? '✓' : '✗'}
+              </ThemeIcon>
+            </td>
+          );
+        })}
+      </tr>
+    ), [lockTypes, getIsCompatible]);
+    
+    // Memoize header cells
+    const headerCells = React.useMemo(() => lockTypes.map(lockType => (
+      <th key={lockType} style={{ textAlign: 'center' }}>
+        <Tooltip label={lockType}>
+          <Text size="xs">{lockType.substring(0, 3)}</Text>
+        </Tooltip>
+      </th>
+    )), [lockTypes]);
+    
+    // Memoize table rows
+    const tableRows = React.useMemo(() => 
+      lockTypes.map(rowLockType => renderMatrixRow(rowLockType)), 
+      [lockTypes, renderMatrixRow]
+    );
     
     return (
       <Paper p="md" withBorder>
@@ -298,42 +365,11 @@ const TableInfo: React.FC<TableInfoProps> = ({
             <thead>
               <tr>
                 <th></th>
-                {lockTypes.map(lockType => (
-                  <th key={lockType} style={{ textAlign: 'center' }}>
-                    <Tooltip label={lockType}>
-                      <Text size="xs">{lockType.substring(0, 3)}</Text>
-                    </Tooltip>
-                  </th>
-                ))}
+                {headerCells}
               </tr>
             </thead>
             <tbody>
-              {lockTypes.map(rowLockType => (
-                <tr key={rowLockType}>
-                  <td>
-                    <Tooltip label={rowLockType}>
-                      <Text size="xs">{rowLockType.substring(0, 3)}</Text>
-                    </Tooltip>
-                  </td>
-                  {lockTypes.map(colLockType => {
-                    // Default to false (incompatible) if not defined
-                    const isCompatible = compatibilityMatrix[rowLockType]?.[colLockType] ?? false;
-                    
-                    return (
-                      <td key={colLockType} style={{ textAlign: 'center' }}>
-                        <ThemeIcon 
-                          size="sm" 
-                          color={isCompatible ? 'green' : 'red'} 
-                          variant="light"
-                          radius="xl"
-                        >
-                          {isCompatible ? '✓' : '✗'}
-                        </ThemeIcon>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+              {tableRows}
             </tbody>
           </Table>
         </Box>
@@ -415,24 +451,48 @@ const TableInfo: React.FC<TableInfoProps> = ({
                   {data.processes.length} process{data.processes.length !== 1 ? 'es' : ''} involved in this deadlock
                 </Text>
                 <Box style={{ overflowX: 'auto' }}>
-                  <Table striped withBorder style={{ minWidth: 800 }}>
-                    <thead>
-                      <tr>
-                        <th>PID</th>
-                        <th>Application</th>
-                        <th>Username</th>
-                        <th>Database</th>
-                        <th>Wait Event</th>
-                        <th>Query</th>
-                        <th>Blocking PIDs</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.processes.map(process => (
-                        <ProcessRow key={process.pid} process={process} />
-                      ))}
-                    </tbody>
-                  </Table>
+                  <div style={{ minWidth: 800 }}>
+                    <Table striped withBorder style={{ width: '100%' }}>
+                      <thead>
+                        <tr>
+                          <th>PID</th>
+                          <th>Application</th>
+                          <th>Username</th>
+                          <th>Database</th>
+                          <th>Wait Event</th>
+                          <th>Query</th>
+                          <th>Blocking PIDs</th>
+                        </tr>
+                      </thead>
+                    </Table>
+                    
+                    {data.processes.length > 10 ? (
+                      <div style={{ height: '400px' }}>
+                        <VirtualList
+                          style={{ height: '100%', width: '100%' }}
+                          totalCount={data.processes.length}
+                          itemContent={(index) => {
+                            const process = data.processes[index];
+                            return (
+                              <Table striped withBorder style={{ width: '100%', tableLayout: 'fixed', borderTop: 'none' }}>
+                                <tbody>
+                                  <ProcessRow key={process.pid} process={process} />
+                                </tbody>
+                              </Table>
+                            );
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <Table striped withBorder style={{ width: '100%', borderTop: 'none' }}>
+                        <tbody>
+                          {data.processes.map(process => (
+                            <ProcessRow key={process.pid} process={process} />
+                          ))}
+                        </tbody>
+                      </Table>
+                    )}
+                  </div>
                 </Box>
               </>
             )}
@@ -443,21 +503,45 @@ const TableInfo: React.FC<TableInfoProps> = ({
                   {data.relations?.length || 0} table{(data.relations?.length || 0) !== 1 ? 's' : ''} involved in this deadlock
                 </Text>
                 <Box style={{ overflowX: 'auto' }}>
-                  <Table striped withBorder style={{ minWidth: 800 }}>
-                    <thead>
-                      <tr>
-                        <th>Relation ID</th>
-                        <th>Schema</th>
-                        <th>Name</th>
-                        <th>Locking Processes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.relations?.map(relation => (
-                        <RelationRow key={relation.relationId} relation={relation} />
-                      ))}
-                    </tbody>
-                  </Table>
+                  <div style={{ minWidth: 800 }}>
+                    <Table striped withBorder style={{ width: '100%' }}>
+                      <thead>
+                        <tr>
+                          <th>Relation ID</th>
+                          <th>Schema</th>
+                          <th>Name</th>
+                          <th>Locking Processes</th>
+                        </tr>
+                      </thead>
+                    </Table>
+                    
+                    {data.relations && data.relations.length > 10 ? (
+                      <div style={{ height: '400px' }}>
+                        <VirtualList
+                          style={{ height: '100%', width: '100%' }}
+                          totalCount={data.relations.length}
+                          itemContent={(index) => {
+                            const relation = data.relations![index];
+                            return (
+                              <Table striped withBorder style={{ width: '100%', tableLayout: 'fixed', borderTop: 'none' }}>
+                                <tbody>
+                                  <RelationRow key={relation.relationId} relation={relation} />
+                                </tbody>
+                              </Table>
+                            );
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <Table striped withBorder style={{ width: '100%', borderTop: 'none' }}>
+                        <tbody>
+                          {data.relations?.map(relation => (
+                            <RelationRow key={relation.relationId} relation={relation} />
+                          ))}
+                        </tbody>
+                      </Table>
+                    )}
+                  </div>
                 </Box>
               </>
             )}

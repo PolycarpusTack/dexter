@@ -43,8 +43,8 @@ import EnhancedGraphView from './EnhancedGraphView';
 import TableInfo from './TableInfo';
 import RecommendationPanel from './RecommendationPanel';
 
-// Import API functions - Use the enhanced API
-import { analyzeDeadlock, exportDeadlockSVG } from '../../api/enhancedDeadlockApi';
+// Import API functions from unified API client
+import { api } from '../../api/unified';
 import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling';
 
 // Define interfaces for props and data types
@@ -160,7 +160,7 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
     refetch
   } = useQuery<DeadlockData>({
     queryKey: ['deadlockAnalysis', uniqueId, useEnhancedAnalysis], // Include enhancement flag in the key
-    queryFn: () => analyzeDeadlock(eventId as string, { 
+    queryFn: () => api.analyzers.analyzeDeadlock(eventId as string, { 
       useEnhancedAnalysis,
       apiPath: useEnhancedAnalysis ? 'enhanced-analyzers' : 'analyzers'
     }),
@@ -182,7 +182,7 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
     // Get the SVG element
     const svgElement = document.querySelector('.deadlock-graph svg');
     if (svgElement && eventId) {
-      exportDeadlockSVG(eventId, svgElement as SVGElement);
+      api.analyzers.exportDeadlockSVG(eventId, svgElement as SVGElement);
       showSuccessNotification({
         title: 'SVG Exported',
         message: 'Deadlock visualization has been exported as SVG'

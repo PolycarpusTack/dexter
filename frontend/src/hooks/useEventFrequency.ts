@@ -1,7 +1,8 @@
 // File: src/hooks/useEventFrequency.ts
 
 import { useQuery } from '@tanstack/react-query';
-import { getErrorFrequency } from '../api/errorAnalyticsApi';
+import { api } from '../api/unified';
+import useAppStore from '../store/appStore';
 
 /**
  * Hook for fetching event frequency data
@@ -11,6 +12,10 @@ import { getErrorFrequency } from '../api/errorAnalyticsApi';
  * @returns Object with frequency data and status
  */
 export function useEventFrequency(eventId: string, timeRange: string = '24h') {
+  // Get organization from the store
+  const organizationSlug = useAppStore(state => state.organizationId || state.organizationSlug || 'default');
+  const projectSlug = useAppStore(state => state.projectId || state.projectSlug || 'default');
+
   const {
     data,
     isLoading,
@@ -18,11 +23,18 @@ export function useEventFrequency(eventId: string, timeRange: string = '24h') {
     error,
     refetch
   } = useQuery({
-    queryKey: ['eventFrequency', eventId, timeRange],
+    queryKey: ['eventFrequency', eventId, timeRange, organizationSlug, projectSlug],
     queryFn: async () => {
       // Call the API if available, fall back to mock data
       try {
-        return await getErrorFrequency(eventId, timeRange);
+        // Use the analytics API from unified API client
+        return await api.analytics.getErrorFrequency({
+          organizationSlug,
+          projectSlug,
+          eventId,
+          timeRange,
+          includePointData: true
+        });
       } catch (error) {
         // If API is not available, return mock data
         console.debug('Error frequency API not available, using mock data');

@@ -1,5 +1,6 @@
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconX } from '@tabler/icons-react';
+import React from 'react';
 
 /**
  * Error notification options
@@ -33,7 +34,7 @@ export const showSuccessNotification = (options: SuccessNotificationOptions) => 
     message,
     duration = 3000,
     withBorder = true,
-    icon = <IconCheck size={18} />
+    icon = React.createElement(IconCheck, { size: 18 })
   } = options;
   
   notifications.show({
@@ -56,7 +57,7 @@ export const showErrorNotification = (options: ErrorNotificationOptions) => {
     message,
     duration = 5000,
     withBorder = true,
-    icon = <IconX size={18} />
+    icon = React.createElement(IconX, { size: 18 })
   } = options;
   
   notifications.show({

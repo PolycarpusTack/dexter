@@ -8,10 +8,21 @@ validation using Pydantic.
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-
+from typing import Any, Dict, List, Optional, Union, ClassVar
+import sys
 import yaml
-from pydantic import BaseSettings, Field, validator
+from pydantic_settings import BaseSettings
+
+# Handle different Pydantic versions
+import pydantic
+from packaging import version
+
+PYDANTIC_V2 = version.parse(pydantic.__version__) >= version.parse('2.0.0')
+
+if PYDANTIC_V2:
+    from pydantic import field_validator
+else:
+    from pydantic import validator as field_validator
 
 
 class AppMode(str, Enum):
@@ -62,12 +73,33 @@ class AppSettings(BaseSettings):
     # External services
     SENTRY_DSN: Optional[str] = None
     SENTRY_ENVIRONMENT: str = "development"
+    
+    # Ollama settings
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama2"
+    
+    # OpenAI settings
+    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_ORGANIZATION_ID: Optional[str] = None
+    OPENAI_DEFAULT_MODEL: str = "gpt-4o"
+    OPENAI_API_BASE: Optional[str] = None
+    OPENAI_TIMEOUT: Optional[float] = None
+    OPENAI_MAX_RETRIES: Optional[int] = None
+    OPENAI_USE_AZURE: bool = False
+    
+    # Anthropic settings
+    ANTHROPIC_API_KEY: Optional[str] = None
+    ANTHROPIC_DEFAULT_MODEL: str = "claude-3-opus-20240229"
+    ANTHROPIC_API_BASE: Optional[str] = None
+    ANTHROPIC_API_VERSION: Optional[str] = None
+    ANTHROPIC_TIMEOUT: Optional[float] = None
+    ANTHROPIC_MAX_RETRIES: Optional[int] = None
     
     # Feature flags
     ENABLE_DEADLOCK_ANALYSIS: bool = True
     ENABLE_OLLAMA: bool = True
+    ENABLE_OPENAI: bool = False
+    ENABLE_ANTHROPIC: bool = False
     ENABLE_REAL_TIME: bool = False
     ENABLE_CACHING: bool = True
     
@@ -80,7 +112,7 @@ class AppSettings(BaseSettings):
     MAX_CONNECTIONS: int = 100
     
     # CORS settings
-    CORS_ORIGINS: List[str] = Field(default_factory=lambda: ["*"])
+    CORS_ORIGINS: List[str] = ["*"]
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOW_METHODS: List[str] = ["*"]
     CORS_ALLOW_HEADERS: List[str] = ["*"]
@@ -96,18 +128,22 @@ class AppSettings(BaseSettings):
     RECENT_ERRORS_LIMIT: int = 100  # Number of recent errors to keep in memory
     INCLUDE_STACK_TRACE: Optional[bool] = None  # None means use debug setting
     
-    @validator("PORT")
+    @field_validator("PORT")
     def validate_port(cls, v: int) -> int:
         """Ensure port is in valid range."""
         if not 1 <= v <= 65535:
             raise ValueError(f"Port must be between 1 and 65535, got {v}")
         return v
     
-    @validator("CORS_ORIGINS")
-    def validate_cors_origins(cls, v: List[str], values) -> List[str]:
+    @field_validator("CORS_ORIGINS")
+    def validate_cors_origins(cls, v: List[str], info_or_values) -> List[str]:
         """Warn about wildcard CORS in production."""
-        # Get the debugging status from the validated data
-        debug = values.get("DEBUG", False)
+        # Handle different parameter structure between Pydantic v1 and v2
+        if PYDANTIC_V2:
+            debug = info_or_values.data.get("DEBUG", False)
+        else:
+            debug = info_or_values.get("DEBUG", False)
+            
         if "*" in v and not debug:
             print("WARNING: Using wildcard CORS origins in non-debug mode")
         return v
@@ -119,11 +155,19 @@ class AppSettings(BaseSettings):
             return self.INCLUDE_STACK_TRACE
         return self.DEBUG
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
-        extra = "allow"
+    if PYDANTIC_V2:
+        model_config = {
+            "env_file": ".env",
+            "env_file_encoding": "utf-8",
+            "case_sensitive": True,
+            "extra": "allow"
+        }
+    else:
+        class Config:
+            env_file = ".env"
+            env_file_encoding = "utf-8"
+            case_sensitive = True
+            extra = "allow"
 
 
 def load_yaml_config(app_mode: Union[AppMode, str]) -> Dict[str, Any]:
@@ -205,7 +249,11 @@ def get_settings() -> AppSettings:
         print(f"Warning: Failed to apply YAML config: {str(e)}")
     
     # Apply env vars again to ensure they take highest precedence
-    settings_dict = settings.dict()
-    settings = AppSettings.parse_obj(settings_dict)
+    if PYDANTIC_V2:
+        settings_dict = settings.model_dump()
+        settings = AppSettings.model_validate(settings_dict)
+    else:
+        settings_dict = settings.dict()
+        settings = AppSettings.parse_obj(settings_dict)
     
     return settings

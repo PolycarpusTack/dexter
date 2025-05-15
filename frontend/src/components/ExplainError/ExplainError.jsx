@@ -32,7 +32,7 @@ import {
   IconSettings
 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
-import { explainError } from '../../api/aiApi';
+import { api } from '../../api/unified';
 import { showErrorNotification } from '../../utils/errorHandling';
 import AccessibleIcon from '../UI/AccessibleIcon';
 import ModelSelector from '../ModelSelector/ModelSelector';
@@ -60,7 +60,7 @@ function ExplainError({ eventDetails }) {
   
   // Mutation for AI explanation
   const explainMutation = useMutation({
-    mutationFn: (params) => explainError(params),
+    mutationFn: (params) => api.ai.explainError(params),
     onError: (error) => {
       showErrorNotification({
         title: 'AI Explanation Failed',

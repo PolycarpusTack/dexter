@@ -58,8 +58,9 @@ const EventRow: React.FC<ExtendedEventRowProps> = ({
   const logEvent = useAuditLog('EventRow');
   
   // Format timestamp to be more readable
-  const formattedTimestamp = event.timestamp 
-    ? formatDistanceToNow(new Date(event.timestamp), { addSuffix: true }) 
+  const timestamp = event.timestamp || event.lastSeen || event.dateCreated;
+  const formattedTimestamp = timestamp 
+    ? formatDistanceToNow(new Date(timestamp), { addSuffix: true }) 
     : 'Unknown time';
   
   // Format the level for display
@@ -78,10 +79,24 @@ const EventRow: React.FC<ExtendedEventRowProps> = ({
     if (onClick) onClick(event);
   };
   
-  // Extract tags for display
-  const tags = event.tags || [];
-  const displayTags = tags.slice(0, 3); // Show first 3 tags
-  const hasMoreTags = tags.length > 3;
+  // Extract tags for display - handle different tag formats from various API responses
+  const rawTags = event.tags || [];
+  const normalizedTags: EventTag[] = rawTags.map((tag: any) => {
+    if (typeof tag === 'string') {
+      return { key: tag, value: tag };
+    } else if (tag && typeof tag === 'object' && 'key' in tag && 'value' in tag) {
+      return tag as EventTag;
+    } else if (tag && typeof tag === 'object') {
+      // Try to extract key/value from other object formats
+      const key = Object.keys(tag)[0] || 'unknown';
+      return { key, value: String(tag[key] || '') };
+    } else {
+      return { key: 'tag', value: String(tag || '') };
+    }
+  });
+  
+  const displayTags = normalizedTags.slice(0, 3); // Show first 3 tags
+  const hasMoreTags = normalizedTags.length > 3;
   
   return (
     <tr
@@ -128,25 +143,19 @@ const EventRow: React.FC<ExtendedEventRowProps> = ({
           {/* Display tags using badges */}
           {displayTags.length > 0 && (
             <Group gap="xs" mt={4}>
-              {displayTags.map((tag, index) => {
-                const tagData = typeof tag === 'string' 
-                  ? { key: tag, value: tag } 
-                  : tag as EventTag;
-                  
-                return (
-                  <Badge 
-                    key={`${tagData.key}-${index}`}
-                    size="xs" 
-                    variant="outline"
-                  >
-                    {tagData.key}: {tagData.value}
-                  </Badge>
-                );
-              })}
+              {displayTags.map((tag, index) => (
+                <Badge 
+                  key={`${tag.key}-${index}`}
+                  size="xs" 
+                  variant="outline"
+                >
+                  {tag.key}: {tag.value}
+                </Badge>
+              ))}
               {hasMoreTags && (
-                <Tooltip label={`View all ${tags.length} tags`}>
+                <Tooltip label={`View all ${normalizedTags.length} tags`}>
                   <Badge size="xs" variant="filled" color="gray">
-                    +{tags.length - 3} more
+                    +{normalizedTags.length - 3} more
                   </Badge>
                 </Tooltip>
               )}

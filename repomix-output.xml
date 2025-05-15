@@ -143,6 +143,8 @@ backend/config/debug.yaml
 backend/config/enhanced.yaml
 backend/config/minimal.yaml
 backend/config/simplified.yaml
+backend/fix_dependencies.py
+backend/fix_dependencies2.py
 backend/fix_pydantic_compatibility.py
 backend/install_dependencies.bat
 backend/MIGRATION_ANNOUNCEMENT.md
@@ -154,6 +156,7 @@ backend/README_MIGRATION.md
 backend/README.md
 backend/redis-stub.py
 backend/repair_project.py
+backend/requirements-fixed.txt
 backend/requirements.txt
 backend/run_minimal.bat
 backend/run_simplified.bat
@@ -188,6 +191,11 @@ backend/tests/test_cache_service.py
 backend/tests/test_error_handler.py
 backend/tests/test_issue_assignment.py
 backend/tests/test_path_resolver.py
+backend/venv-py312/pyvenv.cfg
+backend/venv-py312/Scripts/activate
+backend/venv-py312/Scripts/activate.bat
+backend/venv-py312/Scripts/Activate.ps1
+backend/venv-py312/Scripts/deactivate.bat
 backend/verify_migration.bat
 backup/store/appStore.js
 backup/store/appStore.jsx
@@ -657,124 +665,701 @@ verify-imports.js
 <files>
 This section contains the contents of the repository's files.
 
-<file path="docs/ci_cd_coverage_reporting.md">
-# CI/CD Coverage Reporting Enhancement
+<file path="backend/fix_dependencies.py">
+import subprocess
+import sys
 
-## Analysis of Coverage Reporting in CI Pipeline
+def run_command(command):
+    print(f"Running: {command}")
+    subprocess.run(command, shell=True, check=True)
 
-### Current Configuration
+def main():
+    # Uninstall current potentially incompatible versions
+    run_command("pip uninstall -y fastapi uvicorn pydantic starlette")
+    
+    # Install versions known to work better with Python 3.13
+    run_command("pip install fastapi==0.103.1 uvicorn==0.23.2 pydantic==2.3.0 starlette==0.27.0")
+    
+    print("Dependency versions updated successfully!")
 
-In our CI/CD pipeline (`.github/workflows/test.yml`), the coverage reporting was previously configured with `fail_ci_if_error: false` for both backend and frontend coverage uploads:
+if __name__ == "__main__":
+    main()
+</file>
 
-```yaml
-- name: Upload backend coverage
-  uses: codecov/codecov-action@v3
-  with:
-    file: ./backend/coverage.xml
-    flags: backend
-    fail_ci_if_error: false  # Previous setting
+<file path="backend/fix_dependencies2.py">
+import subprocess
+import sys
 
-- name: Upload frontend coverage
-  uses: codecov/codecov-action@v3
-  with:
-    file: ./frontend/coverage/coverage-final.json
-    flags: frontend
-    fail_ci_if_error: false  # Previous setting
-```
+def run_command(command):
+    print(f"Running: {command}")
+    subprocess.run(command, shell=True, check=True)
 
-### Implications of the Previous Setting
+def main():
+    # Uninstall current potentially incompatible versions
+    run_command("pip uninstall -y fastapi uvicorn starlette")
+    
+    # Install versions that don't require Rust compilation
+    run_command("pip install --no-build-isolation --no-deps fastapi==0.95.2 uvicorn==0.22.0 starlette==0.27.0")
+    
+    print("Dependency versions updated successfully!")
 
-The `fail_ci_if_error: false` setting meant that if there was a problem uploading coverage reports to Codecov, the CI pipeline would continue and show as successful even though an important quality check failed. This created several potential issues:
+if __name__ == "__main__":
+    main()
+</file>
 
-1. **Silent Coverage Failures**: Coverage reporting problems weren't visible in the CI status, potentially allowing code with insufficient test coverage to be merged.
+<file path="backend/requirements-fixed.txt">
+fastapi==0.109.2
+uvicorn==0.27.1
+pydantic==2.6.1
+# Include other dependencies your project needs
+</file>
 
-2. **Delayed Detection**: Coverage issues might only be discovered later, making them more difficult and expensive to fix.
+<file path="backend/venv-py312/pyvenv.cfg">
+home = C:\Python312
+include-system-site-packages = false
+version = 3.12.4
+executable = C:\Python312\python.exe
+command = C:\Python312\python.exe -m venv C:\Projects\Dexter\backend\venv-py312
+</file>
 
-3. **Inconsistent Quality Enforcement**: While other CI checks (like tests themselves) may be enforced strictly, this created an inconsistency in how quality metrics are treated.
+<file path="backend/venv-py312/Scripts/activate">
+# This file must be used with "source bin/activate" *from bash*
+# You cannot run it directly
 
-4. **False Confidence**: Team members might assume code coverage is being tracked properly when it actually isn't.
+deactivate () {
+    # reset old environment variables
+    if [ -n "${_OLD_VIRTUAL_PATH:-}" ] ; then
+        PATH="${_OLD_VIRTUAL_PATH:-}"
+        export PATH
+        unset _OLD_VIRTUAL_PATH
+    fi
+    if [ -n "${_OLD_VIRTUAL_PYTHONHOME:-}" ] ; then
+        PYTHONHOME="${_OLD_VIRTUAL_PYTHONHOME:-}"
+        export PYTHONHOME
+        unset _OLD_VIRTUAL_PYTHONHOME
+    fi
 
-## Enhancement Rationale
+    # Call hash to forget past commands. Without forgetting
+    # past commands the $PATH changes we made may not be respected
+    hash -r 2> /dev/null
 
-Given Dexter's complexity and critical functionality as an AI-powered error monitoring and analysis tool, maintaining high test coverage is essential for:
+    if [ -n "${_OLD_VIRTUAL_PS1:-}" ] ; then
+        PS1="${_OLD_VIRTUAL_PS1:-}"
+        export PS1
+        unset _OLD_VIRTUAL_PS1
+    fi
 
-1. **Ensuring Reliability**: Dexter analyzes and visualizes error data that teams rely on for debugging. Test coverage helps ensure this analysis is reliable.
+    unset VIRTUAL_ENV
+    unset VIRTUAL_ENV_PROMPT
+    if [ ! "${1:-}" = "nondestructive" ] ; then
+    # Self destruct!
+        unset -f deactivate
+    fi
+}
 
-2. **Maintaining Feature Integrity**: Features like the PostgreSQL deadlock analyzer and the AI intelligence layer require thorough testing.
+# unset irrelevant variables
+deactivate nondestructive
 
-3. **Supporting API Integration**: The enhanced Sentry API integration includes complex features like caching, batch processing, and resilience patterns, which benefit from strong test coverage.
+# on Windows, a path can contain colons and backslashes and has to be converted:
+if [ "${OSTYPE:-}" = "cygwin" ] || [ "${OSTYPE:-}" = "msys" ] ; then
+    # transform D:\path\to\venv to /d/path/to/venv on MSYS
+    # and to /cygdrive/d/path/to/venv on Cygwin
+    export VIRTUAL_ENV=$(cygpath "C:\Projects\Dexter\backend\venv-py312")
+else
+    # use the path as-is
+    export VIRTUAL_ENV="C:\Projects\Dexter\backend\venv-py312"
+fi
 
-4. **Detecting Regressions**: As Dexter evolves, good coverage helps identify regressions when new features are added.
+_OLD_VIRTUAL_PATH="$PATH"
+PATH="$VIRTUAL_ENV/Scripts:$PATH"
+export PATH
 
-## Implementation
+# unset PYTHONHOME if set
+# this will fail if PYTHONHOME is set to the empty string (which is bad anyway)
+# could use `if (set -u; : $PYTHONHOME) ;` in bash
+if [ -n "${PYTHONHOME:-}" ] ; then
+    _OLD_VIRTUAL_PYTHONHOME="${PYTHONHOME:-}"
+    unset PYTHONHOME
+fi
 
-We've updated the CI configuration to treat coverage reporting failures as CI failures by changing `fail_ci_if_error` from `false` to `true`:
+if [ -z "${VIRTUAL_ENV_DISABLE_PROMPT:-}" ] ; then
+    _OLD_VIRTUAL_PS1="${PS1:-}"
+    PS1="(venv-py312) ${PS1:-}"
+    export PS1
+    VIRTUAL_ENV_PROMPT="(venv-py312) "
+    export VIRTUAL_ENV_PROMPT
+fi
 
-```yaml
-- name: Upload backend coverage
-  uses: codecov/codecov-action@v3
-  with:
-    file: ./backend/coverage.xml
-    flags: backend
-    fail_ci_if_error: true  # Updated setting
+# Call hash to forget past commands. Without forgetting
+# past commands the $PATH changes we made may not be respected
+hash -r 2> /dev/null
+</file>
 
-- name: Upload frontend coverage
-  uses: codecov/codecov-action@v3
-  with:
-    file: ./frontend/coverage/coverage-final.json
-    flags: frontend
-    fail_ci_if_error: true  # Updated setting
-```
+<file path="backend/venv-py312/Scripts/activate.bat">
+@echo off
 
-## Additional Coverage Safeguards
+rem This file is UTF-8 encoded, so we need to update the current code page while executing it
+for /f "tokens=2 delims=:." %%a in ('"%SystemRoot%\System32\chcp.com"') do (
+    set _OLD_CODEPAGE=%%a
+)
+if defined _OLD_CODEPAGE (
+    "%SystemRoot%\System32\chcp.com" 65001 > nul
+)
 
-To further strengthen our code quality checks, we recommend implementing these additional measures:
+set VIRTUAL_ENV=C:\Projects\Dexter\backend\venv-py312
 
-1. **Set Coverage Thresholds**:
-   - Configure minimum coverage thresholds in test runners (Jest for frontend, pytest for backend)
-   - Example for Jest: 
-     ```json
-     "jest": {
-       "coverageThreshold": {
-         "global": {
-           "branches": 80,
-           "functions": 80,
-           "lines": 80,
-           "statements": 80
-         }
-       }
-     }
-     ```
-   - Example for pytest:
-     ```ini
-     [tool:pytest]
-     cov_fail_under = 80
-     ```
+if not defined PROMPT set PROMPT=$P$G
 
-2. **Archive Coverage Reports**:
-   - Store coverage reports as artifacts in the CI pipeline for easier debugging:
-     ```yaml
-     - name: Archive code coverage results
-       uses: actions/upload-artifact@v2
-       with:
-         name: code-coverage-report
-         path: |
-           backend/coverage.xml
-           frontend/coverage/
-     ```
+if defined _OLD_VIRTUAL_PROMPT set PROMPT=%_OLD_VIRTUAL_PROMPT%
+if defined _OLD_VIRTUAL_PYTHONHOME set PYTHONHOME=%_OLD_VIRTUAL_PYTHONHOME%
 
-3. **Add Coverage Badges**:
-   - Add coverage badges to the README.md that visually indicate coverage status:
-     ```markdown
-     [![Backend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=backend)](https://codecov.io/gh/your-org/dexter)
-     [![Frontend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=frontend)](https://codecov.io/gh/your-org/dexter)
-     ```
+set _OLD_VIRTUAL_PROMPT=%PROMPT%
+set PROMPT=(venv-py312) %PROMPT%
 
-## Conclusion
+if defined PYTHONHOME set _OLD_VIRTUAL_PYTHONHOME=%PYTHONHOME%
+set PYTHONHOME=
 
-By changing `fail_ci_if_error` to `true` and implementing additional safeguards, we've strengthened our quality assurance process. This change ensures that coverage reporting is treated as a critical quality metric, aligning with Dexter's focus on robust engineering practices.
+if defined _OLD_VIRTUAL_PATH set PATH=%_OLD_VIRTUAL_PATH%
+if not defined _OLD_VIRTUAL_PATH set _OLD_VIRTUAL_PATH=%PATH%
 
-These improvements will help maintain high code quality as we continue to enhance Dexter's capabilities for error analysis, visualization, and workflow optimization.
+set PATH=%VIRTUAL_ENV%\Scripts;%PATH%
+set VIRTUAL_ENV_PROMPT=(venv-py312) 
+
+:END
+if defined _OLD_CODEPAGE (
+    "%SystemRoot%\System32\chcp.com" %_OLD_CODEPAGE% > nul
+    set _OLD_CODEPAGE=
+)
+</file>
+
+<file path="backend/venv-py312/Scripts/Activate.ps1">
+<#
+.Synopsis
+Activate a Python virtual environment for the current PowerShell session.
+
+.Description
+Pushes the python executable for a virtual environment to the front of the
+$Env:PATH environment variable and sets the prompt to signify that you are
+in a Python virtual environment. Makes use of the command line switches as
+well as the `pyvenv.cfg` file values present in the virtual environment.
+
+.Parameter VenvDir
+Path to the directory that contains the virtual environment to activate. The
+default value for this is the parent of the directory that the Activate.ps1
+script is located within.
+
+.Parameter Prompt
+The prompt prefix to display when this virtual environment is activated. By
+default, this prompt is the name of the virtual environment folder (VenvDir)
+surrounded by parentheses and followed by a single space (ie. '(.venv) ').
+
+.Example
+Activate.ps1
+Activates the Python virtual environment that contains the Activate.ps1 script.
+
+.Example
+Activate.ps1 -Verbose
+Activates the Python virtual environment that contains the Activate.ps1 script,
+and shows extra information about the activation as it executes.
+
+.Example
+Activate.ps1 -VenvDir C:\Users\MyUser\Common\.venv
+Activates the Python virtual environment located in the specified location.
+
+.Example
+Activate.ps1 -Prompt "MyPython"
+Activates the Python virtual environment that contains the Activate.ps1 script,
+and prefixes the current prompt with the specified string (surrounded in
+parentheses) while the virtual environment is active.
+
+.Notes
+On Windows, it may be required to enable this Activate.ps1 script by setting the
+execution policy for the user. You can do this by issuing the following PowerShell
+command:
+
+PS C:\> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+For more information on Execution Policies: 
+https://go.microsoft.com/fwlink/?LinkID=135170
+
+#>
+Param(
+    [Parameter(Mandatory = $false)]
+    [String]
+    $VenvDir,
+    [Parameter(Mandatory = $false)]
+    [String]
+    $Prompt
+)
+
+<# Function declarations --------------------------------------------------- #>
+
+<#
+.Synopsis
+Remove all shell session elements added by the Activate script, including the
+addition of the virtual environment's Python executable from the beginning of
+the PATH variable.
+
+.Parameter NonDestructive
+If present, do not remove this function from the global namespace for the
+session.
+
+#>
+function global:deactivate ([switch]$NonDestructive) {
+    # Revert to original values
+
+    # The prior prompt:
+    if (Test-Path -Path Function:_OLD_VIRTUAL_PROMPT) {
+        Copy-Item -Path Function:_OLD_VIRTUAL_PROMPT -Destination Function:prompt
+        Remove-Item -Path Function:_OLD_VIRTUAL_PROMPT
+    }
+
+    # The prior PYTHONHOME:
+    if (Test-Path -Path Env:_OLD_VIRTUAL_PYTHONHOME) {
+        Copy-Item -Path Env:_OLD_VIRTUAL_PYTHONHOME -Destination Env:PYTHONHOME
+        Remove-Item -Path Env:_OLD_VIRTUAL_PYTHONHOME
+    }
+
+    # The prior PATH:
+    if (Test-Path -Path Env:_OLD_VIRTUAL_PATH) {
+        Copy-Item -Path Env:_OLD_VIRTUAL_PATH -Destination Env:PATH
+        Remove-Item -Path Env:_OLD_VIRTUAL_PATH
+    }
+
+    # Just remove the VIRTUAL_ENV altogether:
+    if (Test-Path -Path Env:VIRTUAL_ENV) {
+        Remove-Item -Path env:VIRTUAL_ENV
+    }
+
+    # Just remove VIRTUAL_ENV_PROMPT altogether.
+    if (Test-Path -Path Env:VIRTUAL_ENV_PROMPT) {
+        Remove-Item -Path env:VIRTUAL_ENV_PROMPT
+    }
+
+    # Just remove the _PYTHON_VENV_PROMPT_PREFIX altogether:
+    if (Get-Variable -Name "_PYTHON_VENV_PROMPT_PREFIX" -ErrorAction SilentlyContinue) {
+        Remove-Variable -Name _PYTHON_VENV_PROMPT_PREFIX -Scope Global -Force
+    }
+
+    # Leave deactivate function in the global namespace if requested:
+    if (-not $NonDestructive) {
+        Remove-Item -Path function:deactivate
+    }
+}
+
+<#
+.Description
+Get-PyVenvConfig parses the values from the pyvenv.cfg file located in the
+given folder, and returns them in a map.
+
+For each line in the pyvenv.cfg file, if that line can be parsed into exactly
+two strings separated by `=` (with any amount of whitespace surrounding the =)
+then it is considered a `key = value` line. The left hand string is the key,
+the right hand is the value.
+
+If the value starts with a `'` or a `"` then the first and last character is
+stripped from the value before being captured.
+
+.Parameter ConfigDir
+Path to the directory that contains the `pyvenv.cfg` file.
+#>
+function Get-PyVenvConfig(
+    [String]
+    $ConfigDir
+) {
+    Write-Verbose "Given ConfigDir=$ConfigDir, obtain values in pyvenv.cfg"
+
+    # Ensure the file exists, and issue a warning if it doesn't (but still allow the function to continue).
+    $pyvenvConfigPath = Join-Path -Resolve -Path $ConfigDir -ChildPath 'pyvenv.cfg' -ErrorAction Continue
+
+    # An empty map will be returned if no config file is found.
+    $pyvenvConfig = @{ }
+
+    if ($pyvenvConfigPath) {
+
+        Write-Verbose "File exists, parse `key = value` lines"
+        $pyvenvConfigContent = Get-Content -Path $pyvenvConfigPath
+
+        $pyvenvConfigContent | ForEach-Object {
+            $keyval = $PSItem -split "\s*=\s*", 2
+            if ($keyval[0] -and $keyval[1]) {
+                $val = $keyval[1]
+
+                # Remove extraneous quotations around a string value.
+                if ("'""".Contains($val.Substring(0, 1))) {
+                    $val = $val.Substring(1, $val.Length - 2)
+                }
+
+                $pyvenvConfig[$keyval[0]] = $val
+                Write-Verbose "Adding Key: '$($keyval[0])'='$val'"
+            }
+        }
+    }
+    return $pyvenvConfig
+}
+
+
+<# Begin Activate script --------------------------------------------------- #>
+
+# Determine the containing directory of this script
+$VenvExecPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$VenvExecDir = Get-Item -Path $VenvExecPath
+
+Write-Verbose "Activation script is located in path: '$VenvExecPath'"
+Write-Verbose "VenvExecDir Fullname: '$($VenvExecDir.FullName)"
+Write-Verbose "VenvExecDir Name: '$($VenvExecDir.Name)"
+
+# Set values required in priority: CmdLine, ConfigFile, Default
+# First, get the location of the virtual environment, it might not be
+# VenvExecDir if specified on the command line.
+if ($VenvDir) {
+    Write-Verbose "VenvDir given as parameter, using '$VenvDir' to determine values"
+}
+else {
+    Write-Verbose "VenvDir not given as a parameter, using parent directory name as VenvDir."
+    $VenvDir = $VenvExecDir.Parent.FullName.TrimEnd("\\/")
+    Write-Verbose "VenvDir=$VenvDir"
+}
+
+# Next, read the `pyvenv.cfg` file to determine any required value such
+# as `prompt`.
+$pyvenvCfg = Get-PyVenvConfig -ConfigDir $VenvDir
+
+# Next, set the prompt from the command line, or the config file, or
+# just use the name of the virtual environment folder.
+if ($Prompt) {
+    Write-Verbose "Prompt specified as argument, using '$Prompt'"
+}
+else {
+    Write-Verbose "Prompt not specified as argument to script, checking pyvenv.cfg value"
+    if ($pyvenvCfg -and $pyvenvCfg['prompt']) {
+        Write-Verbose "  Setting based on value in pyvenv.cfg='$($pyvenvCfg['prompt'])'"
+        $Prompt = $pyvenvCfg['prompt'];
+    }
+    else {
+        Write-Verbose "  Setting prompt based on parent's directory's name. (Is the directory name passed to venv module when creating the virtual environment)"
+        Write-Verbose "  Got leaf-name of $VenvDir='$(Split-Path -Path $venvDir -Leaf)'"
+        $Prompt = Split-Path -Path $venvDir -Leaf
+    }
+}
+
+Write-Verbose "Prompt = '$Prompt'"
+Write-Verbose "VenvDir='$VenvDir'"
+
+# Deactivate any currently active virtual environment, but leave the
+# deactivate function in place.
+deactivate -nondestructive
+
+# Now set the environment variable VIRTUAL_ENV, used by many tools to determine
+# that there is an activated venv.
+$env:VIRTUAL_ENV = $VenvDir
+
+if (-not $Env:VIRTUAL_ENV_DISABLE_PROMPT) {
+
+    Write-Verbose "Setting prompt to '$Prompt'"
+
+    # Set the prompt to include the env name
+    # Make sure _OLD_VIRTUAL_PROMPT is global
+    function global:_OLD_VIRTUAL_PROMPT { "" }
+    Copy-Item -Path function:prompt -Destination function:_OLD_VIRTUAL_PROMPT
+    New-Variable -Name _PYTHON_VENV_PROMPT_PREFIX -Description "Python virtual environment prompt prefix" -Scope Global -Option ReadOnly -Visibility Public -Value $Prompt
+
+    function global:prompt {
+        Write-Host -NoNewline -ForegroundColor Green "($_PYTHON_VENV_PROMPT_PREFIX) "
+        _OLD_VIRTUAL_PROMPT
+    }
+    $env:VIRTUAL_ENV_PROMPT = $Prompt
+}
+
+# Clear PYTHONHOME
+if (Test-Path -Path Env:PYTHONHOME) {
+    Copy-Item -Path Env:PYTHONHOME -Destination Env:_OLD_VIRTUAL_PYTHONHOME
+    Remove-Item -Path Env:PYTHONHOME
+}
+
+# Add the venv to the PATH
+Copy-Item -Path Env:PATH -Destination Env:_OLD_VIRTUAL_PATH
+$Env:PATH = "$VenvExecDir$([System.IO.Path]::PathSeparator)$Env:PATH"
+
+# SIG # Begin signature block
+# MIIvIwYJKoZIhvcNAQcCoIIvFDCCLxACAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCBnL745ElCYk8vk
+# dBtMuQhLeWJ3ZGfzKW4DHCYzAn+QB6CCE8MwggWQMIIDeKADAgECAhAFmxtXno4h
+# MuI5B72nd3VcMA0GCSqGSIb3DQEBDAUAMGIxCzAJBgNVBAYTAlVTMRUwEwYDVQQK
+# EwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5jb20xITAfBgNV
+# BAMTGERpZ2lDZXJ0IFRydXN0ZWQgUm9vdCBHNDAeFw0xMzA4MDExMjAwMDBaFw0z
+# ODAxMTUxMjAwMDBaMGIxCzAJBgNVBAYTAlVTMRUwEwYDVQQKEwxEaWdpQ2VydCBJ
+# bmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5jb20xITAfBgNVBAMTGERpZ2lDZXJ0
+# IFRydXN0ZWQgUm9vdCBHNDCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIB
+# AL/mkHNo3rvkXUo8MCIwaTPswqclLskhPfKK2FnC4SmnPVirdprNrnsbhA3EMB/z
+# G6Q4FutWxpdtHauyefLKEdLkX9YFPFIPUh/GnhWlfr6fqVcWWVVyr2iTcMKyunWZ
+# anMylNEQRBAu34LzB4TmdDttceItDBvuINXJIB1jKS3O7F5OyJP4IWGbNOsFxl7s
+# Wxq868nPzaw0QF+xembud8hIqGZXV59UWI4MK7dPpzDZVu7Ke13jrclPXuU15zHL
+# 2pNe3I6PgNq2kZhAkHnDeMe2scS1ahg4AxCN2NQ3pC4FfYj1gj4QkXCrVYJBMtfb
+# BHMqbpEBfCFM1LyuGwN1XXhm2ToxRJozQL8I11pJpMLmqaBn3aQnvKFPObURWBf3
+# JFxGj2T3wWmIdph2PVldQnaHiZdpekjw4KISG2aadMreSx7nDmOu5tTvkpI6nj3c
+# AORFJYm2mkQZK37AlLTSYW3rM9nF30sEAMx9HJXDj/chsrIRt7t/8tWMcCxBYKqx
+# YxhElRp2Yn72gLD76GSmM9GJB+G9t+ZDpBi4pncB4Q+UDCEdslQpJYls5Q5SUUd0
+# viastkF13nqsX40/ybzTQRESW+UQUOsxxcpyFiIJ33xMdT9j7CFfxCBRa2+xq4aL
+# T8LWRV+dIPyhHsXAj6KxfgommfXkaS+YHS312amyHeUbAgMBAAGjQjBAMA8GA1Ud
+# EwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgGGMB0GA1UdDgQWBBTs1+OC0nFdZEzf
+# Lmc/57qYrhwPTzANBgkqhkiG9w0BAQwFAAOCAgEAu2HZfalsvhfEkRvDoaIAjeNk
+# aA9Wz3eucPn9mkqZucl4XAwMX+TmFClWCzZJXURj4K2clhhmGyMNPXnpbWvWVPjS
+# PMFDQK4dUPVS/JA7u5iZaWvHwaeoaKQn3J35J64whbn2Z006Po9ZOSJTROvIXQPK
+# 7VB6fWIhCoDIc2bRoAVgX+iltKevqPdtNZx8WorWojiZ83iL9E3SIAveBO6Mm0eB
+# cg3AFDLvMFkuruBx8lbkapdvklBtlo1oepqyNhR6BvIkuQkRUNcIsbiJeoQjYUIp
+# 5aPNoiBB19GcZNnqJqGLFNdMGbJQQXE9P01wI4YMStyB0swylIQNCAmXHE/A7msg
+# dDDS4Dk0EIUhFQEI6FUy3nFJ2SgXUE3mvk3RdazQyvtBuEOlqtPDBURPLDab4vri
+# RbgjU2wGb2dVf0a1TD9uKFp5JtKkqGKX0h7i7UqLvBv9R0oN32dmfrJbQdA75PQ7
+# 9ARj6e/CVABRoIoqyc54zNXqhwQYs86vSYiv85KZtrPmYQ/ShQDnUBrkG5WdGaG5
+# nLGbsQAe79APT0JsyQq87kP6OnGlyE0mpTX9iV28hWIdMtKgK1TtmlfB2/oQzxm3
+# i0objwG2J5VT6LaJbVu8aNQj6ItRolb58KaAoNYes7wPD1N1KarqE3fk3oyBIa0H
+# EEcRrYc9B9F1vM/zZn4wggawMIIEmKADAgECAhAIrUCyYNKcTJ9ezam9k67ZMA0G
+# CSqGSIb3DQEBDAUAMGIxCzAJBgNVBAYTAlVTMRUwEwYDVQQKEwxEaWdpQ2VydCBJ
+# bmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5jb20xITAfBgNVBAMTGERpZ2lDZXJ0
+# IFRydXN0ZWQgUm9vdCBHNDAeFw0yMTA0MjkwMDAwMDBaFw0zNjA0MjgyMzU5NTla
+# MGkxCzAJBgNVBAYTAlVTMRcwFQYDVQQKEw5EaWdpQ2VydCwgSW5jLjFBMD8GA1UE
+# AxM4RGlnaUNlcnQgVHJ1c3RlZCBHNCBDb2RlIFNpZ25pbmcgUlNBNDA5NiBTSEEz
+# ODQgMjAyMSBDQTEwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDVtC9C
+# 0CiteLdd1TlZG7GIQvUzjOs9gZdwxbvEhSYwn6SOaNhc9es0JAfhS0/TeEP0F9ce
+# 2vnS1WcaUk8OoVf8iJnBkcyBAz5NcCRks43iCH00fUyAVxJrQ5qZ8sU7H/Lvy0da
+# E6ZMswEgJfMQ04uy+wjwiuCdCcBlp/qYgEk1hz1RGeiQIXhFLqGfLOEYwhrMxe6T
+# SXBCMo/7xuoc82VokaJNTIIRSFJo3hC9FFdd6BgTZcV/sk+FLEikVoQ11vkunKoA
+# FdE3/hoGlMJ8yOobMubKwvSnowMOdKWvObarYBLj6Na59zHh3K3kGKDYwSNHR7Oh
+# D26jq22YBoMbt2pnLdK9RBqSEIGPsDsJ18ebMlrC/2pgVItJwZPt4bRc4G/rJvmM
+# 1bL5OBDm6s6R9b7T+2+TYTRcvJNFKIM2KmYoX7BzzosmJQayg9Rc9hUZTO1i4F4z
+# 8ujo7AqnsAMrkbI2eb73rQgedaZlzLvjSFDzd5Ea/ttQokbIYViY9XwCFjyDKK05
+# huzUtw1T0PhH5nUwjewwk3YUpltLXXRhTT8SkXbev1jLchApQfDVxW0mdmgRQRNY
+# mtwmKwH0iU1Z23jPgUo+QEdfyYFQc4UQIyFZYIpkVMHMIRroOBl8ZhzNeDhFMJlP
+# /2NPTLuqDQhTQXxYPUez+rbsjDIJAsxsPAxWEQIDAQABo4IBWTCCAVUwEgYDVR0T
+# AQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUaDfg67Y7+F8Rhvv+YXsIiGX0TkIwHwYD
+# VR0jBBgwFoAU7NfjgtJxXWRM3y5nP+e6mK4cD08wDgYDVR0PAQH/BAQDAgGGMBMG
+# A1UdJQQMMAoGCCsGAQUFBwMDMHcGCCsGAQUFBwEBBGswaTAkBggrBgEFBQcwAYYY
+# aHR0cDovL29jc3AuZGlnaWNlcnQuY29tMEEGCCsGAQUFBzAChjVodHRwOi8vY2Fj
+# ZXJ0cy5kaWdpY2VydC5jb20vRGlnaUNlcnRUcnVzdGVkUm9vdEc0LmNydDBDBgNV
+# HR8EPDA6MDigNqA0hjJodHRwOi8vY3JsMy5kaWdpY2VydC5jb20vRGlnaUNlcnRU
+# cnVzdGVkUm9vdEc0LmNybDAcBgNVHSAEFTATMAcGBWeBDAEDMAgGBmeBDAEEATAN
+# BgkqhkiG9w0BAQwFAAOCAgEAOiNEPY0Idu6PvDqZ01bgAhql+Eg08yy25nRm95Ry
+# sQDKr2wwJxMSnpBEn0v9nqN8JtU3vDpdSG2V1T9J9Ce7FoFFUP2cvbaF4HZ+N3HL
+# IvdaqpDP9ZNq4+sg0dVQeYiaiorBtr2hSBh+3NiAGhEZGM1hmYFW9snjdufE5Btf
+# Q/g+lP92OT2e1JnPSt0o618moZVYSNUa/tcnP/2Q0XaG3RywYFzzDaju4ImhvTnh
+# OE7abrs2nfvlIVNaw8rpavGiPttDuDPITzgUkpn13c5UbdldAhQfQDN8A+KVssIh
+# dXNSy0bYxDQcoqVLjc1vdjcshT8azibpGL6QB7BDf5WIIIJw8MzK7/0pNVwfiThV
+# 9zeKiwmhywvpMRr/LhlcOXHhvpynCgbWJme3kuZOX956rEnPLqR0kq3bPKSchh/j
+# wVYbKyP/j7XqiHtwa+aguv06P0WmxOgWkVKLQcBIhEuWTatEQOON8BUozu3xGFYH
+# Ki8QxAwIZDwzj64ojDzLj4gLDb879M4ee47vtevLt/B3E+bnKD+sEq6lLyJsQfmC
+# XBVmzGwOysWGw/YmMwwHS6DTBwJqakAwSEs0qFEgu60bhQjiWQ1tygVQK+pKHJ6l
+# /aCnHwZ05/LWUpD9r4VIIflXO7ScA+2GRfS0YW6/aOImYIbqyK+p/pQd52MbOoZW
+# eE4wggd3MIIFX6ADAgECAhAHHxQbizANJfMU6yMM0NHdMA0GCSqGSIb3DQEBCwUA
+# MGkxCzAJBgNVBAYTAlVTMRcwFQYDVQQKEw5EaWdpQ2VydCwgSW5jLjFBMD8GA1UE
+# AxM4RGlnaUNlcnQgVHJ1c3RlZCBHNCBDb2RlIFNpZ25pbmcgUlNBNDA5NiBTSEEz
+# ODQgMjAyMSBDQTEwHhcNMjIwMTE3MDAwMDAwWhcNMjUwMTE1MjM1OTU5WjB8MQsw
+# CQYDVQQGEwJVUzEPMA0GA1UECBMGT3JlZ29uMRIwEAYDVQQHEwlCZWF2ZXJ0b24x
+# IzAhBgNVBAoTGlB5dGhvbiBTb2Z0d2FyZSBGb3VuZGF0aW9uMSMwIQYDVQQDExpQ
+# eXRob24gU29mdHdhcmUgRm91bmRhdGlvbjCCAiIwDQYJKoZIhvcNAQEBBQADggIP
+# ADCCAgoCggIBAKgc0BTT+iKbtK6f2mr9pNMUTcAJxKdsuOiSYgDFfwhjQy89koM7
+# uP+QV/gwx8MzEt3c9tLJvDccVWQ8H7mVsk/K+X+IufBLCgUi0GGAZUegEAeRlSXx
+# xhYScr818ma8EvGIZdiSOhqjYc4KnfgfIS4RLtZSrDFG2tN16yS8skFa3IHyvWdb
+# D9PvZ4iYNAS4pjYDRjT/9uzPZ4Pan+53xZIcDgjiTwOh8VGuppxcia6a7xCyKoOA
+# GjvCyQsj5223v1/Ig7Dp9mGI+nh1E3IwmyTIIuVHyK6Lqu352diDY+iCMpk9Zanm
+# SjmB+GMVs+H/gOiofjjtf6oz0ki3rb7sQ8fTnonIL9dyGTJ0ZFYKeb6BLA66d2GA
+# LwxZhLe5WH4Np9HcyXHACkppsE6ynYjTOd7+jN1PRJahN1oERzTzEiV6nCO1M3U1
+# HbPTGyq52IMFSBM2/07WTJSbOeXjvYR7aUxK9/ZkJiacl2iZI7IWe7JKhHohqKuc
+# eQNyOzxTakLcRkzynvIrk33R9YVqtB4L6wtFxhUjvDnQg16xot2KVPdfyPAWd81w
+# tZADmrUtsZ9qG79x1hBdyOl4vUtVPECuyhCxaw+faVjumapPUnwo8ygflJJ74J+B
+# Yxf6UuD7m8yzsfXWkdv52DjL74TxzuFTLHPyARWCSCAbzn3ZIly+qIqDAgMBAAGj
+# ggIGMIICAjAfBgNVHSMEGDAWgBRoN+Drtjv4XxGG+/5hewiIZfROQjAdBgNVHQ4E
+# FgQUt/1Teh2XDuUj2WW3siYWJgkZHA8wDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQM
+# MAoGCCsGAQUFBwMDMIG1BgNVHR8Ega0wgaowU6BRoE+GTWh0dHA6Ly9jcmwzLmRp
+# Z2ljZXJ0LmNvbS9EaWdpQ2VydFRydXN0ZWRHNENvZGVTaWduaW5nUlNBNDA5NlNI
+# QTM4NDIwMjFDQTEuY3JsMFOgUaBPhk1odHRwOi8vY3JsNC5kaWdpY2VydC5jb20v
+# RGlnaUNlcnRUcnVzdGVkRzRDb2RlU2lnbmluZ1JTQTQwOTZTSEEzODQyMDIxQ0Ex
+# LmNybDA+BgNVHSAENzA1MDMGBmeBDAEEATApMCcGCCsGAQUFBwIBFhtodHRwOi8v
+# d3d3LmRpZ2ljZXJ0LmNvbS9DUFMwgZQGCCsGAQUFBwEBBIGHMIGEMCQGCCsGAQUF
+# BzABhhhodHRwOi8vb2NzcC5kaWdpY2VydC5jb20wXAYIKwYBBQUHMAKGUGh0dHA6
+# Ly9jYWNlcnRzLmRpZ2ljZXJ0LmNvbS9EaWdpQ2VydFRydXN0ZWRHNENvZGVTaWdu
+# aW5nUlNBNDA5NlNIQTM4NDIwMjFDQTEuY3J0MAwGA1UdEwEB/wQCMAAwDQYJKoZI
+# hvcNAQELBQADggIBABxv4AeV/5ltkELHSC63fXAFYS5tadcWTiNc2rskrNLrfH1N
+# s0vgSZFoQxYBFKI159E8oQQ1SKbTEubZ/B9kmHPhprHya08+VVzxC88pOEvz68nA
+# 82oEM09584aILqYmj8Pj7h/kmZNzuEL7WiwFa/U1hX+XiWfLIJQsAHBla0i7QRF2
+# de8/VSF0XXFa2kBQ6aiTsiLyKPNbaNtbcucaUdn6vVUS5izWOXM95BSkFSKdE45O
+# q3FForNJXjBvSCpwcP36WklaHL+aHu1upIhCTUkzTHMh8b86WmjRUqbrnvdyR2yd
+# I5l1OqcMBjkpPpIV6wcc+KY/RH2xvVuuoHjlUjwq2bHiNoX+W1scCpnA8YTs2d50
+# jDHUgwUo+ciwpffH0Riq132NFmrH3r67VaN3TuBxjI8SIZM58WEDkbeoriDk3hxU
+# 8ZWV7b8AW6oyVBGfM06UgkfMb58h+tJPrFx8VI/WLq1dTqMfZOm5cuclMnUHs2uq
+# rRNtnV8UfidPBL4ZHkTcClQbCoz0UbLhkiDvIS00Dn+BBcxw/TKqVL4Oaz3bkMSs
+# M46LciTeucHY9ExRVt3zy7i149sd+F4QozPqn7FrSVHXmem3r7bjyHTxOgqxRCVa
+# 18Vtx7P/8bYSBeS+WHCKcliFCecspusCDSlnRUjZwyPdP0VHxaZg2unjHY3rMYIa
+# tjCCGrICAQEwfTBpMQswCQYDVQQGEwJVUzEXMBUGA1UEChMORGlnaUNlcnQsIElu
+# Yy4xQTA/BgNVBAMTOERpZ2lDZXJ0IFRydXN0ZWQgRzQgQ29kZSBTaWduaW5nIFJT
+# QTQwOTYgU0hBMzg0IDIwMjEgQ0ExAhAHHxQbizANJfMU6yMM0NHdMA0GCWCGSAFl
+# AwQCAQUAoIHIMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcC
+# AQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCBnAZ6P7YvTwq0fbF62
+# o7E75R0LxsW5OtyYiFESQckLhjBcBgorBgEEAYI3AgEMMU4wTKBGgEQAQgB1AGkA
+# bAB0ADoAIABSAGUAbABlAGEAcwBlAF8AdgAzAC4AMQAyAC4ANABfADIAMAAyADQA
+# MAA2ADAANgAuADAAMaECgAAwDQYJKoZIhvcNAQEBBQAEggIAV29hYhi09QNyGtav
+# HZIo33y/iqXsIa4o88S5gzBa7Nnkwra0QLitSjvRfVbcFvq54Id+VIn00di4Nde0
+# maAUKPGXtTQL48esG/F/TLDOWd/jb9qCYHyNZYpJjKdXqI8IbyG6Pl05IMSas7wX
+# DHsK19ZEGuGrmKCAxh6JbFXADgeUbftg3i9UxpMnfSugZjjdKIdyVWlzUnpYkKuI
+# fpafwvNHfIYzfxOeV9CWsdqe34D6fRrEs8ZDEZSQl+Mw9aGaT39vuryFE1iKOzj0
+# uqrX/wN/wwu8oLWNC7JWE8SDG3eD0QLy+x7zEnlPkWsRV9nGOgrP9Khge0LgL+jP
+# Km8iDs7fSGEOB/7PPxAl8yshEULOZAhBhcsGeGs+kQrVzlqZ9WlrU1Z1cylpLWzX
+# Kkvs2DXD+zrplhpiVv6Gnn3YMBr4BKf0mXESTX9/BzIwvxlkhpv/BT0OWwrDlgPM
+# hNj8jA5r2/WSqCg15DYjJ0RlnCerC/ORhSbs7v/HjpmH3DhaICJF7tdyFSIFXgNV
+# W0GyQJMulQDEPd2+o+PNyAPElvGC3SYTjVnRLPcJTGhAt+VuHfnMG4HNkmyeU+nk
+# OAMShxEax6NLeRsjKqqABUgZb2g4FSmXzHy7HgQOPmCQMv8xH4m8u992YMLyxh5U
+# gGRUOUiAhrHXNZ6wG6T52NGQppehghc/MIIXOwYKKwYBBAGCNwMDATGCFyswghcn
+# BgkqhkiG9w0BBwKgghcYMIIXFAIBAzEPMA0GCWCGSAFlAwQCAQUAMHcGCyqGSIb3
+# DQEJEAEEoGgEZjBkAgEBBglghkgBhv1sBwEwMTANBglghkgBZQMEAgEFAAQg+eJt
+# Pwl5Hz89rrpf2qbsjNAUNlBq9SGjVuw+Erci2HcCEDPjoeI//+uRP30fqUoeHIAY
+# DzIwMjQwNjA2MTk1MDE0WqCCEwkwggbCMIIEqqADAgECAhAFRK/zlJ0IOaa/2z9f
+# 5WEWMA0GCSqGSIb3DQEBCwUAMGMxCzAJBgNVBAYTAlVTMRcwFQYDVQQKEw5EaWdp
+# Q2VydCwgSW5jLjE7MDkGA1UEAxMyRGlnaUNlcnQgVHJ1c3RlZCBHNCBSU0E0MDk2
+# IFNIQTI1NiBUaW1lU3RhbXBpbmcgQ0EwHhcNMjMwNzE0MDAwMDAwWhcNMzQxMDEz
+# MjM1OTU5WjBIMQswCQYDVQQGEwJVUzEXMBUGA1UEChMORGlnaUNlcnQsIEluYy4x
+# IDAeBgNVBAMTF0RpZ2lDZXJ0IFRpbWVzdGFtcCAyMDIzMIICIjANBgkqhkiG9w0B
+# AQEFAAOCAg8AMIICCgKCAgEAo1NFhx2DjlusPlSzI+DPn9fl0uddoQ4J3C9Io5d6
+# OyqcZ9xiFVjBqZMRp82qsmrdECmKHmJjadNYnDVxvzqX65RQjxwg6seaOy+WZuNp
+# 52n+W8PWKyAcwZeUtKVQgfLPywemMGjKg0La/H8JJJSkghraarrYO8pd3hkYhftF
+# 6g1hbJ3+cV7EBpo88MUueQ8bZlLjyNY+X9pD04T10Mf2SC1eRXWWdf7dEKEbg8G4
+# 5lKVtUfXeCk5a+B4WZfjRCtK1ZXO7wgX6oJkTf8j48qG7rSkIWRw69XloNpjsy7p
+# Be6q9iT1HbybHLK3X9/w7nZ9MZllR1WdSiQvrCuXvp/k/XtzPjLuUjT71Lvr1KAs
+# NJvj3m5kGQc3AZEPHLVRzapMZoOIaGK7vEEbeBlt5NkP4FhB+9ixLOFRr7StFQYU
+# 6mIIE9NpHnxkTZ0P387RXoyqq1AVybPKvNfEO2hEo6U7Qv1zfe7dCv95NBB+plwK
+# WEwAPoVpdceDZNZ1zY8SdlalJPrXxGshuugfNJgvOuprAbD3+yqG7HtSOKmYCaFx
+# smxxrz64b5bV4RAT/mFHCoz+8LbH1cfebCTwv0KCyqBxPZySkwS0aXAnDU+3tTbR
+# yV8IpHCj7ArxES5k4MsiK8rxKBMhSVF+BmbTO77665E42FEHypS34lCh8zrTioPL
+# QHsCAwEAAaOCAYswggGHMA4GA1UdDwEB/wQEAwIHgDAMBgNVHRMBAf8EAjAAMBYG
+# A1UdJQEB/wQMMAoGCCsGAQUFBwMIMCAGA1UdIAQZMBcwCAYGZ4EMAQQCMAsGCWCG
+# SAGG/WwHATAfBgNVHSMEGDAWgBS6FtltTYUvcyl2mi91jGogj57IbzAdBgNVHQ4E
+# FgQUpbbvE+fvzdBkodVWqWUxo97V40kwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cDov
+# L2NybDMuZGlnaWNlcnQuY29tL0RpZ2lDZXJ0VHJ1c3RlZEc0UlNBNDA5NlNIQTI1
+# NlRpbWVTdGFtcGluZ0NBLmNybDCBkAYIKwYBBQUHAQEEgYMwgYAwJAYIKwYBBQUH
+# MAGGGGh0dHA6Ly9vY3NwLmRpZ2ljZXJ0LmNvbTBYBggrBgEFBQcwAoZMaHR0cDov
+# L2NhY2VydHMuZGlnaWNlcnQuY29tL0RpZ2lDZXJ0VHJ1c3RlZEc0UlNBNDA5NlNI
+# QTI1NlRpbWVTdGFtcGluZ0NBLmNydDANBgkqhkiG9w0BAQsFAAOCAgEAgRrW3qCp
+# tZgXvHCNT4o8aJzYJf/LLOTN6l0ikuyMIgKpuM+AqNnn48XtJoKKcS8Y3U623mzX
+# 4WCcK+3tPUiOuGu6fF29wmE3aEl3o+uQqhLXJ4Xzjh6S2sJAOJ9dyKAuJXglnSoF
+# eoQpmLZXeY/bJlYrsPOnvTcM2Jh2T1a5UsK2nTipgedtQVyMadG5K8TGe8+c+nji
+# kxp2oml101DkRBK+IA2eqUTQ+OVJdwhaIcW0z5iVGlS6ubzBaRm6zxbygzc0brBB
+# Jt3eWpdPM43UjXd9dUWhpVgmagNF3tlQtVCMr1a9TMXhRsUo063nQwBw3syYnhmJ
+# A+rUkTfvTVLzyWAhxFZH7doRS4wyw4jmWOK22z75X7BC1o/jF5HRqsBV44a/rCcs
+# QdCaM0qoNtS5cpZ+l3k4SF/Kwtw9Mt911jZnWon49qfH5U81PAC9vpwqbHkB3NpE
+# 5jreODsHXjlY9HxzMVWggBHLFAx+rrz+pOt5Zapo1iLKO+uagjVXKBbLafIymrLS
+# 2Dq4sUaGa7oX/cR3bBVsrquvczroSUa31X/MtjjA2Owc9bahuEMs305MfR5ocMB3
+# CtQC4Fxguyj/OOVSWtasFyIjTvTs0xf7UGv/B3cfcZdEQcm4RtNsMnxYL2dHZeUb
+# c7aZ+WssBkbvQR7w8F/g29mtkIBEr4AQQYowggauMIIElqADAgECAhAHNje3JFR8
+# 2Ees/ShmKl5bMA0GCSqGSIb3DQEBCwUAMGIxCzAJBgNVBAYTAlVTMRUwEwYDVQQK
+# EwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5jb20xITAfBgNV
+# BAMTGERpZ2lDZXJ0IFRydXN0ZWQgUm9vdCBHNDAeFw0yMjAzMjMwMDAwMDBaFw0z
+# NzAzMjIyMzU5NTlaMGMxCzAJBgNVBAYTAlVTMRcwFQYDVQQKEw5EaWdpQ2VydCwg
+# SW5jLjE7MDkGA1UEAxMyRGlnaUNlcnQgVHJ1c3RlZCBHNCBSU0E0MDk2IFNIQTI1
+# NiBUaW1lU3RhbXBpbmcgQ0EwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoIC
+# AQDGhjUGSbPBPXJJUVXHJQPE8pE3qZdRodbSg9GeTKJtoLDMg/la9hGhRBVCX6SI
+# 82j6ffOciQt/nR+eDzMfUBMLJnOWbfhXqAJ9/UO0hNoR8XOxs+4rgISKIhjf69o9
+# xBd/qxkrPkLcZ47qUT3w1lbU5ygt69OxtXXnHwZljZQp09nsad/ZkIdGAHvbREGJ
+# 3HxqV3rwN3mfXazL6IRktFLydkf3YYMZ3V+0VAshaG43IbtArF+y3kp9zvU5Emfv
+# DqVjbOSmxR3NNg1c1eYbqMFkdECnwHLFuk4fsbVYTXn+149zk6wsOeKlSNbwsDET
+# qVcplicu9Yemj052FVUmcJgmf6AaRyBD40NjgHt1biclkJg6OBGz9vae5jtb7IHe
+# IhTZgirHkr+g3uM+onP65x9abJTyUpURK1h0QCirc0PO30qhHGs4xSnzyqqWc0Jo
+# n7ZGs506o9UD4L/wojzKQtwYSH8UNM/STKvvmz3+DrhkKvp1KCRB7UK/BZxmSVJQ
+# 9FHzNklNiyDSLFc1eSuo80VgvCONWPfcYd6T/jnA+bIwpUzX6ZhKWD7TA4j+s4/T
+# Xkt2ElGTyYwMO1uKIqjBJgj5FBASA31fI7tk42PgpuE+9sJ0sj8eCXbsq11GdeJg
+# o1gJASgADoRU7s7pXcheMBK9Rp6103a50g5rmQzSM7TNsQIDAQABo4IBXTCCAVkw
+# EgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUuhbZbU2FL3MpdpovdYxqII+e
+# yG8wHwYDVR0jBBgwFoAU7NfjgtJxXWRM3y5nP+e6mK4cD08wDgYDVR0PAQH/BAQD
+# AgGGMBMGA1UdJQQMMAoGCCsGAQUFBwMIMHcGCCsGAQUFBwEBBGswaTAkBggrBgEF
+# BQcwAYYYaHR0cDovL29jc3AuZGlnaWNlcnQuY29tMEEGCCsGAQUFBzAChjVodHRw
+# Oi8vY2FjZXJ0cy5kaWdpY2VydC5jb20vRGlnaUNlcnRUcnVzdGVkUm9vdEc0LmNy
+# dDBDBgNVHR8EPDA6MDigNqA0hjJodHRwOi8vY3JsMy5kaWdpY2VydC5jb20vRGln
+# aUNlcnRUcnVzdGVkUm9vdEc0LmNybDAgBgNVHSAEGTAXMAgGBmeBDAEEAjALBglg
+# hkgBhv1sBwEwDQYJKoZIhvcNAQELBQADggIBAH1ZjsCTtm+YqUQiAX5m1tghQuGw
+# GC4QTRPPMFPOvxj7x1Bd4ksp+3CKDaopafxpwc8dB+k+YMjYC+VcW9dth/qEICU0
+# MWfNthKWb8RQTGIdDAiCqBa9qVbPFXONASIlzpVpP0d3+3J0FNf/q0+KLHqrhc1D
+# X+1gtqpPkWaeLJ7giqzl/Yy8ZCaHbJK9nXzQcAp876i8dU+6WvepELJd6f8oVInw
+# 1YpxdmXazPByoyP6wCeCRK6ZJxurJB4mwbfeKuv2nrF5mYGjVoarCkXJ38SNoOeY
+# +/umnXKvxMfBwWpx2cYTgAnEtp/Nh4cku0+jSbl3ZpHxcpzpSwJSpzd+k1OsOx0I
+# SQ+UzTl63f8lY5knLD0/a6fxZsNBzU+2QJshIUDQtxMkzdwdeDrknq3lNHGS1yZr
+# 5Dhzq6YBT70/O3itTK37xJV77QpfMzmHQXh6OOmc4d0j/R0o08f56PGYX/sr2H7y
+# Rp11LB4nLCbbbxV7HhmLNriT1ObyF5lZynDwN7+YAN8gFk8n+2BnFqFmut1VwDop
+# hrCYoCvtlUG3OtUVmDG0YgkPCr2B2RP+v6TR81fZvAT6gt4y3wSJ8ADNXcL50CN/
+# AAvkdgIm2fBldkKmKYcJRyvmfxqkhQ/8mJb2VVQrH4D6wPIOK+XW+6kvRBVK5xMO
+# Hds3OBqhK/bt1nz8MIIFjTCCBHWgAwIBAgIQDpsYjvnQLefv21DiCEAYWjANBgkq
+# hkiG9w0BAQwFADBlMQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5j
+# MRkwFwYDVQQLExB3d3cuZGlnaWNlcnQuY29tMSQwIgYDVQQDExtEaWdpQ2VydCBB
+# c3N1cmVkIElEIFJvb3QgQ0EwHhcNMjIwODAxMDAwMDAwWhcNMzExMTA5MjM1OTU5
+# WjBiMQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQL
+# ExB3d3cuZGlnaWNlcnQuY29tMSEwHwYDVQQDExhEaWdpQ2VydCBUcnVzdGVkIFJv
+# b3QgRzQwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQC/5pBzaN675F1K
+# PDAiMGkz7MKnJS7JIT3yithZwuEppz1Yq3aaza57G4QNxDAf8xukOBbrVsaXbR2r
+# snnyyhHS5F/WBTxSD1Ifxp4VpX6+n6lXFllVcq9ok3DCsrp1mWpzMpTREEQQLt+C
+# 8weE5nQ7bXHiLQwb7iDVySAdYyktzuxeTsiT+CFhmzTrBcZe7FsavOvJz82sNEBf
+# sXpm7nfISKhmV1efVFiODCu3T6cw2Vbuyntd463JT17lNecxy9qTXtyOj4DatpGY
+# QJB5w3jHtrHEtWoYOAMQjdjUN6QuBX2I9YI+EJFwq1WCQTLX2wRzKm6RAXwhTNS8
+# rhsDdV14Ztk6MUSaM0C/CNdaSaTC5qmgZ92kJ7yhTzm1EVgX9yRcRo9k98FpiHaY
+# dj1ZXUJ2h4mXaXpI8OCiEhtmmnTK3kse5w5jrubU75KSOp493ADkRSWJtppEGSt+
+# wJS00mFt6zPZxd9LBADMfRyVw4/3IbKyEbe7f/LVjHAsQWCqsWMYRJUadmJ+9oCw
+# ++hkpjPRiQfhvbfmQ6QYuKZ3AeEPlAwhHbJUKSWJbOUOUlFHdL4mrLZBdd56rF+N
+# P8m800ERElvlEFDrMcXKchYiCd98THU/Y+whX8QgUWtvsauGi0/C1kVfnSD8oR7F
+# wI+isX4KJpn15GkvmB0t9dmpsh3lGwIDAQABo4IBOjCCATYwDwYDVR0TAQH/BAUw
+# AwEB/zAdBgNVHQ4EFgQU7NfjgtJxXWRM3y5nP+e6mK4cD08wHwYDVR0jBBgwFoAU
+# Reuir/SSy4IxLVGLp6chnfNtyA8wDgYDVR0PAQH/BAQDAgGGMHkGCCsGAQUFBwEB
+# BG0wazAkBggrBgEFBQcwAYYYaHR0cDovL29jc3AuZGlnaWNlcnQuY29tMEMGCCsG
+# AQUFBzAChjdodHRwOi8vY2FjZXJ0cy5kaWdpY2VydC5jb20vRGlnaUNlcnRBc3N1
+# cmVkSURSb290Q0EuY3J0MEUGA1UdHwQ+MDwwOqA4oDaGNGh0dHA6Ly9jcmwzLmRp
+# Z2ljZXJ0LmNvbS9EaWdpQ2VydEFzc3VyZWRJRFJvb3RDQS5jcmwwEQYDVR0gBAow
+# CDAGBgRVHSAAMA0GCSqGSIb3DQEBDAUAA4IBAQBwoL9DXFXnOF+go3QbPbYW1/e/
+# Vwe9mqyhhyzshV6pGrsi+IcaaVQi7aSId229GhT0E0p6Ly23OO/0/4C5+KH38nLe
+# JLxSA8hO0Cre+i1Wz/n096wwepqLsl7Uz9FDRJtDIeuWcqFItJnLnU+nBgMTdydE
+# 1Od/6Fmo8L8vC6bp8jQ87PcDx4eo0kxAGTVGamlUsLihVo7spNU96LHc/RzY9Hda
+# XFSMb++hUD38dglohJ9vytsgjTVgHAIDyyCwrFigDkBjxZgiwbJZ9VVrzyerbHbO
+# byMt9H5xaiNrIv8SuFQtJ37YOtnwtoeW/VvRXKwYw02fc7cBqZ9Xql4o4rmUMYID
+# djCCA3ICAQEwdzBjMQswCQYDVQQGEwJVUzEXMBUGA1UEChMORGlnaUNlcnQsIElu
+# Yy4xOzA5BgNVBAMTMkRpZ2lDZXJ0IFRydXN0ZWQgRzQgUlNBNDA5NiBTSEEyNTYg
+# VGltZVN0YW1waW5nIENBAhAFRK/zlJ0IOaa/2z9f5WEWMA0GCWCGSAFlAwQCAQUA
+# oIHRMBoGCSqGSIb3DQEJAzENBgsqhkiG9w0BCRABBDAcBgkqhkiG9w0BCQUxDxcN
+# MjQwNjA2MTk1MDE0WjArBgsqhkiG9w0BCRACDDEcMBowGDAWBBRm8CsywsLJD4Jd
+# zqqKycZPGZzPQDAvBgkqhkiG9w0BCQQxIgQgUvswt0fWRoofHUAuTE0/8V9tLmHP
+# zr/l2RTobZjBdqYwNwYLKoZIhvcNAQkQAi8xKDAmMCQwIgQg0vbkbe10IszR1EBX
+# aEE2b4KK2lWarjMWr00amtQMeCgwDQYJKoZIhvcNAQEBBQAEggIAc7/uG/S8kf0i
+# 2kaDQkE8NSfiXCYfN7z/2sgi6RNrkipvs/KTWfEKuMbhu9qWjjusZFgywn/IrZqw
+# td4Js1kmaN+HJ02t/HXYUCr+KTJye4mDaBGvaXXHllCqsK7bhsJxJYE0uYiL03MP
+# g64jyu9WdJD3N26MW/DkO6HTVhYzRzjafbAKbrr8KCvaFan1KZERzYwbA8XVjm88
+# HOodLCA9h+91Iqdc+uSz3Sg9/+Ns4zCp4BonvnsPYTlWTitiB5cpfPe/v4lBvCNu
+# x0ha6whvKMdRLZJgXsiDXo2NwwB55kkWEBwD3a1RnBJQmyJxFEGpSXOrhmdcEWPg
+# fjoHVIfowKBrIgINdWJbvIu+pLzQRMkVhuJzB32xpiZBIvbzkPETYQMOmKIu40I9
+# 5EAL0xNakPxYiT3nTkncn6woLOhiOXFm7crE+gO4IzDNauYuT9Vfe36K1CqtuYSy
+# JesLIey9Z81OQqOo6n2/lW110MKMEV2PkPU7YW/bYO2uKsZ3OAjUWr63nMT+M2wk
+# VdUAcqm0QdZsELY75Q3ekRxHje/B9ePP4Q4RMQGOZvmgqdtEeFhsmRwufR4fzfqx
+# WMttmOHelTd8Sc0sfA9B+1dxtiC9GFn3de5/o+T2s/jQn6eNp2hvlCqGV0iFzSQp
+# InPTBa9Na/+5UeXZ3NBWRvarfZ62TVM=
+# SIG # End signature block
+</file>
+
+<file path="backend/venv-py312/Scripts/deactivate.bat">
+@echo off
+
+if defined _OLD_VIRTUAL_PROMPT (
+    set "PROMPT=%_OLD_VIRTUAL_PROMPT%"
+)
+set _OLD_VIRTUAL_PROMPT=
+
+if defined _OLD_VIRTUAL_PYTHONHOME (
+    set "PYTHONHOME=%_OLD_VIRTUAL_PYTHONHOME%"
+    set _OLD_VIRTUAL_PYTHONHOME=
+)
+
+if defined _OLD_VIRTUAL_PATH (
+    set "PATH=%_OLD_VIRTUAL_PATH%"
+)
+
+set _OLD_VIRTUAL_PATH=
+
+set VIRTUAL_ENV=
+set VIRTUAL_ENV_PROMPT=
+
+:END
 </file>
 
 <file path=".github/pull_request_template.md">
@@ -863,178 +1448,6 @@ jobs:
         run: |
           echo "Pydantic compatibility issues found. Please check the output above and fix them."
           exit 1
-</file>
-
-<file path=".github/workflows/test.yml">
-# File: .github/workflows/test.yml
-
-name: Run Tests
-
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
-
-jobs:
-  backend-tests:
-    runs-on: ubuntu-latest
-    
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Cache Python dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    
-    - name: Install dependencies
-      working-directory: ./backend
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-cov pytest-asyncio
-    
-    - name: Run backend tests
-      working-directory: ./backend
-      env:
-        REDIS_URL: redis://localhost:6379/0
-        SENTRY_DSN: test
-        ENVIRONMENT: test
-      run: |
-        pytest -v --cov=app --cov-report=xml
-    
-    - name: Upload backend coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./backend/coverage.xml
-        flags: backend
-        fail_ci_if_error: true
-        verbose: true
-        
-    - name: Archive backend coverage results
-      uses: actions/upload-artifact@v3
-      with:
-        name: backend-coverage-report
-        path: ./backend/coverage.xml
-        retention-days: 14
-
-  frontend-tests:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Use Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
-    
-    - name: Install dependencies
-      working-directory: ./frontend
-      run: npm ci
-    
-    - name: Run linting
-      working-directory: ./frontend
-      run: npm run lint
-    
-    - name: Run type checking
-      working-directory: ./frontend
-      run: npm run type-check
-    
-    - name: Run frontend tests
-      working-directory: ./frontend
-      run: npm run test -- --coverage
-    
-    - name: Upload frontend coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./frontend/coverage/coverage-final.json
-        flags: frontend
-        fail_ci_if_error: true
-        verbose: true
-        
-    - name: Archive code coverage results
-      uses: actions/upload-artifact@v3
-      with:
-        name: frontend-coverage-report
-        path: ./frontend/coverage/
-        retention-days: 14
-
-  integration-tests:
-    runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-tests]
-    
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Use Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-    
-    - name: Install backend dependencies
-      working-directory: ./backend
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Install frontend dependencies
-      working-directory: ./frontend
-      run: npm ci
-    
-    - name: Build frontend
-      working-directory: ./frontend
-      run: npm run build
-    
-    - name: Start backend server
-      working-directory: ./backend
-      env:
-        REDIS_URL: redis://localhost:6379/0
-        SENTRY_DSN: test
-        ENVIRONMENT: test
-      run: |
-        uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-        sleep 5
-    
-    - name: Run integration tests
-      working-directory: ./backend
-      env:
-        API_URL: http://localhost:8000
-      run: |
-        pytest tests/integration/ -v -m integration
 </file>
 
 <file path=".github/workflows/validate-docs.yml">
@@ -1819,73 +2232,6 @@ class ApiPathConfig(BaseModel):
     categories: Dict[str, ApiCategory] = Field(default_factory=dict, description="Mapping of category names to configurations")
 </file>
 
-<file path="backend/app/config/settings.py">
-from pydantic import Field
-from pydantic_settings import BaseSettings
-from typing import Optional, List, Dict, Any
-import os
-from pathlib import Path
-
-
-class Settings(BaseSettings):
-    """Application settings.
-    
-    This class manages application configuration settings loaded from 
-    environment variables, with sensible defaults.
-    """
-    
-    # Application info
-    app_name: str = "Dexter"
-    version: str = "1.0.0"
-    
-    # API Settings
-    sentry_base_url: str = "https://sentry.io"
-    sentry_token: str = ""
-    
-    # Server Settings
-    host: str = "0.0.0.0"
-    port: int = 8000
-    debug: bool = False
-    cors_origins: List[str] = Field(default_factory=lambda: ["*"])
-    
-    # LLM Settings
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "llama2"
-    
-    # Cache Settings
-    cache_enabled: bool = True
-    cache_ttl_default: int = 300  # 5 minutes
-    
-    # Logging Settings
-    log_level: str = "INFO"
-    log_format: str = "standard"  # "standard" or "json"
-    log_file_path: Optional[str] = "logs/dexter.log"
-    log_max_size: int = 10 * 1024 * 1024  # 10MB
-    log_backup_count: int = 5
-    log_to_console: bool = True
-    
-    # Error Handling Settings
-    recent_errors_limit: int = 100  # Number of recent errors to keep in memory
-    include_stack_trace: bool | None = None  # None means use debug setting
-    
-    model_config = {
-        "env_file": ".env",
-        "case_sensitive": False,
-        "extra": "allow"
-    }
-    
-    @property
-    def should_include_stack_trace(self) -> bool:
-        """Determine if stack traces should be included in error responses."""
-        if self.include_stack_trace is not None:
-            return self.include_stack_trace
-        return self.debug
-
-
-# Global instance
-settings = Settings()
-</file>
-
 <file path="backend/app/core/compatibility.py">
 """
 Compatibility layer for the Dexter application.
@@ -2007,172 +2353,6 @@ def _set_compat_env_vars() -> None:
     for key, value in env_mappings.items():
         if key not in os.environ:
             os.environ[key] = value
-</file>
-
-<file path="backend/app/core/factory.py">
-"""
-Application factory for the Dexter application.
-
-This module provides a centralized factory for creating and configuring
-the FastAPI application with appropriate middleware and routers based
-on the application configuration.
-"""
-import logging
-from typing import Optional, List, Dict, Any
-
-import sentry_sdk
-from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
-from sentry_sdk.integrations.logging import LoggingIntegration
-
-from .config import AppSettings, get_settings
-from .middleware import setup_middlewares
-from .logging import setup_logging
-
-logger = logging.getLogger(__name__)
-
-
-def configure_sentry(settings: AppSettings) -> None:
-    """
-    Configure Sentry SDK based on application settings.
-    
-    Args:
-        settings: Application settings containing Sentry configuration
-    """
-    if not settings.SENTRY_DSN:
-        logger.info("Sentry integration disabled (no DSN provided)")
-        return
-    
-    try:
-        # Set up logging integration
-        logging_integration = LoggingIntegration(
-            level=logging.INFO,  # Capture info and above as breadcrumbs
-            event_level=logging.ERROR  # Send errors as events
-        )
-        
-        # Initialize Sentry SDK
-        sentry_sdk.init(
-            dsn=settings.SENTRY_DSN,
-            environment=settings.SENTRY_ENVIRONMENT,
-            traces_sample_rate=1.0 if settings.DEBUG else 0.2,
-            integrations=[logging_integration],
-        )
-        logger.info(f"Sentry initialized with environment: {settings.SENTRY_ENVIRONMENT}")
-    except Exception as e:
-        logger.error(f"Failed to initialize Sentry: {str(e)}")
-
-
-def handle_http_exception(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-    """Handle HTTP exceptions."""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail}
-    )
-
-
-def handle_validation_exception(request: Request, exc: RequestValidationError) -> JSONResponse:
-    """Handle request validation exceptions."""
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"detail": exc.errors()}
-    )
-
-
-def create_app(settings: Optional[AppSettings] = None) -> FastAPI:
-    """
-    Create and configure the FastAPI application.
-    
-    Args:
-        settings: Optional AppSettings to use (if None, loads from environment)
-        
-    Returns:
-        Configured FastAPI application instance
-    """
-    if settings is None:
-        settings = get_settings()
-    
-    # Setup logging first
-    setup_logging(settings)
-    
-    # Configure Sentry if enabled
-    if settings.SENTRY_DSN:
-        configure_sentry(settings)
-    
-    # Application metadata
-    app_kwargs = {
-        "title": settings.APP_NAME,
-        "description": "Enhanced Sentry monitoring with AI-powered analysis",
-        "version": settings.VERSION,
-    }
-    
-    # Only show docs in debug mode
-    if not settings.DEBUG:
-        app_kwargs.update({
-            "docs_url": None,
-            "redoc_url": None,
-            "openapi_url": None,
-        })
-    
-    # Create the FastAPI app
-    app = FastAPI(**app_kwargs)
-    
-    # Setup middlewares
-    setup_middlewares(app, settings)
-    
-    # Register exception handlers
-    app.add_exception_handler(StarletteHTTPException, handle_http_exception)
-    app.add_exception_handler(RequestValidationError, handle_validation_exception)
-    
-    # Register application startup and shutdown events
-    @app.on_event("startup")
-    async def startup_event():
-        logger.info(f"Starting Dexter in {settings.APP_MODE} mode")
-    
-    @app.on_event("shutdown")
-    async def shutdown_event():
-        logger.info("Shutting down Dexter")
-    
-    # Add root route for healthcheck
-    @app.get("/")
-    async def root():
-        """Root endpoint to verify the application is running."""
-        return {
-            "message": f"Dexter API ({settings.APP_MODE})",
-            "version": settings.VERSION,
-            "status": "running"
-        }
-    
-    # Add health check route
-    @app.get("/health")
-    async def health():
-        """Health check endpoint."""
-        return {
-            "status": "healthy",
-            "service": f"dexter-api-{settings.APP_MODE}"
-        }
-    
-    # Add diagnostics route if error handler is available
-    @app.get("/api/v1/diagnostics/errors")
-    async def get_recent_errors(limit: int = 50):
-        """Get recent errors from the in-memory cache."""
-        if hasattr(app.state, "error_handler"):
-            return {"errors": app.state.error_handler.get_error_log(limit=limit)}
-        return {"errors": []}
-    
-    # Include routers based on configuration
-    try:
-        from app.routers import setup_routers
-        setup_routers(app, settings)
-    except Exception as e:
-        logger.error(f"Failed to set up routers: {str(e)}")
-        if settings.DEBUG:
-            raise
-    
-    return app
 </file>
 
 <file path="backend/app/core/logging.py">
@@ -4211,82 +4391,6 @@ def log_error_with_context(error_data):
         error_data.get("error_message", "Error occurred"), 
         extra={"data": error_data}
     )
-</file>
-
-<file path="backend/app/utils/pydantic_compat.py">
-"""
-Utility module for Pydantic version compatibility.
-Provides functions and helpers to maintain compatibility 
-between Pydantic v1 and v2.
-"""
-
-import logging
-from pydantic import Field
-
-logger = logging.getLogger(__name__)
-
-def get_pydantic_version():
-    """
-    Get the installed Pydantic version.
-    
-    Returns:
-        int: Major version number (1 or 2)
-    """
-    try:
-        import pydantic
-        version = getattr(pydantic, "__version__", "1.0.0")
-        major_version = int(version.split(".")[0])
-        return major_version
-    except (ImportError, ValueError, IndexError):
-        return 1  # Default to v1 if we can't determine version
-
-# Flag to check if we're using Pydantic v2+
-PYDANTIC_V2 = get_pydantic_version() >= 2
-
-# Log the detected version on module import
-logger.info(f"Using Pydantic v{'2+' if PYDANTIC_V2 else '1'}")
-
-def pattern_field(pattern, **kwargs):
-    """
-    Create a Field with the appropriate validation parameter 
-    based on the Pydantic version.
-    
-    Args:
-        pattern (str): Regex pattern string
-        **kwargs: Additional field arguments
-        
-    Returns:
-        Field: Pydantic Field with appropriate validation
-    """
-    if PYDANTIC_V2:
-        return Field(pattern=pattern, **kwargs)
-    else:
-        return Field(regex=pattern, **kwargs)
-
-def config_class_factory(config_dict):
-    """
-    Create the appropriate config class or dictionary
-    based on the Pydantic version.
-    
-    Args:
-        config_dict (dict): Configuration dictionary
-        
-    Returns:
-        Union[type, dict]: Config class for v1, dict for v2
-    """
-    if PYDANTIC_V2:
-        return config_dict
-    else:
-        class Config:
-            pass
-        
-        for key, value in config_dict.items():
-            if key == "json_schema_extra":
-                setattr(Config, "schema_extra", value)
-            else:
-                setattr(Config, key, value)
-        
-        return Config
 </file>
 
 <file path="backend/check_dependencies.py">
@@ -17866,6 +17970,126 @@ Monitor cache performance using:
 3. **Cache Warming**: Pre-populate cache for frequently accessed data
 4. **Cache Analytics**: Track hit rates and performance metrics
 5. **Compression**: Compress large cached values to save memory
+</file>
+
+<file path="docs/ci_cd_coverage_reporting.md">
+# CI/CD Coverage Reporting Enhancement
+
+## Analysis of Coverage Reporting in CI Pipeline
+
+### Current Configuration
+
+In our CI/CD pipeline (`.github/workflows/test.yml`), the coverage reporting was previously configured with `fail_ci_if_error: false` for both backend and frontend coverage uploads:
+
+```yaml
+- name: Upload backend coverage
+  uses: codecov/codecov-action@v3
+  with:
+    file: ./backend/coverage.xml
+    flags: backend
+    fail_ci_if_error: false  # Previous setting
+
+- name: Upload frontend coverage
+  uses: codecov/codecov-action@v3
+  with:
+    file: ./frontend/coverage/coverage-final.json
+    flags: frontend
+    fail_ci_if_error: false  # Previous setting
+```
+
+### Implications of the Previous Setting
+
+The `fail_ci_if_error: false` setting meant that if there was a problem uploading coverage reports to Codecov, the CI pipeline would continue and show as successful even though an important quality check failed. This created several potential issues:
+
+1. **Silent Coverage Failures**: Coverage reporting problems weren't visible in the CI status, potentially allowing code with insufficient test coverage to be merged.
+
+2. **Delayed Detection**: Coverage issues might only be discovered later, making them more difficult and expensive to fix.
+
+3. **Inconsistent Quality Enforcement**: While other CI checks (like tests themselves) may be enforced strictly, this created an inconsistency in how quality metrics are treated.
+
+4. **False Confidence**: Team members might assume code coverage is being tracked properly when it actually isn't.
+
+## Enhancement Rationale
+
+Given Dexter's complexity and critical functionality as an AI-powered error monitoring and analysis tool, maintaining high test coverage is essential for:
+
+1. **Ensuring Reliability**: Dexter analyzes and visualizes error data that teams rely on for debugging. Test coverage helps ensure this analysis is reliable.
+
+2. **Maintaining Feature Integrity**: Features like the PostgreSQL deadlock analyzer and the AI intelligence layer require thorough testing.
+
+3. **Supporting API Integration**: The enhanced Sentry API integration includes complex features like caching, batch processing, and resilience patterns, which benefit from strong test coverage.
+
+4. **Detecting Regressions**: As Dexter evolves, good coverage helps identify regressions when new features are added.
+
+## Implementation
+
+We've updated the CI configuration to treat coverage reporting failures as CI failures by changing `fail_ci_if_error` from `false` to `true`:
+
+```yaml
+- name: Upload backend coverage
+  uses: codecov/codecov-action@v3
+  with:
+    file: ./backend/coverage.xml
+    flags: backend
+    fail_ci_if_error: true  # Updated setting
+
+- name: Upload frontend coverage
+  uses: codecov/codecov-action@v3
+  with:
+    file: ./frontend/coverage/coverage-final.json
+    flags: frontend
+    fail_ci_if_error: true  # Updated setting
+```
+
+## Additional Coverage Safeguards
+
+To further strengthen our code quality checks, we recommend implementing these additional measures:
+
+1. **Set Coverage Thresholds**:
+   - Configure minimum coverage thresholds in test runners (Jest for frontend, pytest for backend)
+   - Example for Jest: 
+     ```json
+     "jest": {
+       "coverageThreshold": {
+         "global": {
+           "branches": 80,
+           "functions": 80,
+           "lines": 80,
+           "statements": 80
+         }
+       }
+     }
+     ```
+   - Example for pytest:
+     ```ini
+     [tool:pytest]
+     cov_fail_under = 80
+     ```
+
+2. **Archive Coverage Reports**:
+   - Store coverage reports as artifacts in the CI pipeline for easier debugging:
+     ```yaml
+     - name: Archive code coverage results
+       uses: actions/upload-artifact@v2
+       with:
+         name: code-coverage-report
+         path: |
+           backend/coverage.xml
+           frontend/coverage/
+     ```
+
+3. **Add Coverage Badges**:
+   - Add coverage badges to the README.md that visually indicate coverage status:
+     ```markdown
+     [![Backend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=backend)](https://codecov.io/gh/your-org/dexter)
+     [![Frontend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=frontend)](https://codecov.io/gh/your-org/dexter)
+     ```
+
+## Conclusion
+
+By changing `fail_ci_if_error` to `true` and implementing additional safeguards, we've strengthened our quality assurance process. This change ensures that coverage reporting is treated as a critical quality metric, aligning with Dexter's focus on robust engineering practices.
+
+These improvements will help maintain high code quality as we continue to enhance Dexter's capabilities for error analysis, visualization, and workflow optimization.
 </file>
 
 <file path="docs/cleanup_plan.md">
@@ -68848,6 +69072,178 @@ if (totalProblems === 0) {
 process.exit(totalProblems > 0 ? 1 : 0);
 </file>
 
+<file path=".github/workflows/test.yml">
+# File: .github/workflows/test.yml
+
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      working-directory: ./backend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio
+    
+    - name: Run backend tests
+      working-directory: ./backend
+      env:
+        REDIS_URL: redis://localhost:6379/0
+        SENTRY_DSN: test
+        ENVIRONMENT: test
+      run: |
+        pytest -v --cov=app --cov-report=xml
+    
+    - name: Upload backend coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./backend/coverage.xml
+        flags: backend
+        fail_ci_if_error: true
+        verbose: true
+        
+    - name: Archive backend coverage results
+      uses: actions/upload-artifact@v3
+      with:
+        name: backend-coverage-report
+        path: ./backend/coverage.xml
+        retention-days: 14
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Run linting
+      working-directory: ./frontend
+      run: npm run lint
+    
+    - name: Run type checking
+      working-directory: ./frontend
+      run: npm run type-check
+    
+    - name: Run frontend tests
+      working-directory: ./frontend
+      run: npm run test -- --coverage
+    
+    - name: Upload frontend coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./frontend/coverage/coverage-final.json
+        flags: frontend
+        fail_ci_if_error: true
+        verbose: true
+        
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-coverage-report
+        path: ./frontend/coverage/
+        retention-days: 14
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Build frontend
+      working-directory: ./frontend
+      run: npm run build
+    
+    - name: Start backend server
+      working-directory: ./backend
+      env:
+        REDIS_URL: redis://localhost:6379/0
+        SENTRY_DSN: test
+        ENVIRONMENT: test
+      run: |
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+        sleep 5
+    
+    - name: Run integration tests
+      working-directory: ./backend
+      env:
+        API_URL: http://localhost:8000
+      run: |
+        pytest tests/integration/ -v -m integration
+</file>
+
 <file path="backend/app/__init__.py">
 """
 Dexter backend API package initialization.
@@ -69169,6 +69565,73 @@ class ApiPathManager:
 api_path_manager = ApiPathManager()
 </file>
 
+<file path="backend/app/config/settings.py">
+from pydantic import Field
+from pydantic_settings import BaseSettings
+from typing import Optional, List, Dict, Any
+import os
+from pathlib import Path
+
+
+class Settings(BaseSettings):
+    """Application settings.
+    
+    This class manages application configuration settings loaded from 
+    environment variables, with sensible defaults.
+    """
+    
+    # Application info
+    app_name: str = "Dexter"
+    version: str = "1.0.0"
+    
+    # API Settings
+    sentry_base_url: str = "https://sentry.io"
+    sentry_token: str = ""
+    
+    # Server Settings
+    host: str = "0.0.0.0"
+    port: int = 8000
+    debug: bool = False
+    cors_origins: List[str] = Field(default_factory=lambda: ["*"])
+    
+    # LLM Settings
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "llama2"
+    
+    # Cache Settings
+    cache_enabled: bool = True
+    cache_ttl_default: int = 300  # 5 minutes
+    
+    # Logging Settings
+    log_level: str = "INFO"
+    log_format: str = "standard"  # "standard" or "json"
+    log_file_path: Optional[str] = "logs/dexter.log"
+    log_max_size: int = 10 * 1024 * 1024  # 10MB
+    log_backup_count: int = 5
+    log_to_console: bool = True
+    
+    # Error Handling Settings
+    recent_errors_limit: int = 100  # Number of recent errors to keep in memory
+    include_stack_trace: bool | None = None  # None means use debug setting
+    
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False,
+        "extra": "allow"
+    }
+    
+    @property
+    def should_include_stack_trace(self) -> bool:
+        """Determine if stack traces should be included in error responses."""
+        if self.include_stack_trace is not None:
+            return self.include_stack_trace
+        return self.debug
+
+
+# Global instance
+settings = Settings()
+</file>
+
 <file path="backend/app/core/__init__.py">
 """
 Core module for the Dexter application.
@@ -69195,219 +69658,180 @@ __all__ = [
 ]
 </file>
 
-<file path="backend/app/core/config.py">
+<file path="backend/app/core/factory.py">
 """
-Configuration management for the Dexter application.
+Application factory for the Dexter application.
 
-This module provides a centralized way to manage application settings
-from multiple sources (environment variables, YAML configs) with proper
-validation using Pydantic.
+This module provides a centralized factory for creating and configuring
+the FastAPI application with appropriate middleware and routers based
+on the application configuration.
 """
-import os
-from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+import logging
+from typing import Optional, List, Dict, Any
 
-import yaml
-from pydantic import validator, Field, BaseSettings
+# Make Sentry SDK optional
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    SENTRY_AVAILABLE = True
+except ImportError:
+    SENTRY_AVAILABLE = False
+    
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from .config import AppSettings, get_settings
+from .middleware import setup_middlewares
+from .logging import setup_logging
 
-class AppMode(str, Enum):
-    """Available application modes."""
-    DEFAULT = "default"
-    DEBUG = "debug"
-    MINIMAL = "minimal"
-    ENHANCED = "enhanced"
-    SIMPLIFIED = "simplified"
-
-
-class LogLevel(str, Enum):
-    """Available logging levels."""
-    CRITICAL = "CRITICAL"
-    ERROR = "ERROR"
-    WARNING = "WARNING"
-    INFO = "INFO"
-    DEBUG = "DEBUG"
+logger = logging.getLogger(__name__)
 
 
-class AppSettings(BaseSettings):
+def configure_sentry(settings: AppSettings) -> None:
     """
-    Application settings with validation.
+    Configure Sentry SDK based on application settings.
     
-    This class manages all application configuration with appropriate
-    type validation and defaults.
+    Args:
+        settings: Application settings containing Sentry configuration
     """
-    # Core settings
-    APP_MODE: AppMode = AppMode.DEFAULT
-    API_PREFIX: str = "/api/v1"
-    DEBUG: bool = False
-    LOG_LEVEL: LogLevel = LogLevel.INFO
+    if not SENTRY_AVAILABLE:
+        logger.warning("Sentry SDK not installed. Run 'pip install sentry_sdk' to enable error tracking.")
+        return
+        
+    if not settings.SENTRY_DSN:
+        logger.info("Sentry integration disabled (no DSN provided)")
+        return
     
-    # Application info
-    APP_NAME: str = "Dexter"
-    VERSION: str = "1.0.0"
-    
-    # Server settings
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
-    RELOAD: bool = False
-    WORKERS: int = 1
-    
-    # API Settings
-    SENTRY_BASE_URL: str = "https://sentry.io"
-    SENTRY_TOKEN: str = ""
-    
-    # External services
-    SENTRY_DSN: Optional[str] = None
-    SENTRY_ENVIRONMENT: str = "development"
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama2"
-    
-    # Feature flags
-    ENABLE_DEADLOCK_ANALYSIS: bool = True
-    ENABLE_OLLAMA: bool = True
-    ENABLE_REAL_TIME: bool = False
-    ENABLE_CACHING: bool = True
-    
-    # Cache Settings
-    CACHE_ENABLED: bool = True
-    CACHE_TTL_DEFAULT: int = 300  # 5 minutes
-    
-    # Performance settings
-    REQUEST_TIMEOUT: int = 30
-    MAX_CONNECTIONS: int = 100
-    
-    # CORS settings
-    CORS_ORIGINS: List[str] = Field(default_factory=lambda: ["*"])
-    CORS_ALLOW_CREDENTIALS: bool = True
-    CORS_ALLOW_METHODS: List[str] = ["*"]
-    CORS_ALLOW_HEADERS: List[str] = ["*"]
-    
-    # Logging Settings
-    LOG_FORMAT: str = "standard"  # "standard" or "json"
-    LOG_FILE_PATH: Optional[str] = None
-    LOG_MAX_SIZE: int = 10 * 1024 * 1024  # 10MB
-    LOG_BACKUP_COUNT: int = 5
-    LOG_TO_CONSOLE: bool = True
-    
-    # Error Handling Settings
-    RECENT_ERRORS_LIMIT: int = 100  # Number of recent errors to keep in memory
-    INCLUDE_STACK_TRACE: Optional[bool] = None  # None means use debug setting
-    
-    @validator("PORT")
-    def validate_port(cls, v: int) -> int:
-        """Ensure port is in valid range."""
-        if not 1 <= v <= 65535:
-            raise ValueError(f"Port must be between 1 and 65535, got {v}")
-        return v
-    
-    @field_validator("CORS_ORIGINS")
-    def validate_cors_origins(cls, v: List[str], info) -> List[str]:
-        """Warn about wildcard CORS in production."""
-        # Get the debugging status from the validated data
-        data = info.data
-        if "*" in v and not data.get("DEBUG", False):
-            print("WARNING: Using wildcard CORS origins in non-debug mode")
-        return v
-    
-    @property
-    def should_include_stack_trace(self) -> bool:
-        """Determine if stack traces should be included in error responses."""
-        if self.INCLUDE_STACK_TRACE is not None:
-            return self.INCLUDE_STACK_TRACE
-        return self.DEBUG
-    
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=True,
-        extra="allow"
+    try:
+        # Set up logging integration
+        logging_integration = LoggingIntegration(
+            level=logging.INFO,  # Capture info and above as breadcrumbs
+            event_level=logging.ERROR  # Send errors as events
+        )
+        
+        # Initialize Sentry SDK
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.SENTRY_ENVIRONMENT,
+            traces_sample_rate=1.0 if settings.DEBUG else 0.2,
+            integrations=[logging_integration],
+        )
+        logger.info(f"Sentry initialized with environment: {settings.SENTRY_ENVIRONMENT}")
+    except Exception as e:
+        logger.error(f"Failed to initialize Sentry: {str(e)}")
+
+
+def handle_http_exception(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    """Handle HTTP exceptions."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
     )
 
 
-def load_yaml_config(app_mode: Union[AppMode, str]) -> Dict[str, Any]:
+def handle_validation_exception(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Handle request validation exceptions."""
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.errors()}
+    )
+
+
+def create_app(settings: Optional[AppSettings] = None) -> FastAPI:
     """
-    Load YAML configuration file based on app mode.
+    Create and configure the FastAPI application.
     
     Args:
-        app_mode: The application mode to load configuration for
+        settings: Optional AppSettings to use (if None, loads from environment)
         
     Returns:
-        Dictionary containing configuration settings
-        
-    Raises:
-        FileNotFoundError: If the base configuration file doesn't exist
+        Configured FastAPI application instance
     """
+    if settings is None:
+        settings = get_settings()
+    
+    # Setup logging first
+    setup_logging(settings)
+    
+    # Configure Sentry if enabled
+    if settings.SENTRY_DSN:
+        configure_sentry(settings)
+    
+    # Application metadata
+    app_kwargs = {
+        "title": settings.APP_NAME,
+        "description": "Enhanced Sentry monitoring with AI-powered analysis",
+        "version": settings.VERSION,
+    }
+    
+    # Only show docs in debug mode
+    if not settings.DEBUG:
+        app_kwargs.update({
+            "docs_url": None,
+            "redoc_url": None,
+            "openapi_url": None,
+        })
+    
+    # Create the FastAPI app
+    app = FastAPI(**app_kwargs)
+    
+    # Setup middlewares
+    setup_middlewares(app, settings)
+    
+    # Register exception handlers
+    app.add_exception_handler(StarletteHTTPException, handle_http_exception)
+    app.add_exception_handler(RequestValidationError, handle_validation_exception)
+    
+    # Register application startup and shutdown events
+    @app.on_event("startup")
+    async def startup_event():
+        logger.info(f"Starting Dexter in {settings.APP_MODE} mode")
+    
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        logger.info("Shutting down Dexter")
+    
+    # Add root route for healthcheck
+    @app.get("/")
+    async def root():
+        """Root endpoint to verify the application is running."""
+        return {
+            "message": f"Dexter API ({settings.APP_MODE})",
+            "version": settings.VERSION,
+            "status": "running"
+        }
+    
+    # Add health check route
+    @app.get("/health")
+    async def health():
+        """Health check endpoint."""
+        return {
+            "status": "healthy",
+            "service": f"dexter-api-{settings.APP_MODE}"
+        }
+    
+    # Add diagnostics route if error handler is available
+    @app.get("/api/v1/diagnostics/errors")
+    async def get_recent_errors(limit: int = 50):
+        """Get recent errors from the in-memory cache."""
+        if hasattr(app.state, "error_handler"):
+            return {"errors": app.state.error_handler.get_error_log(limit=limit)}
+        return {"errors": []}
+    
+    # Include routers based on configuration
     try:
-        # Handle string input to ensure compatibility
-        if isinstance(app_mode, str):
-            app_mode = AppMode(app_mode)
-            
-        base_path = Path(__file__).parent.parent.parent / "config"
-        if not base_path.exists():
-            base_path.mkdir(parents=True)
-            
-        # Always load base config
-        base_config = {}
-        base_config_path = base_path / "base.yaml"
-        
-        if base_config_path.exists():
-            with open(base_config_path, "r", encoding="utf-8") as file:
-                base_config = yaml.safe_load(file) or {}
-        else:
-            # Create default base config if it doesn't exist
-            default_config = {
-                "API_PREFIX": "/api/v1",
-                "DEBUG": False,
-                "ENABLE_DEADLOCK_ANALYSIS": True,
-                "ENABLE_OLLAMA": True,
-                "ENABLE_REAL_TIME": False,
-                "CACHE_TIMEOUT": 300,
-            }
-            with open(base_config_path, "w", encoding="utf-8") as file:
-                yaml.dump(default_config, file, sort_keys=False)
-            base_config = default_config
-        
-        # Load mode-specific config if it exists
-        mode_config = {}
-        if app_mode != AppMode.DEFAULT:
-            mode_config_path = base_path / f"{app_mode.value}.yaml"
-            if mode_config_path.exists():
-                with open(mode_config_path, "r", encoding="utf-8") as file:
-                    mode_config = yaml.safe_load(file) or {}
-        
-        # Merge configs, with mode-specific taking precedence
-        return {**base_config, **mode_config}
-        
+        from app.routers import setup_routers
+        setup_routers(app, settings)
     except Exception as e:
-        print(f"Error loading configuration: {str(e)}")
-        return {}
-
-
-def get_settings() -> AppSettings:
-    """
-    Get application settings with YAML config applied.
+        logger.error(f"Failed to set up routers: {str(e)}")
+        if settings.DEBUG:
+            raise
     
-    Returns:
-        AppSettings object with values from env vars and YAML config
-    """
-    # First load base settings from env vars and .env file
-    settings = AppSettings()
-    
-    # Then override with YAML config
-    try:
-        yaml_config = load_yaml_config(settings.APP_MODE)
-        for key, value in yaml_config.items():
-            if hasattr(settings, key):
-                setattr(settings, key, value)
-    except Exception as e:
-        print(f"Warning: Failed to apply YAML config: {str(e)}")
-    
-    # Apply env vars again to ensure they take highest precedence
-    settings_dict = settings.model_dump()
-    settings = AppSettings.model_validate(settings_dict)
-    
-    return settings
+    return app
 </file>
 
 <file path="backend/app/main_debug.py">
@@ -75107,61 +75531,25 @@ def legacy_resolve_path(path_key: str, **kwargs) -> str:
     return resolve_path(category, endpoint, **kwargs)
 </file>
 
-<file path="backend/fix_pydantic_compatibility.py">
+<file path="backend/app/utils/pydantic_compat.py">
 """
-Utility script to fix common Pydantic compatibility issues.
-Automatically updates files to be compatible with Pydantic v2.
+Utility module for Pydantic version compatibility.
+Provides functions and helpers to maintain compatibility 
+between Pydantic v1 and v2.
 """
 
-import os
-import re
-import sys
-from pathlib import Path
-import importlib
+import logging
+from pydantic import Field
+
+logger = logging.getLogger(__name__)
 
 def get_pydantic_version():
-    """Get the installed Pydantic version."""
-    try:
-        import pydantic
-        version = getattr(pydantic, "__version__", "unknown")
-        major_version = int(version.split(".")[0])
-        print(f"Detected Pydantic version: {version} (v{major_version})")
-        return major_version
-    except (ImportError, ValueError, IndexError):
-        print("Pydantic is not installed or version cannot be determined.")
-        return 0
-
-def fix_file_for_pydantic_v2(file_path, dry_run=False):
-    """Fix a file for Pydantic v2 compatibility."""
-    with open(file_path, 'r', encoding='utf-8') as f:
-        content = f.read()
+    """
+    Get the installed Pydantic version.
     
-    modified = False
-    
-    # Replace regex with pattern
-    regex_pattern = r'Field\s*\(\s*(.*?)\bregex\s*=([^,\)]+)'
-    replacement = r'Field(\1pattern=\2'
-    new_content, regex_count = re.subn(regex_pattern, replacement, content)
-    if regex_count > 0:
-        modified = True
-        content = new_content
-        print(f"  - Replaced {regex_count} instances of 'regex' with 'pattern'")
-    
-    # Replace schema_extra with json_schema_extra
-    schema_extra_pattern = r'schema_extra\s*='
-    replacement = r'json_json_schema_extra='
-    new_content, schema_extra_count = re.subn(schema_extra_pattern, replacement, content)
-    if schema_extra_count > 0:
-        modified = True
-        content = new_content
-        print(f"  - Replaced {schema_extra_count} instances of 'schema_extra' with 'json_schema_extra'")
-    
-    # Add version-aware field validation if needed
-    if regex_count > 0 and 'pattern_field' not in content:
-        # Define pattern_field function if using regex
-        pattern_field_def = '''
-# Helper function to handle Field validation based on Pydantic version
-def get_pydantic_version():
+    Returns:
+        int: Major version number (1 or 2)
+    """
     try:
         import pydantic
         version = getattr(pydantic, "__version__", "1.0.0")
@@ -75170,80 +75558,53 @@ def get_pydantic_version():
     except (ImportError, ValueError, IndexError):
         return 1  # Default to v1 if we can't determine version
 
+# Flag to check if we're using Pydantic v2+
 PYDANTIC_V2 = get_pydantic_version() >= 2
 
+# Log the detected version on module import
+logger.info(f"Using Pydantic v{'2+' if PYDANTIC_V2 else '1'}")
+
 def pattern_field(pattern, **kwargs):
+    """
+    Create a Field with the appropriate validation parameter 
+    based on the Pydantic version.
+    
+    Args:
+        pattern (str): Regex pattern string
+        **kwargs: Additional field arguments
+        
+    Returns:
+        Field: Pydantic Field with appropriate validation
+    """
     if PYDANTIC_V2:
         return Field(pattern=pattern, **kwargs)
     else:
         return Field(pattern=pattern, **kwargs)
-'''
-        # Find import section
-        import_section_end = content.find("\n\n", content.find("from pydantic import"))
-        if import_section_end == -1:
-            import_section_end = content.find("\n", content.find("from pydantic import"))
+
+def config_class_factory(config_dict):
+    """
+    Create the appropriate config class or dictionary
+    based on the Pydantic version.
+    
+    Args:
+        config_dict (dict): Configuration dictionary
         
-        if import_section_end != -1:
-            new_content = content[:import_section_end] + pattern_field_def + content[import_section_end:]
-            modified = True
-            print(f"  - Added version-aware pattern_field function")
-            content = new_content
-    
-    # Write changes to file if modified and not in dry run mode
-    if modified and not dry_run:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-        print(f"  - Changes written to {file_path}")
-    
-    return modified
-
-def scan_and_fix_directory(directory_path, dry_run=False):
-    """Scan all Python files in a directory and fix Pydantic compatibility issues."""
-    fixed_files = []
-    
-    for root, _, files in os.walk(directory_path):
-        for file in files:
-            if file.endswith(".py"):
-                file_path = os.path.join(root, file)
-                relative_path = os.path.relpath(file_path, directory_path)
-                print(f"\nChecking {relative_path}:")
-                if fix_file_for_pydantic_v2(file_path, dry_run):
-                    fixed_files.append(relative_path)
-    
-    return fixed_files
-
-def main():
-    """Main function."""
-    print("Pydantic Compatibility Fixer")
-    print("==========================")
-    
-    # Get Pydantic version
-    version = get_pydantic_version()
-    
-    # Check if we should run in dry run mode
-    dry_run = "--dry-run" in sys.argv
-    if dry_run:
-        print("\nRunning in dry-run mode (no changes will be written)")
-    
-    # Determine the directory to scan
-    directory = next((arg for arg in sys.argv[1:] if not arg.startswith("--")), None)
-    if not directory:
-        directory = os.path.dirname(os.path.abspath(__file__))
-    
-    print(f"\nScanning and fixing directory: {directory}")
-    
-    # Scan and fix the directory
-    fixed_files = scan_and_fix_directory(directory, dry_run)
-    
-    if fixed_files:
-        print(f"\nFixed {len(fixed_files)} files for Pydantic v2 compatibility.")
-        if dry_run:
-            print("\nThis was a dry run. Run without --dry-run to apply changes.")
+    Returns:
+        Union[type, dict]: Config class for v1, dict for v2
+    """
+    if PYDANTIC_V2:
+        return config_dict
     else:
-        print("\nNo files needed fixing for Pydantic v2 compatibility!")
-
-if __name__ == "__main__":
-    main()
+        class Config:
+            pass
+        
+        for key, value in config_dict.items():
+            if key == "json_schema_extra":
+                setattr(Config, "schema_extra", value)
+            else:
+                setattr(Config, key, value)
+        
+        return Config
 </file>
 
 <file path="backend/pyproject.toml">
@@ -75282,22 +75643,6 @@ mypy                = "^1.5.1"
 [build-system]
 requires     = ["poetry-core>=1.3.0"]
 build-backend = "poetry.core.masonry.api"
-</file>
-
-<file path="backend/requirements.txt">
-fastapi==0.104.1
-uvicorn==0.24.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
-httpx==0.25.2
-python-dotenv==1.0.0
-redis[hiredis]==5.0.1
-aiofiles==23.2.1
-pytest==7.4.3
-pytest-asyncio==0.21.1
-zod==0.1.0
-pyyaml==6.0.1
-sentry-sdk==1.39.1
 </file>
 
 <file path="backend/run_minimal.bat">
@@ -93909,6 +94254,145 @@ def _prepare_visualization_data(deadlock_info: DeadlockInfo, graph: nx.DiGraph) 
     }
 </file>
 
+<file path="backend/fix_pydantic_compatibility.py">
+"""
+Utility script to fix common Pydantic compatibility issues.
+Automatically updates files to be compatible with Pydantic v2.
+"""
+
+import os
+import re
+import sys
+from pathlib import Path
+import importlib
+
+def get_pydantic_version():
+    """Get the installed Pydantic version."""
+    try:
+        import pydantic
+        version = getattr(pydantic, "__version__", "unknown")
+        major_version = int(version.split(".")[0])
+        print(f"Detected Pydantic version: {version} (v{major_version})")
+        return major_version
+    except (ImportError, ValueError, IndexError):
+        print("Pydantic is not installed or version cannot be determined.")
+        return 0
+
+def fix_file_for_pydantic_v2(file_path, dry_run=False):
+    """Fix a file for Pydantic v2 compatibility."""
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    modified = False
+    
+    # Replace regex with pattern
+    regex_pattern = r'Field\s*\(\s*(.*?)\bregex\s*=([^,\)]+)'
+    replacement = r'Field(\1pattern=\2'
+    new_content, regex_count = re.subn(regex_pattern, replacement, content)
+    if regex_count > 0:
+        modified = True
+        content = new_content
+        print(f"  - Replaced {regex_count} instances of 'regex' with 'pattern'")
+    
+    # Replace schema_extra with json_schema_extra
+    schema_extra_pattern = r'schema_extra\s*='
+    replacement = r'json_json_json_json_schema_extra='
+    new_content, schema_extra_count = re.subn(schema_extra_pattern, replacement, content)
+    if schema_extra_count > 0:
+        modified = True
+        content = new_content
+        print(f"  - Replaced {schema_extra_count} instances of 'schema_extra' with 'json_schema_extra'")
+    
+    # Add version-aware field validation if needed
+    if regex_count > 0 and 'pattern_field' not in content:
+        # Define pattern_field function if using regex
+        pattern_field_def = '''
+# Helper function to handle Field validation based on Pydantic version
+def get_pydantic_version():
+    try:
+        import pydantic
+        version = getattr(pydantic, "__version__", "1.0.0")
+        major_version = int(version.split(".")[0])
+        return major_version
+    except (ImportError, ValueError, IndexError):
+        return 1  # Default to v1 if we can't determine version
+
+PYDANTIC_V2 = get_pydantic_version() >= 2
+
+def pattern_field(pattern, **kwargs):
+    if PYDANTIC_V2:
+        return Field(pattern=pattern, **kwargs)
+    else:
+        return Field(pattern=pattern, **kwargs)
+'''
+        # Find import section
+        import_section_end = content.find("\n\n", content.find("from pydantic import"))
+        if import_section_end == -1:
+            import_section_end = content.find("\n", content.find("from pydantic import"))
+        
+        if import_section_end != -1:
+            new_content = content[:import_section_end] + pattern_field_def + content[import_section_end:]
+            modified = True
+            print(f"  - Added version-aware pattern_field function")
+            content = new_content
+    
+    # Write changes to file if modified and not in dry run mode
+    if modified and not dry_run:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"  - Changes written to {file_path}")
+    
+    return modified
+
+def scan_and_fix_directory(directory_path, dry_run=False):
+    """Scan all Python files in a directory and fix Pydantic compatibility issues."""
+    fixed_files = []
+    
+    for root, _, files in os.walk(directory_path):
+        for file in files:
+            if file.endswith(".py"):
+                file_path = os.path.join(root, file)
+                relative_path = os.path.relpath(file_path, directory_path)
+                print(f"\nChecking {relative_path}:")
+                if fix_file_for_pydantic_v2(file_path, dry_run):
+                    fixed_files.append(relative_path)
+    
+    return fixed_files
+
+def main():
+    """Main function."""
+    print("Pydantic Compatibility Fixer")
+    print("==========================")
+    
+    # Get Pydantic version
+    version = get_pydantic_version()
+    
+    # Check if we should run in dry run mode
+    dry_run = "--dry-run" in sys.argv
+    if dry_run:
+        print("\nRunning in dry-run mode (no changes will be written)")
+    
+    # Determine the directory to scan
+    directory = next((arg for arg in sys.argv[1:] if not arg.startswith("--")), None)
+    if not directory:
+        directory = os.path.dirname(os.path.abspath(__file__))
+    
+    print(f"\nScanning and fixing directory: {directory}")
+    
+    # Scan and fix the directory
+    fixed_files = scan_and_fix_directory(directory, dry_run)
+    
+    if fixed_files:
+        print(f"\nFixed {len(fixed_files)} files for Pydantic v2 compatibility.")
+        if dry_run:
+            print("\nThis was a dry run. Run without --dry-run to apply changes.")
+    else:
+        print("\nNo files needed fixing for Pydantic v2 compatibility!")
+
+if __name__ == "__main__":
+    main()
+</file>
+
 <file path="backend/README.md">
 # Dexter Backend
 
@@ -94095,6 +94579,22 @@ Once the server is running, you can access the interactive API documentation at:
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md): Developer's quick reference guide
 - [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md): Detailed migration information
 - [ADOPTION_STRATEGY.md](ADOPTION_STRATEGY.md): Phase-by-phase adoption plan
+</file>
+
+<file path="backend/requirements.txt">
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+httpx==0.25.2
+python-dotenv==1.0.0
+redis[hiredis]==5.0.1
+aiofiles==23.2.1
+pytest==7.4.3
+pytest-asyncio==0.21.1
+zod==0.1.0
+pyyaml==6.0.1
+sentry-sdk==1.39.1
 </file>
 
 <file path="frontend/src/api/__tests__/apiClient.test.ts">
@@ -105217,6 +105717,221 @@ export default requestCache;
 }
 </file>
 
+<file path="backend/app/core/config.py">
+"""
+Configuration management for the Dexter application.
+
+This module provides a centralized way to manage application settings
+from multiple sources (environment variables, YAML configs) with proper
+validation using Pydantic.
+"""
+import os
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+import yaml
+from pydantic_settings import BaseSettings
+from pydantic import Field, validator
+
+
+class AppMode(str, Enum):
+    """Available application modes."""
+    DEFAULT = "default"
+    DEBUG = "debug"
+    MINIMAL = "minimal"
+    ENHANCED = "enhanced"
+    SIMPLIFIED = "simplified"
+
+
+class LogLevel(str, Enum):
+    """Available logging levels."""
+    CRITICAL = "CRITICAL"
+    ERROR = "ERROR"
+    WARNING = "WARNING"
+    INFO = "INFO"
+    DEBUG = "DEBUG"
+
+
+class AppSettings(BaseSettings):
+    """
+    Application settings with validation.
+    
+    This class manages all application configuration with appropriate
+    type validation and defaults.
+    """
+    # Core settings
+    APP_MODE: AppMode = AppMode.DEFAULT
+    API_PREFIX: str = "/api/v1"
+    DEBUG: bool = False
+    LOG_LEVEL: LogLevel = LogLevel.INFO
+    
+    # Application info
+    APP_NAME: str = "Dexter"
+    VERSION: str = "1.0.0"
+    
+    # Server settings
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    RELOAD: bool = False
+    WORKERS: int = 1
+    
+    # API Settings
+    SENTRY_BASE_URL: str = "https://sentry.io"
+    SENTRY_TOKEN: str = ""
+    
+    # External services
+    SENTRY_DSN: Optional[str] = None
+    SENTRY_ENVIRONMENT: str = "development"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama2"
+    
+    # Feature flags
+    ENABLE_DEADLOCK_ANALYSIS: bool = True
+    ENABLE_OLLAMA: bool = True
+    ENABLE_REAL_TIME: bool = False
+    ENABLE_CACHING: bool = True
+    
+    # Cache Settings
+    CACHE_ENABLED: bool = True
+    CACHE_TTL_DEFAULT: int = 300  # 5 minutes
+    
+    # Performance settings
+    REQUEST_TIMEOUT: int = 30
+    MAX_CONNECTIONS: int = 100
+    
+    # CORS settings
+    CORS_ORIGINS: List[str] = Field(default_factory=lambda: ["*"])
+    CORS_ALLOW_CREDENTIALS: bool = True
+    CORS_ALLOW_METHODS: List[str] = ["*"]
+    CORS_ALLOW_HEADERS: List[str] = ["*"]
+    
+    # Logging Settings
+    LOG_FORMAT: str = "standard"  # "standard" or "json"
+    LOG_FILE_PATH: Optional[str] = None
+    LOG_MAX_SIZE: int = 10 * 1024 * 1024  # 10MB
+    LOG_BACKUP_COUNT: int = 5
+    LOG_TO_CONSOLE: bool = True
+    
+    # Error Handling Settings
+    RECENT_ERRORS_LIMIT: int = 100  # Number of recent errors to keep in memory
+    INCLUDE_STACK_TRACE: Optional[bool] = None  # None means use debug setting
+    
+    @validator("PORT")
+    def validate_port(cls, v: int) -> int:
+        """Ensure port is in valid range."""
+        if not 1 <= v <= 65535:
+            raise ValueError(f"Port must be between 1 and 65535, got {v}")
+        return v
+    
+    @validator("CORS_ORIGINS")
+    def validate_cors_origins(cls, v: List[str], values) -> List[str]:
+        """Warn about wildcard CORS in production."""
+        # Get the debugging status from the validated data
+        debug = values.get("DEBUG", False)
+        if "*" in v and not debug:
+            print("WARNING: Using wildcard CORS origins in non-debug mode")
+        return v
+    
+    @property
+    def should_include_stack_trace(self) -> bool:
+        """Determine if stack traces should be included in error responses."""
+        if self.INCLUDE_STACK_TRACE is not None:
+            return self.INCLUDE_STACK_TRACE
+        return self.DEBUG
+    
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = True
+        extra = "allow"
+
+
+def load_yaml_config(app_mode: Union[AppMode, str]) -> Dict[str, Any]:
+    """
+    Load YAML configuration file based on app mode.
+    
+    Args:
+        app_mode: The application mode to load configuration for
+        
+    Returns:
+        Dictionary containing configuration settings
+        
+    Raises:
+        FileNotFoundError: If the base configuration file doesn't exist
+    """
+    try:
+        # Handle string input to ensure compatibility
+        if isinstance(app_mode, str):
+            app_mode = AppMode(app_mode)
+            
+        base_path = Path(__file__).parent.parent.parent / "config"
+        if not base_path.exists():
+            base_path.mkdir(parents=True)
+            
+        # Always load base config
+        base_config = {}
+        base_config_path = base_path / "base.yaml"
+        
+        if base_config_path.exists():
+            with open(base_config_path, "r", encoding="utf-8") as file:
+                base_config = yaml.safe_load(file) or {}
+        else:
+            # Create default base config if it doesn't exist
+            default_config = {
+                "API_PREFIX": "/api/v1",
+                "DEBUG": False,
+                "ENABLE_DEADLOCK_ANALYSIS": True,
+                "ENABLE_OLLAMA": True,
+                "ENABLE_REAL_TIME": False,
+                "CACHE_TIMEOUT": 300,
+            }
+            with open(base_config_path, "w", encoding="utf-8") as file:
+                yaml.dump(default_config, file, sort_keys=False)
+            base_config = default_config
+        
+        # Load mode-specific config if it exists
+        mode_config = {}
+        if app_mode != AppMode.DEFAULT:
+            mode_config_path = base_path / f"{app_mode.value}.yaml"
+            if mode_config_path.exists():
+                with open(mode_config_path, "r", encoding="utf-8") as file:
+                    mode_config = yaml.safe_load(file) or {}
+        
+        # Merge configs, with mode-specific taking precedence
+        return {**base_config, **mode_config}
+        
+    except Exception as e:
+        print(f"Error loading configuration: {str(e)}")
+        return {}
+
+
+def get_settings() -> AppSettings:
+    """
+    Get application settings with YAML config applied.
+    
+    Returns:
+        AppSettings object with values from env vars and YAML config
+    """
+    # First load base settings from env vars and .env file
+    settings = AppSettings()
+    
+    # Then override with YAML config
+    try:
+        yaml_config = load_yaml_config(settings.APP_MODE)
+        for key, value in yaml_config.items():
+            if hasattr(settings, key):
+                setattr(settings, key, value)
+    except Exception as e:
+        print(f"Warning: Failed to apply YAML config: {str(e)}")
+    
+    # Apply env vars again to ensure they take highest precedence
+    settings_dict = settings.dict()
+    settings = AppSettings.parse_obj(settings_dict)
+    
+    return settings
+</file>
+
 <file path="backend/app/routers/__init__.py">
 """
 Router setup for the Dexter application.
@@ -106951,295 +107666,6 @@ export default defineConfig({
 });
 </file>
 
-<file path="README.md">
-# Dexter - Sentry Observability Companion
-
-[![Backend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=backend)](https://codecov.io/gh/your-org/dexter)
-[![Frontend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=frontend)](https://codecov.io/gh/your-org/dexter)
-[![CI Tests](https://github.com/your-org/dexter/actions/workflows/test.yml/badge.svg)](https://github.com/your-org/dexter/actions/workflows/test.yml)
-
-Dexter is an intelligent companion tool designed to enhance your Sentry.io experience. It provides a user-friendly interface to explore Sentry issues, leverage AI for error explanations, and perform enhanced error analysis, making observability more accessible and actionable across different roles.
-
-## ✨ Key Features
-
-### Core Features
-
-* **Intuitive Event Explorer:**
-    * View Sentry issues with advanced sorting and filtering
-    * Filter issues by status (`unresolved`, `resolved`, `ignored`, `all`)
-    * Search issues by keywords
-    * Paginate through issue lists
-    * Multi-select issues for bulk actions
-
-* **Visual Decision Indicators:**
-    * Event frequency sparklines showing trends over time
-    * User impact visualizations with percentage of affected users
-    * Color-coded impact levels (critical, high, medium, low)
-    * Priority scoring based on frequency and impact
-
-* **Enhanced Event Details:**
-    * Comprehensive event information with PII protection
-    * Release information and deployment context
-    * Interactive stack trace navigation
-    * Timeline view for breadcrumbs
-    * Contextual data with privacy controls
-
-* **AI-Powered Analysis:**
-    * Plain-language explanations for errors using LLM integration
-    * Context-aware prompting for better explanations
-    * Support for multiple AI models via Ollama
-    * Response formatting and presentation options
-
-* **PostgreSQL Deadlock Analyzer:**
-    * Specialized visualization for PostgreSQL deadlocks
-    * Analysis of deadlock patterns and root causes
-    * Transaction and process relationship mapping
-    * Recommended resolution strategies
-
-* **Workflow Integration:**
-    * Resolve or ignore issues directly within Dexter
-    * Bulk actions for multiple selected issues
-    * Quick links to Sentry for deeper investigation
-    * Export options for sharing and reporting
-
-### Technical Features
-
-* **Robust Architecture:**
-    * Modular component design for maintainability
-    * Error boundaries for isolated component failures
-    * Performance optimizations for large datasets
-    * Accessibility enhancements for all users
-
-* **Data Security:**
-    * PII masking and data privacy controls
-    * Sensitive information protection
-    * Compliance with security best practices
-    * User control over data visibility
-
-* **Enhanced Visualization:**
-    * D3.js integration for advanced data visualization
-    * Responsive and interactive charts
-    * Tooltips with detailed contextual information
-    * Consistent design language across visualizations
-
-## 🛠️ Tech Stack
-
-* **Backend:**
-    * Python 3.10+
-    * FastAPI (for REST API)
-    * Pydantic (for data validation & settings)
-    * Uvicorn (ASGI server)
-    * HTTPX (async HTTP client for Sentry/Ollama)
-    * Cachetools (for in-memory caching)
-* **Frontend:**
-    * Node.js (LTS version)
-    * React (with Vite for building)
-    * JavaScript (ES6+)
-    * Mantine UI (component library & styling)
-    * TanStack Query (React Query) (data fetching & server state)
-    * Zustand (global UI state)
-    * Axios (HTTP client for calling Dexter backend)
-    * D3.js (for data visualization)
-    * `@mantine/notifications` (for UI feedback)
-* **AI Integration:**
-    * Ollama (running locally with a compatible model like Mistral, Llama3, etc.)
-* **Package Management:**
-    * Poetry (Backend)
-    * npm (Frontend)
-* **Containerization (Optional):**
-    * Docker (Dockerfiles provided for backend and frontend)
-* **CI/CD & Quality:**
-    * GitHub Actions (automated testing and code coverage)
-    * Codecov (coverage reporting and tracking)
-    * [Enhanced Coverage Reporting](docs/ci_cd_coverage_reporting.md) (strict quality controls)
-
-##  Prerequisites
-
-Before you begin, ensure you have the following installed on your system:
-
-1.  **Python:** Version 3.10 or higher.
-2.  **Poetry:** Python dependency and packaging manager. ([Installation Guide](https://python-poetry.org/docs/#installation)).
-3.  **Node.js:** LTS (Long Term Support) version is recommended (e.g., v18, v20). This includes `npm`. ([Download Page](https://nodejs.org/)).
-4.  **Git:** For cloning the repository (if applicable).
-5.  **Ollama:** Must be installed and running locally. ([Download Page](https://ollama.com/)).
-    * After installing Ollama, pull the language model you intend to use (the backend defaults to `mistral:latest` but can be changed via `.env`):
-        ```bash
-        ollama pull mistral
-        # or, for example:
-        # ollama pull llama3
-        ```
-6.  **Sentry Account & API Token:**
-    * You need an active Sentry account.
-    * Create an **Internal Integration** in Sentry for Dexter.
-    * Generate an **API Token** for this integration. This token needs permissions like:
-        * `project:read` (to read issues, events, projects)
-        * `event:read` (to read event details)
-        * `org:read` (to read organization details, potentially list projects/orgs for selectors later)
-        * `project:write` (to update issue status like resolve/ignore) - *or `issue:write` if available and more granular.*
-
-## ⚙️ Setup Instructions
-
-1.  **Clone the Repository (if applicable):**
-    ```bash
-    git clone <your-dexter-repository-url>
-    cd dexter
-    ```
-    If you have the files locally, navigate to the root `dexter/` directory.
-
-2.  **Backend Setup:**
-    * Navigate to the backend directory:
-        ```bash
-        cd backend
-        ```
-    * Create your environment configuration file by copying the example:
-        ```bash
-        cp .env.example .env
-        ```
-    * **Edit the `.env` file** using a text editor (e.g., `nano .env`, `vim .env`, or VS Code):
-        * **Crucially, set `SENTRY_API_TOKEN`** to the token you generated in Sentry.
-        * Verify `SENTRY_BASE_URL` if you use a self-hosted Sentry instance (default is `https://sentry.io/api/0/`).
-        * Verify `SENTRY_WEB_URL` if you use a self-hosted Sentry instance (default is `https://sentry.io/`). This is used for "View in Sentry" links.
-        * Verify `OLLAMA_BASE_URL` (default is `http://localhost:11434`).
-        * Verify `OLLAMA_MODEL` matches a model you have pulled in Ollama (default is `mistral:latest`).
-        * Adjust `LOG_LEVEL` if needed (e.g., `DEBUG` for more verbose logs).
-    * Install backend dependencies using Poetry:
-        ```bash
-        poetry install
-        ```
-        *(This creates a virtual environment and installs packages. It might take a few minutes on the first run.)*
-
-3.  **Frontend Setup:**
-    * Navigate to the frontend directory (from the root `dexter/` directory):
-        ```bash
-        cd frontend
-        ```
-    * Install frontend dependencies using npm:
-        ```bash
-        npm install
-        ```
-    * **(Optional) Frontend Environment Variables:** If you need to customize the frontend's default API endpoint or other build-time variables, you can create a `.env.development` (for dev server) or `.env.production` (for builds) file in the `frontend` directory. For example:
-        ```dotenv
-        # frontend/.env.development
-        VITE_API_BASE_URL=http://localhost:8000/api/v1
-        VITE_SENTRY_WEB_URL=https://sentry.io
-        ```
-
-## 🚀 Running the Application
-
-You need to have three main components running simultaneously: Ollama, the Dexter Backend, and the Dexter Frontend.
-
-1.  **Start Ollama:**
-    * Ensure your Ollama application is running. If you installed it as a desktop app, it might already be running in the background.
-    * If you use the CLI version, you might need to run `ollama serve` in a separate terminal.
-    * Verify the model specified in `backend/.env` (e.g., `mistral:latest`) is available (`ollama list`).
-
-2.  **Run the Dexter Backend Server:**
-    * Open a new terminal.
-    * Navigate to the `backend` directory: `cd path/to/dexter/backend`
-    * Activate the Poetry virtual environment:
-        ```bash
-        poetry shell
-        ```
-        *(Your terminal prompt should change, indicating the virtual environment is active).*
-    * Start the FastAPI server using Uvicorn:
-        ```bash
-        uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-        ```
-        * `--reload`: Enables auto-reloading on code changes (for development).
-        * `--host 0.0.0.0`: Makes the server accessible from your local network (or use `localhost`).
-        * `--port 8000`: The port the backend will listen on.
-    * Keep this terminal window open. You should see logs indicating the server is running (e.g., `Uvicorn running on http://0.0.0.0:8000`).
-
-3.  **Run the Dexter Frontend Development Server:**
-    * Open *another new* terminal window.
-    * Navigate to the `frontend` directory: `cd path/to/dexter/frontend`
-    * Start the React development server (Vite):
-        ```bash
-        npm run dev
-        ```
-    * Vite will compile the frontend and start a dev server, usually on `http://localhost:5173`. It will show the URL in the terminal.
-    * Keep this terminal window open.
-
-4.  **Access Dexter:**
-    * Open your web browser (e.g., Chrome, Firefox, Edge).
-    * Navigate to the frontend URL (usually `http://localhost:5173`).
-
-## 📖 Basic Usage Guide
-
-1.  Upon opening Dexter, you'll see the main dashboard layout.
-2.  **Configuration:**
-    * The "Settings" panel (likely in the left navbar) will show the status of the backend (Sentry token, Ollama connection).
-    * If the Sentry token is missing in the backend `.env` or Ollama is not reachable, it will be indicated here.
-    * Enter your **Sentry Organization Slug** and **Sentry Project Slug** into the input fields.
-    * Click "Save & Reload Issues". The issue list should then populate.
-3.  **Event Explorer:**
-    * The main table lists Sentry issues with event frequency and user impact visualizations.
-    * Use the **Status Filter** to change the view.
-    * Use the **Sort Options** to sort by different criteria (date, priority, frequency, impact).
-    * Use the **Search Input** to filter issues by keywords.
-    * **Select multiple issues** by clicking the checkbox on each row.
-    * Use the **Bulk Action Bar** to perform actions on multiple selected issues.
-    * Click the **More Options** menu on each row for additional actions.
-4.  **Event Details:**
-    * Click on any row in the table to load its details in the right-hand panel.
-    * The detail panel shows:
-        * Title, level, tags, timestamp, platform, and other metadata.
-        * Release information (if available).
-        * "Resolve" and "Ignore" buttons to update the issue's status.
-        * Sections for Stack Trace, Breadcrumbs, Context Data, and HTTP Request details.
-        * Data privacy controls to mask sensitive information.
-5.  **AI Explanation:**
-    * In the Event Detail panel, click the "Explain with AI" button.
-    * Dexter will send context to your local Ollama instance and display the generated explanation.
-    * You can change the AI model from the settings panel.
-6.  **PostgreSQL Deadlock Analysis (for deadlock errors):**
-    * When a PostgreSQL deadlock error is detected, Dexter will automatically show the deadlock analyzer.
-    * Explore the visual representation of the deadlock.
-    * See tables involved and transaction details.
-    * Review recommended resolution strategies.
-
-## 📈 Visualization Features
-
-### Sparkline Charts
-
-Event frequency sparklines show:
-- Trends over time (24h, 7d, 30d)
-- Percentage change indicators
-- Peak detection for unusual activity
-- Interactive tooltips with detailed information
-
-### User Impact Visualization
-
-The user impact visualization shows:
-- Number of affected users
-- Percentage of total user base affected
-- Color-coded impact levels
-- Detailed breakdown of affected user segments
-
-### Timeline View
-
-The breadcrumbs timeline shows:
-- Chronological sequence of events leading to the error
-- Color-coded severity levels
-- Interactive expanding sections for detailed data
-- Timestamp information
-
-## 🚀 Next Steps & Future Development
-
-Upcoming features and enhancements include:
-
-- **Smart Grouping Algorithm**: Automatically group similar issues by root cause patterns
-- **AI-Generated Summaries**: Concise one-line problem statements for each issue
-- **Geographic Impact Maps**: Visual representation of affected user locations
-- **Service Dependency Visualization**: Graph view of service relationships in distributed errors
-- **Timeline View with Deployment Markers**: Connect errors to specific deployments
-- **Collaborative Features**: @mentions, comments, and shared investigation sessions
-
-## 📄 License
-
-[Your License Information Here]
-</file>
-
 <file path="frontend/src/components/DeadlockDisplay/DeadlockModal.tsx">
 import React, { useState } from 'react';
 import { 
@@ -107816,6 +108242,295 @@ root.render(
 
 // Export default component for compatibility
 export default App;
+</file>
+
+<file path="README.md">
+# Dexter - Sentry Observability Companion
+
+[![Backend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=backend)](https://codecov.io/gh/your-org/dexter)
+[![Frontend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=frontend)](https://codecov.io/gh/your-org/dexter)
+[![CI Tests](https://github.com/your-org/dexter/actions/workflows/test.yml/badge.svg)](https://github.com/your-org/dexter/actions/workflows/test.yml)
+
+Dexter is an intelligent companion tool designed to enhance your Sentry.io experience. It provides a user-friendly interface to explore Sentry issues, leverage AI for error explanations, and perform enhanced error analysis, making observability more accessible and actionable across different roles.
+
+## ✨ Key Features
+
+### Core Features
+
+* **Intuitive Event Explorer:**
+    * View Sentry issues with advanced sorting and filtering
+    * Filter issues by status (`unresolved`, `resolved`, `ignored`, `all`)
+    * Search issues by keywords
+    * Paginate through issue lists
+    * Multi-select issues for bulk actions
+
+* **Visual Decision Indicators:**
+    * Event frequency sparklines showing trends over time
+    * User impact visualizations with percentage of affected users
+    * Color-coded impact levels (critical, high, medium, low)
+    * Priority scoring based on frequency and impact
+
+* **Enhanced Event Details:**
+    * Comprehensive event information with PII protection
+    * Release information and deployment context
+    * Interactive stack trace navigation
+    * Timeline view for breadcrumbs
+    * Contextual data with privacy controls
+
+* **AI-Powered Analysis:**
+    * Plain-language explanations for errors using LLM integration
+    * Context-aware prompting for better explanations
+    * Support for multiple AI models via Ollama
+    * Response formatting and presentation options
+
+* **PostgreSQL Deadlock Analyzer:**
+    * Specialized visualization for PostgreSQL deadlocks
+    * Analysis of deadlock patterns and root causes
+    * Transaction and process relationship mapping
+    * Recommended resolution strategies
+
+* **Workflow Integration:**
+    * Resolve or ignore issues directly within Dexter
+    * Bulk actions for multiple selected issues
+    * Quick links to Sentry for deeper investigation
+    * Export options for sharing and reporting
+
+### Technical Features
+
+* **Robust Architecture:**
+    * Modular component design for maintainability
+    * Error boundaries for isolated component failures
+    * Performance optimizations for large datasets
+    * Accessibility enhancements for all users
+
+* **Data Security:**
+    * PII masking and data privacy controls
+    * Sensitive information protection
+    * Compliance with security best practices
+    * User control over data visibility
+
+* **Enhanced Visualization:**
+    * D3.js integration for advanced data visualization
+    * Responsive and interactive charts
+    * Tooltips with detailed contextual information
+    * Consistent design language across visualizations
+
+## 🛠️ Tech Stack
+
+* **Backend:**
+    * Python 3.10+
+    * FastAPI (for REST API)
+    * Pydantic (for data validation & settings)
+    * Uvicorn (ASGI server)
+    * HTTPX (async HTTP client for Sentry/Ollama)
+    * Cachetools (for in-memory caching)
+* **Frontend:**
+    * Node.js (LTS version)
+    * React (with Vite for building)
+    * JavaScript (ES6+)
+    * Mantine UI (component library & styling)
+    * TanStack Query (React Query) (data fetching & server state)
+    * Zustand (global UI state)
+    * Axios (HTTP client for calling Dexter backend)
+    * D3.js (for data visualization)
+    * `@mantine/notifications` (for UI feedback)
+* **AI Integration:**
+    * Ollama (running locally with a compatible model like Mistral, Llama3, etc.)
+* **Package Management:**
+    * Poetry (Backend)
+    * npm (Frontend)
+* **Containerization (Optional):**
+    * Docker (Dockerfiles provided for backend and frontend)
+* **CI/CD & Quality:**
+    * GitHub Actions (automated testing and code coverage)
+    * Codecov (coverage reporting and tracking)
+    * [Enhanced Coverage Reporting](docs/ci_cd_coverage_reporting.md) (strict quality controls)
+
+##  Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+1.  **Python:** Version 3.10 or higher.
+2.  **Poetry:** Python dependency and packaging manager. ([Installation Guide](https://python-poetry.org/docs/#installation)).
+3.  **Node.js:** LTS (Long Term Support) version is recommended (e.g., v18, v20). This includes `npm`. ([Download Page](https://nodejs.org/)).
+4.  **Git:** For cloning the repository (if applicable).
+5.  **Ollama:** Must be installed and running locally. ([Download Page](https://ollama.com/)).
+    * After installing Ollama, pull the language model you intend to use (the backend defaults to `mistral:latest` but can be changed via `.env`):
+        ```bash
+        ollama pull mistral
+        # or, for example:
+        # ollama pull llama3
+        ```
+6.  **Sentry Account & API Token:**
+    * You need an active Sentry account.
+    * Create an **Internal Integration** in Sentry for Dexter.
+    * Generate an **API Token** for this integration. This token needs permissions like:
+        * `project:read` (to read issues, events, projects)
+        * `event:read` (to read event details)
+        * `org:read` (to read organization details, potentially list projects/orgs for selectors later)
+        * `project:write` (to update issue status like resolve/ignore) - *or `issue:write` if available and more granular.*
+
+## ⚙️ Setup Instructions
+
+1.  **Clone the Repository (if applicable):**
+    ```bash
+    git clone <your-dexter-repository-url>
+    cd dexter
+    ```
+    If you have the files locally, navigate to the root `dexter/` directory.
+
+2.  **Backend Setup:**
+    * Navigate to the backend directory:
+        ```bash
+        cd backend
+        ```
+    * Create your environment configuration file by copying the example:
+        ```bash
+        cp .env.example .env
+        ```
+    * **Edit the `.env` file** using a text editor (e.g., `nano .env`, `vim .env`, or VS Code):
+        * **Crucially, set `SENTRY_API_TOKEN`** to the token you generated in Sentry.
+        * Verify `SENTRY_BASE_URL` if you use a self-hosted Sentry instance (default is `https://sentry.io/api/0/`).
+        * Verify `SENTRY_WEB_URL` if you use a self-hosted Sentry instance (default is `https://sentry.io/`). This is used for "View in Sentry" links.
+        * Verify `OLLAMA_BASE_URL` (default is `http://localhost:11434`).
+        * Verify `OLLAMA_MODEL` matches a model you have pulled in Ollama (default is `mistral:latest`).
+        * Adjust `LOG_LEVEL` if needed (e.g., `DEBUG` for more verbose logs).
+    * Install backend dependencies using Poetry:
+        ```bash
+        poetry install
+        ```
+        *(This creates a virtual environment and installs packages. It might take a few minutes on the first run.)*
+
+3.  **Frontend Setup:**
+    * Navigate to the frontend directory (from the root `dexter/` directory):
+        ```bash
+        cd frontend
+        ```
+    * Install frontend dependencies using npm:
+        ```bash
+        npm install
+        ```
+    * **(Optional) Frontend Environment Variables:** If you need to customize the frontend's default API endpoint or other build-time variables, you can create a `.env.development` (for dev server) or `.env.production` (for builds) file in the `frontend` directory. For example:
+        ```dotenv
+        # frontend/.env.development
+        VITE_API_BASE_URL=http://localhost:8000/api/v1
+        VITE_SENTRY_WEB_URL=https://sentry.io
+        ```
+
+## 🚀 Running the Application
+
+You need to have three main components running simultaneously: Ollama, the Dexter Backend, and the Dexter Frontend.
+
+1.  **Start Ollama:**
+    * Ensure your Ollama application is running. If you installed it as a desktop app, it might already be running in the background.
+    * If you use the CLI version, you might need to run `ollama serve` in a separate terminal.
+    * Verify the model specified in `backend/.env` (e.g., `mistral:latest`) is available (`ollama list`).
+
+2.  **Run the Dexter Backend Server:**
+    * Open a new terminal.
+    * Navigate to the `backend` directory: `cd path/to/dexter/backend`
+    * Activate the Poetry virtual environment:
+        ```bash
+        poetry shell
+        ```
+        *(Your terminal prompt should change, indicating the virtual environment is active).*
+    * Start the FastAPI server using Uvicorn:
+        ```bash
+        uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+        ```
+        * `--reload`: Enables auto-reloading on code changes (for development).
+        * `--host 0.0.0.0`: Makes the server accessible from your local network (or use `localhost`).
+        * `--port 8000`: The port the backend will listen on.
+    * Keep this terminal window open. You should see logs indicating the server is running (e.g., `Uvicorn running on http://0.0.0.0:8000`).
+
+3.  **Run the Dexter Frontend Development Server:**
+    * Open *another new* terminal window.
+    * Navigate to the `frontend` directory: `cd path/to/dexter/frontend`
+    * Start the React development server (Vite):
+        ```bash
+        npm run dev
+        ```
+    * Vite will compile the frontend and start a dev server, usually on `http://localhost:5173`. It will show the URL in the terminal.
+    * Keep this terminal window open.
+
+4.  **Access Dexter:**
+    * Open your web browser (e.g., Chrome, Firefox, Edge).
+    * Navigate to the frontend URL (usually `http://localhost:5173`).
+
+## 📖 Basic Usage Guide
+
+1.  Upon opening Dexter, you'll see the main dashboard layout.
+2.  **Configuration:**
+    * The "Settings" panel (likely in the left navbar) will show the status of the backend (Sentry token, Ollama connection).
+    * If the Sentry token is missing in the backend `.env` or Ollama is not reachable, it will be indicated here.
+    * Enter your **Sentry Organization Slug** and **Sentry Project Slug** into the input fields.
+    * Click "Save & Reload Issues". The issue list should then populate.
+3.  **Event Explorer:**
+    * The main table lists Sentry issues with event frequency and user impact visualizations.
+    * Use the **Status Filter** to change the view.
+    * Use the **Sort Options** to sort by different criteria (date, priority, frequency, impact).
+    * Use the **Search Input** to filter issues by keywords.
+    * **Select multiple issues** by clicking the checkbox on each row.
+    * Use the **Bulk Action Bar** to perform actions on multiple selected issues.
+    * Click the **More Options** menu on each row for additional actions.
+4.  **Event Details:**
+    * Click on any row in the table to load its details in the right-hand panel.
+    * The detail panel shows:
+        * Title, level, tags, timestamp, platform, and other metadata.
+        * Release information (if available).
+        * "Resolve" and "Ignore" buttons to update the issue's status.
+        * Sections for Stack Trace, Breadcrumbs, Context Data, and HTTP Request details.
+        * Data privacy controls to mask sensitive information.
+5.  **AI Explanation:**
+    * In the Event Detail panel, click the "Explain with AI" button.
+    * Dexter will send context to your local Ollama instance and display the generated explanation.
+    * You can change the AI model from the settings panel.
+6.  **PostgreSQL Deadlock Analysis (for deadlock errors):**
+    * When a PostgreSQL deadlock error is detected, Dexter will automatically show the deadlock analyzer.
+    * Explore the visual representation of the deadlock.
+    * See tables involved and transaction details.
+    * Review recommended resolution strategies.
+
+## 📈 Visualization Features
+
+### Sparkline Charts
+
+Event frequency sparklines show:
+- Trends over time (24h, 7d, 30d)
+- Percentage change indicators
+- Peak detection for unusual activity
+- Interactive tooltips with detailed information
+
+### User Impact Visualization
+
+The user impact visualization shows:
+- Number of affected users
+- Percentage of total user base affected
+- Color-coded impact levels
+- Detailed breakdown of affected user segments
+
+### Timeline View
+
+The breadcrumbs timeline shows:
+- Chronological sequence of events leading to the error
+- Color-coded severity levels
+- Interactive expanding sections for detailed data
+- Timestamp information
+
+## 🚀 Next Steps & Future Development
+
+Upcoming features and enhancements include:
+
+- **Smart Grouping Algorithm**: Automatically group similar issues by root cause patterns
+- **AI-Generated Summaries**: Concise one-line problem statements for each issue
+- **Geographic Impact Maps**: Visual representation of affected user locations
+- **Service Dependency Visualization**: Graph view of service relationships in distributed errors
+- **Timeline View with Deployment Markers**: Connect errors to specific deployments
+- **Collaborative Features**: @mentions, comments, and shared investigation sessions
+
+## 📄 License
+
+[Your License Information Here]
 </file>
 
 <file path="backend/app/services/sentry_client.py">

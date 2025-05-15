@@ -1,55 +1,41 @@
-// File: src/api/index.ts
-
 /**
- * Consolidated API module exports
- * All API modules have been migrated to TypeScript
+ * API Client Exports
+ * 
+ * This file re-exports the unified API client and provides backward compatibility
+ * with the old API client during the migration period.
  */
 
-// Core API client and configuration
-import apiClient, { 
-  createApiClient, 
-  EnhancedApiClient,
-  uncachedClient,
-  persistentClient
-} from './apiClient';
-import { 
-  API_BASE_URL, 
-  axiosConfig,
-  DEFAULT_TIMEOUT,
-  EXTENDED_TIMEOUT,
-  LLM_TIMEOUT
-} from './config';
+// Export everything from the unified API
+export * from './unified';
 
-// API modules
-import * as aiApi from './aiApi';
-import * as analyticsApi from './analyticsApi';
-import * as deadlockApi from './deadlockApi';
-import * as enhancedDeadlockApi from './enhancedDeadlockApi';
-import * as errorAnalyticsApi from './errorAnalyticsApi';
-import * as eventApi from './eventApi';
-import * as eventsApi from './eventsApi';
-import * as issuesApi from './issuesApi';
-import * as modelApi from './modelApi';
-import * as discoverApi from './discoverApi';
-import * as alertsApi from './alertsApi';
+// Export the compatibility layer for backward compatibility
+export * from './compat';
 
-// Re-export everything
+// For backwards compatibility, maintain old exports
+import { apiClient as oldApiClient } from './compat';
+import {
+  apiClient as unifiedApiClient,
+  api,
+  hooks,
+  utils
+} from './unified';
+
+// Export the old API modules for backwards compatibility
+// These should be gradually removed as components are migrated
+import * as aiApi from './archived/aiApi'; // Archived - use unified API instead
+import * as analyticsApi from './archived/analyticsApi'; // Archived - use unified API instead
+import * as deadlockApi from './archived/deadlockApi'; // Archived - use unified API instead
+import * as enhancedDeadlockApi from './archived/enhancedDeadlockApi'; // Archived - use unified API instead
+import * as errorAnalyticsApi from './archived/errorAnalyticsApi'; // Archived - use unified API instead
+import * as eventApi from './archived/eventApi'; // Archived - use unified API instead
+import * as eventsApi from './archived/eventsApi'; // Archived - use unified API instead
+import * as issuesApi from './archived/issuesApi'; // Archived - use unified API instead
+import * as modelApi from './archived/modelApi'; // Archived - use unified API instead
+import * as discoverApi from './archived/discoverApi'; // Archived - use unified API instead
+import * as alertsApi from './archived/alertsApi'; // Archived - use unified API instead
+
+// Re-export old API modules for backwards compatibility
 export {
-  // Core API infrastructure
-  apiClient,
-  createApiClient,
-  EnhancedApiClient,
-  uncachedClient,
-  persistentClient,
-  
-  // Configuration
-  API_BASE_URL,
-  axiosConfig,
-  DEFAULT_TIMEOUT,
-  EXTENDED_TIMEOUT,
-  LLM_TIMEOUT,
-  
-  // API modules
   aiApi,
   analyticsApi,
   deadlockApi,
@@ -63,10 +49,14 @@ export {
   alertsApi
 };
 
-// Default export - consider using named exports instead for better tree-shaking
+// Default export - provide both old and new API
 export default {
-  apiClient,
-  createApiClient,
-  API_BASE_URL,
-  axiosConfig
+  // New unified API
+  api,
+  hooks,
+  utils,
+  apiClient: unifiedApiClient,
+  
+  // Backwards compatibility
+  oldApiClient
 };

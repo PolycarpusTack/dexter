@@ -171,3 +171,5 @@ build/ # Sometimes used by CRA
 .env.local
 .env.*.local
 !.env.example
+
+**/.claude/settings.local.json

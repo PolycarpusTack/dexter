@@ -41,8 +41,8 @@ import EnhancedGraphView from './EnhancedGraphView';
 import TableInfo from './TableInfo';
 import RecommendationPanel from './RecommendationPanel';
 
-// Import API functions
-import { analyzeDeadlock, exportDeadlockSVG } from '../../api/enhancedDeadlockApi';
+// Import API functions from unified API client
+import { api } from '../../api/unified';
 import { useQuery } from '@tanstack/react-query';
 import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling';
 
@@ -114,7 +114,7 @@ function DeadlockModal({ eventId, eventDetails, isOpen, onClose }) {
     refetch
   } = useQuery({
     queryKey: ['deadlockAnalysis', uniqueId, useEnhancedAnalysis], 
-    queryFn: () => analyzeDeadlock(eventId, { 
+    queryFn: () => api.analyzers.analyzeDeadlock(eventId, { 
       useEnhancedAnalysis,
       apiPath: useEnhancedAnalysis ? 'enhanced-analyzers' : 'analyzers'
     }),
@@ -134,7 +134,7 @@ function DeadlockModal({ eventId, eventDetails, isOpen, onClose }) {
       // Get the SVG element
       const svgElement = document.querySelector('.deadlock-graph svg');
       if (svgElement) {
-        exportDeadlockSVG(eventId, svgElement);
+        api.analyzers.exportDeadlockSVG(eventId, svgElement);
         showSuccessNotification({
           title: 'SVG Exported',
           message: 'Deadlock visualization has been exported as SVG'
