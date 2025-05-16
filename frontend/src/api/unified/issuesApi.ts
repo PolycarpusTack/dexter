@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import enhancedApiClient from './enhancedApiClient';
 import { createErrorHandler } from './errorHandler';
-import { validateParams } from './pathResolver.js';
+import { validateParams } from './apiResolver';
 
 /**
  * Error handler for Issues API
@@ -373,12 +373,43 @@ export const assignIssue = async (
   assigneeId: string | null,
   options?: Record<string, any>
 ): Promise<Issue> => {
-  return updateIssue(
-    organizationSlug,
-    issueId,
-    { assignee: assigneeId },
-    options
+  // Validate required parameters
+  const validation = validateParams(
+    'issues',
+    'assign',
+    { organization_slug: organizationSlug, issue_id: issueId }
   );
+  
+  if (!validation.isValid) {
+    handleIssuesError(
+      new Error(`Missing required parameters: ${validation.missingParams.join(', ')}`),
+      { operation: 'assignIssue', context: { organizationSlug, issueId, assigneeId } }
+    );
+  }
+  
+  try {
+    // Call the assign-specific endpoint
+    const response = await enhancedApiClient.put<unknown>(
+      `/api/v1/issues/${issueId}/assign`,
+      { assignee: assigneeId },
+      options
+    );
+    
+    // Validate and return
+    try {
+      return issueSchema.parse(response);
+    } catch (validationError) {
+      // Log validation error but return unvalidated response
+      console.warn('Issue validation failed:', validationError);
+      return response as Issue;
+    }
+  } catch (error) {
+    handleIssuesError(error, {
+      operation: 'assignIssue',
+      context: { organizationSlug, issueId, assigneeId }
+    });
+    throw error;
+  }
 };
 
 /**

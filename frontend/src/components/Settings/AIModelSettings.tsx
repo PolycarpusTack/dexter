@@ -170,7 +170,9 @@ function AIModelSettings({ compact = false }: AIModelSettingsProps): JSX.Element
   const currentModelName = activeAIModel || 
     (useEnhancedModels 
       ? enhancedModelsQuery.data?.current_model 
-      : legacyModelsQuery.data?.find(model => model.isDefault)?.name
+      : Array.isArray(legacyModelsQuery.data) 
+        ? legacyModelsQuery.data.find(model => model.isDefault)?.name
+        : ''
     ) || 'Unknown';
   
   // Update preferred model when active model changes
@@ -247,7 +249,9 @@ function AIModelSettings({ compact = false }: AIModelSettingsProps): JSX.Element
   // Find the active model in the models list
   const activeModel = useEnhancedModels 
     ? enhancedModelsQuery.data?.models?.find(m => m.id === currentModelName)
-    : legacyModelsQuery.data?.find(m => m.name === currentModelName || m.id === currentModelName);
+    : Array.isArray(legacyModelsQuery.data)
+      ? legacyModelsQuery.data.find(m => m.name === currentModelName || m.id === currentModelName)
+      : undefined;
     
   const isModelAvailable = useEnhancedModels
     ? activeModel?.status === ModelStatus.AVAILABLE
@@ -700,7 +704,7 @@ function AIModelSettings({ compact = false }: AIModelSettingsProps): JSX.Element
                         {enhancedModelsQuery.data?.models
                           .filter(m => m.status === ModelStatus.AVAILABLE)
                           .map(model => (
-                            <option key={model.id} value={model.id}>
+                            <option key={`option-model-${model.id}`} value={model.id}>
                               {model.name}
                             </option>
                           ))}
@@ -720,13 +724,16 @@ function AIModelSettings({ compact = false }: AIModelSettingsProps): JSX.Element
                         }}
                       >
                         <option value="">Select a model</option>
-                        {legacyModelsQuery.data
-                          ?.filter(m => m.status === 'available')
-                          .map(model => (
-                            <option key={model.id || model.name} value={model.id || model.name}>
-                              {model.name}
-                            </option>
-                          ))}
+                        {Array.isArray(legacyModelsQuery.data) 
+                          ? legacyModelsQuery.data
+                              .filter(m => m.status === 'available')
+                              .map(model => (
+                                <option key={`option-legacy-${model.id || model.name}`} value={model.id || model.name}>
+                                  {model.name}
+                                </option>
+                              ))
+                          : null
+                        }
                       </select>
                     )}
                     

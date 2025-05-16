@@ -6,45 +6,38 @@ import autoprefixer from 'autoprefixer';
 export default defineConfig({
   plugins: [react()],
   esbuild: {
-    // Enable JSX in .js files
     jsx: 'automatic',
-    jsxImportSource: 'react',
-    // Handle TypeScript
-    include: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx']
+    jsxImportSource: 'react'
   },
   css: {
     postcss: {
       plugins: [
-        // Add autoprefixer for vendor prefixing
         autoprefixer({
-          // Target last 2 versions of browsers and not dead browsers
           overrideBrowserslist: ['last 2 versions', 'not dead']
         })
       ]
     }
   },
   define: {
-    // Define globals properly
     'global': 'globalThis',
     'process.env': process.env
   },
   server: {
     port: 5175,
-    strictPort: false, // Allow fallback to other ports
+    strictPort: false,
     open: true,
-    host: true // Listen on all addresses
+    host: true,
+    fs: {
+      allow: ['..']
+    }
   },
   build: {
     outDir: 'dist',
-    // Only generate source maps in development mode
     sourcemap: process.env.NODE_ENV !== 'production',
-    // Chunk size optimization
-    chunkSizeWarningLimit: 1000, // Increase warning threshold to 1MB
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        // Manual chunks for better code splitting
         manualChunks: (id) => {
-          // Vendor chunks
           if (id.includes('node_modules')) {
             if (id.includes('react') || id.includes('react-dom')) {
               return 'react-vendor';
@@ -64,10 +57,9 @@ export default defineConfig({
             if (id.includes('axios')) {
               return 'api-vendor';
             }
-            return 'vendor'; // all other vendor packages
+            return 'vendor';
           }
           
-          // Component chunks
           if (id.includes('/components/DeadlockDisplay/')) {
             return 'deadlock-viz';
           }
@@ -82,7 +74,6 @@ export default defineConfig({
           }
         },
         assetFileNames: (assetInfo) => {
-          // Organize assets into folders
           let extType = assetInfo?.name?.split('.').at(-1) || '';
           if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(extType)) {
             extType = 'img';
@@ -93,7 +84,6 @@ export default defineConfig({
         entryFileNames: 'assets/js/[name]-[hash].js',
       },
     },
-    // Enable minification & tree shaking
     minify: 'terser',
     terserOptions: {
       compress: {
@@ -104,9 +94,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     esbuildOptions: {
-      // Improve sourcemap generation during development
       sourcemap: process.env.NODE_ENV !== 'production',
-      // Ensure proper handling of CommonJS modules
       format: 'esm',
       target: 'es2020',
       supported: {
@@ -118,13 +106,24 @@ export default defineConfig({
       'react', 
       'react-dom', 
       '@mantine/core', 
+      '@mantine/hooks',
       '@mantine/notifications',
+      '@mantine/charts',
       '@tanstack/react-query'
-    ] // Force pre-bundling of critical dependencies
+    ]
   },
   resolve: {
-    extensions: ['.ts', '.tsx', '.js', '.jsx'],
-    // Ensure proper resolution of CommonJS and ESM modules
-    mainFields: ['browser', 'module', 'jsnext:main', 'main']
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'],
+    mainFields: ['browser', 'module', 'jsnext:main', 'main'],
+    alias: {
+      '@': '/src',
+      '@api': '/src/api',
+      '@components': '/src/components',
+      '@utils': '/src/utils',
+      '@store': '/src/store',
+      '@assets': '/src/assets',
+      // Fix for mantine styles import
+      '@mantine/styles': '/src/utils/mantine-compat'
+    }
   }
 });

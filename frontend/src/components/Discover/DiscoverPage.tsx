@@ -18,7 +18,8 @@ import {
 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { discoverApi } from '../../utils/api';
+import { api } from '../../api/unified';
+import { ApiErrorDisplay } from '../UI';
 
 import QueryBuilder from './QueryBuilder';
 import ResultTable from './ResultTable';
@@ -31,13 +32,13 @@ const DiscoverPage: React.FC = () => {
 
   // Execute query mutation
   const executeQuery = useMutation({
-    mutationFn: (query: any) => discoverApi.query(query),
+    mutationFn: (query: any) => api.discover.query(query),
     onSuccess: (response) => {
       setQueryResults(response);
       setActiveTab('results');
       notifications.show({
         title: 'Query executed',
-        message: `Found ${response.data.length} results`,
+        message: `Found ${response.data?.length || 0} results`,
         color: 'green',
       });
     },
@@ -115,6 +116,15 @@ const DiscoverPage: React.FC = () => {
 
             <Box p="md" style={{ position: 'relative' }}>
               <LoadingOverlay visible={executeQuery.isPending} />
+              
+              {executeQuery.isError && (
+                <ApiErrorDisplay 
+                  title="Discover API Error"
+                  message="Failed to execute query. Please check your configuration and connectivity."
+                  error={executeQuery.error}
+                  onRetry={() => currentQuery && executeQuery.mutate(currentQuery)}
+                />
+              )}
 
               <Tabs.Panel value="query">
                 <QueryBuilder onExecute={handleExecuteQuery} />

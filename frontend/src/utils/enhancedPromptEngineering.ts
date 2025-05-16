@@ -12,7 +12,8 @@ import {
   analyzeErrorEnhanced, 
   ExtendedErrorCategory, 
   ApplicationContext,
-  RuntimeContext 
+  RuntimeContext,
+  EnhancedErrorContext 
 } from './enhancedErrorAnalytics';
 
 /**

@@ -1,7 +1,8 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 import os
+import json
 from pathlib import Path
 
 
@@ -24,7 +25,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     debug: bool = False
-    cors_origins: List[str] = Field(default_factory=lambda: ["*"])
+    cors_origins: Union[List[str], str] = Field(default_factory=lambda: ["*"])
     
     # LLM Settings
     ollama_base_url: str = "http://localhost:11434"
@@ -52,6 +53,23 @@ class Settings(BaseSettings):
         "extra": "allow"
     }
     
+    @field_validator('cors_origins', mode='before')
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from various formats."""
+        if isinstance(v, str):
+            # Handle comma-separated strings
+            if ',' in v:
+                return [origin.strip() for origin in v.split(',')]
+            # Handle JSON array string
+            if v.startswith('[') and v.endswith(']'):
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+            # Single origin
+            return [v.strip()]
+        return v
+
     @property
     def should_include_stack_trace(self) -> bool:
         """Determine if stack traces should be included in error responses."""

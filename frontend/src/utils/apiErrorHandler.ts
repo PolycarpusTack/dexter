@@ -1,5 +1,5 @@
 import React from 'react';
-import { ErrorCategory, categorizeError, showErrorNotification } from './errorHandling';
+import { ErrorCategory, categorizeError, showErrorNotification } from './errorHandling/index';
 import { Logger } from './logger';
 
 export interface ApiErrorOptions {

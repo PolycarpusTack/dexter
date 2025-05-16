@@ -30,8 +30,12 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "allowJs": true
+    "allowJs": true,
+    "baseUrl": "./",
+    "paths": {
+      "*": ["src/*"]
+    }
   },
-  "include": ["src/**/*", "src/**/*.tsx", "src/**/*.ts", "src/**/*.jsx", "src/**/*.js", "src/vite-env.d.ts"],
+  "include": ["src/**/*", "src/**/*.tsx", "src/**/*.ts", "src/**/*.jsx", "src/**/*.js", "src/vite-env.d.ts", "src/custom-types.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

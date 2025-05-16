@@ -5,25 +5,75 @@
 import axios from 'axios';
 import { ApiConfig, HttpMethod } from './types';
 
+// Get the API base URL from environment or use localhost:8000
+const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+
 // Create base API client instance
 export const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
-  }
+  },
+  withCredentials: false // Set to false since CORS allows credentials but we're not using them
 });
 
 // Default API configuration
 const apiConfig: ApiConfig = {
-  baseUrl: '/api',
+  baseUrl: API_BASE_URL,
   timeout: 30000,
   defaultHeaders: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
   endpoints: {
+    // Add ai-enhanced category
+    'ai-enhanced': {
+      base: '/ai-enhanced',
+      endpoints: {
+        models: {
+          path: '/models',
+          method: HttpMethod.GET
+        },
+        pullModelEnhanced: {
+          path: '/models/pull/{modelId}',
+          method: HttpMethod.POST
+        },
+        selectModelEnhanced: {
+          path: '/models/select',
+          method: HttpMethod.POST
+        },
+        createFallbackChain: {
+          path: '/fallback-chains',
+          method: HttpMethod.POST
+        },
+        setDefaultFallbackChain: {
+          path: '/fallback-chains/{chainId}/set-default',
+          method: HttpMethod.POST
+        },
+        userPreferences: {
+          path: '/user/{userId}/preferences',
+          method: HttpMethod.GET
+        },
+        explainErrorEnhanced: {
+          path: '/explain',
+          method: HttpMethod.POST
+        },
+        providerConfig: {
+          path: '/providers/{provider}/config',
+          method: HttpMethod.POST
+        },
+        testConnection: {
+          path: '/providers/{provider}/test-connection',
+          method: HttpMethod.POST
+        },
+        getProviderAvailability: {
+          path: '/providers/availability',
+          method: HttpMethod.GET
+        }
+      }
+    },
     issues: {
       base: '/issues',
       endpoints: {
@@ -138,19 +188,19 @@ const apiConfig: ApiConfig = {
       base: '/config',
       endpoints: {
         get: {
-          path: '/',
+          path: '/config',
           method: HttpMethod.GET
         },
         update: {
-          path: '/',
+          path: '/config',
           method: HttpMethod.PUT
         },
         check: {
-          path: '/check',
+          path: '/config',
           method: HttpMethod.GET
         },
         health: {
-          path: '/health',
+          path: '/status',
           method: HttpMethod.GET
         }
       }

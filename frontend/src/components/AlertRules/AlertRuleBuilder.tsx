@@ -27,19 +27,57 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
-import {
-  alertsApi,
-  IssueAlertRule,
-  MetricAlertRule,
-  AlertRuleCondition,
-  AlertRuleFilter,
-  AlertRuleAction,
-  MetricAlertTrigger,
-  AlertRuleResponse,
-} from '../../api/alertsApi';
+import { api } from '../../api/unified';
+import { AlertRule, AlertRuleAction, AlertRuleInput } from '../../api/unified/alertsApi';
+
+// Local type definitions for form values
+interface AlertRuleCondition {
+  id: string;
+  value?: number;
+  interval?: string;
+}
+
+interface AlertRuleFilter {
+  id: string;
+  comparison?: string;
+  value?: string;
+}
+
+interface MetricAlertTrigger {
+  label: string;
+  threshold: number;
+  alertFrequency: number;
+  thresholdType: 'above' | 'below';
+}
+
+interface IssueAlertRule {
+  name: string;
+  environment: string;
+  actionMatch: 'all' | 'any' | 'none';
+  filterMatch: 'all' | 'any' | 'none';
+  conditions: AlertRuleCondition[];
+  filters: AlertRuleFilter[];
+  actions: AlertRuleAction[];
+  frequency: number;
+}
+
+interface MetricAlertRule {
+  name: string;
+  aggregate: string;
+  dataset: string;
+  query: string;
+  environment: string;
+  timeWindow: number;
+  thresholdType: 'static' | 'percent';
+  triggers: MetricAlertTrigger[];
+  criticalActions: AlertRuleAction[];
+  warningActions: AlertRuleAction[];
+  resolveActions: AlertRuleAction[];
+  owner: string;
+}
 
 interface AlertRuleBuilderProps {
-  editingRule?: AlertRuleResponse;
+  editingRule?: AlertRule;
   ruleType?: 'issue' | 'metric';
   onSave: () => void;
   onCancel: () => void;
@@ -135,14 +173,15 @@ export function AlertRuleBuilder({
     if (!editingRule || !project) return;
 
     try {
-      const projectSlug = `${org}/${project}`;
-      const ruleData = await alertsApi.getAlertRule(
-        projectSlug,
-        editingRule.id,
-        editingRule.type
-      );
+      const ruleData = await api.alerts.getAlertRule({
+        projectSlug: project,
+        organizationSlug: org || '',
+        projectId: project,
+        organizationId: org || '',
+        ruleId: editingRule.id
+      });
 
-      if (editingRule.type === 'issue') {
+      if (ruleType === 'issue') {
         issueForm.setValues(ruleData as IssueAlertRule);
       } else {
         metricForm.setValues(ruleData as MetricAlertRule);
@@ -161,34 +200,65 @@ export function AlertRuleBuilder({
 
     try {
       setLoading(true);
-      const projectSlug = `${org}/${project}`;
       
       if (ruleType === 'issue') {
         const values = issueForm.values;
+        const ruleInput: AlertRuleInput = {
+          name: values.name,
+          conditions: values.conditions,
+          filters: values.filters,
+          actions: values.actions,
+          environment: values.environment || null,
+          frequency: values.frequency
+        };
+        
         if (editingRule) {
-          await alertsApi.updateAlertRule(
-            projectSlug,
-            editingRule.id,
-            'issue',
-            values
-          );
+          await api.alerts.updateAlertRule({
+            projectSlug: project,
+            organizationSlug: org || '',
+            projectId: project,
+            organizationId: org || '',
+            ruleId: editingRule.id,
+            rule: ruleInput
+          });
         } else {
-          await alertsApi.createAlertRule(projectSlug, 'issue', values);
+          await api.alerts.createAlertRule({
+            projectSlug: project,
+            organizationSlug: org || '',
+            projectId: project,
+            organizationId: org || '',
+            rule: ruleInput
+          });
         }
       } else {
-        const values = {
-          ...metricForm.values,
-          projects: [project], // Ensure project is included
+        const values = metricForm.values;
+        const ruleInput: AlertRuleInput = {
+          name: values.name,
+          dataset: values.dataset,
+          query: values.query,
+          environment: values.environment || null,
+          timeWindow: values.timeWindow,
+          aggregation: values.aggregate,
+          projectIds: [project]
         };
+        
         if (editingRule) {
-          await alertsApi.updateAlertRule(
-            projectSlug,
-            editingRule.id,
-            'metric',
-            values
-          );
+          await api.alerts.updateAlertRule({
+            projectSlug: project,
+            organizationSlug: org || '',
+            projectId: project,
+            organizationId: org || '',
+            ruleId: editingRule.id,
+            rule: ruleInput
+          });
         } else {
-          await alertsApi.createAlertRule(projectSlug, 'metric', values);
+          await api.alerts.createAlertRule({
+            projectSlug: project,
+            organizationSlug: org || '',
+            projectId: project,
+            organizationId: org || '',
+            rule: ruleInput
+          });
         }
       }
 

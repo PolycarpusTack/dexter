@@ -50,7 +50,7 @@ import AccessibleIcon from '../UI/AccessibleIcon';
 import ModelSelector from '../ModelSelector/ModelSelector';
 import ProgressIndicator from '../UI/ProgressIndicator';
 import useAppStore from '../../store/appStore';
-import { EventDetails } from '../../types/errorHandling';
+import { EventDetails } from '../../types/eventDetails';
 
 // Destructure hooks for better readability
 const { useExplainError } = hooks;

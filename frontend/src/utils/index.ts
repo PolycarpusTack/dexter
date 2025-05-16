@@ -1,6 +1,6 @@
 // File: src/utils/index.ts
 
-import errorHandling from './errorHandling';
+import errorHandling from './errorHandling/index';
 import * as errorFactory from './errorFactory';
 import * as errorRecovery from './errorRecovery';
 import * as errorTracking from './errorTracking';

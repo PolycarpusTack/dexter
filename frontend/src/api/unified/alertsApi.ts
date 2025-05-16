@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import enhancedApiClient from './enhancedApiClient';
 import { createErrorHandler } from './errorHandler';
-import { validateParams } from './pathResolver.js';
+import { validateParams } from './apiResolver';
 
 /**
  * Error handler for Alerts API

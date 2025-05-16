@@ -8,6 +8,8 @@
 
 import { EventDetails } from '../types/eventDetails';
 import { ErrorCategory, DatabaseErrorSubtype, ErrorContext } from './errorAnalytics';
+// Import the error analytics functions but avoid circular dependency issues
+import errorAnalyticsModule from './errorAnalytics';
 
 /**
  * Extended error categories for more specific classification
@@ -1805,6 +1807,9 @@ function extractStackTrace(eventDetails: EventDetails): string {
  * @returns Enhanced error context object for prompting
  */
 export function analyzeErrorEnhanced(eventDetails: EventDetails): EnhancedErrorContext {
+  // Use the imported module to avoid circular dependency
+  const { analyzeError } = errorAnalyticsModule;
+  
   // Start with the basic error analysis
   const basicContext = analyzeError(eventDetails) as EnhancedErrorContext;
   

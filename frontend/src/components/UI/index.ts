@@ -8,3 +8,4 @@ export { default as KeyboardShortcutsGuide } from './KeyboardShortcutsGuide';
 export { default as LoadingSkeleton } from './LoadingSkeleton';
 export { default as ProgressIndicator } from './ProgressIndicator';
 export { default as RenderingProgressIndicator } from './RenderingProgressIndicator';
+export { ApiErrorDisplay } from './ApiErrorDisplay';

@@ -1,11 +1,13 @@
 import React, { useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Table, ScrollArea, Group, Badge, Text, ActionIcon, LoadingOverlay, Box } from '@mantine/core';
-import { IconExternalLink } from '@tabler/icons-react';
+import { Table, ScrollArea, Group, Badge, Text, ActionIcon, LoadingOverlay, Box, Container, Alert, Button } from '@mantine/core';
+import { IconExternalLink, IconAlertCircle } from '@tabler/icons-react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api/unified';
 import useAppStore from '../../store/appStore';
 import useTableKeyboardNavigation from '../../hooks/useTableKeyboardNavigation';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
+import { ApiErrorDisplay } from '../UI';
 
 export interface Event {
   id: string;
@@ -44,8 +46,12 @@ const EventTable = React.forwardRef<HTMLDivElement, EventTableProps>(({
   const effectiveOrgId = organizationId || orgFromStore || 'default';
   const effectiveProjectId = projectId || projectFromStore || 'default';
   
+  // Check if configuration is missing
+  const isConfigMissing = !effectiveOrgId || effectiveOrgId === 'default' || 
+                         !effectiveProjectId || effectiveProjectId === 'default';
+  
   // Use React Query to fetch events
-  const { data: eventsResponse, isLoading } = useQuery({
+  const { data: eventsResponse, isLoading, error, refetch } = useQuery({
     queryKey: ['events', effectiveOrgId, effectiveProjectId, filters],
     queryFn: () => api.events.getEvents({
       organization: effectiveOrgId,
@@ -63,6 +69,7 @@ const EventTable = React.forwardRef<HTMLDivElement, EventTableProps>(({
         useIssues: filters?.useIssues
       }
     }),
+    enabled: !isConfigMissing, // Only fetch if configuration is valid
     refetchInterval: refreshInterval,
     staleTime: 60 * 1000, // 1 minute
   });
@@ -146,8 +153,42 @@ const EventTable = React.forwardRef<HTMLDivElement, EventTableProps>(({
     }
   }, [setActiveScope, resetScope]);
 
+  // Check for missing configuration first
+  if (isConfigMissing) {
+    return (
+      <Container p="md">
+        <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
+          <Text size="sm" weight={500}>No organization or project configured</Text>
+          <Text size="sm" c="dimmed" mt="xs">
+            Please configure your organization and project settings to view events.
+          </Text>
+          <Button 
+            component={Link} 
+            to="/config" 
+            size="sm" 
+            mt="sm"
+            variant="light"
+          >
+            Configure Now
+          </Button>
+        </Alert>
+      </Container>
+    );
+  }
+
   if (isLoading) {
     return <LoadingOverlay visible />;
+  }
+
+  if (error) {
+    return (
+      <ApiErrorDisplay 
+        title="Could not load events"
+        message="Failed to fetch events from the API. Please check your configuration and connectivity."
+        error={error}
+        onRetry={refetch}
+      />
+    );
   }
 
   if (!events || events.length === 0) {

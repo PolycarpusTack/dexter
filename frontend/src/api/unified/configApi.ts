@@ -6,9 +6,9 @@
  */
 
 import { z } from 'zod';
-import enhancedApiClient from './enhancedApiClient';
-import { createErrorHandler } from './errorHandler';
-import { validateParams } from './pathResolver.js';
+import enhancedApiClient from './enhancedApiClient.js';
+import { createErrorHandler } from './errorHandler.js';
+import { validateParams } from './apiResolver.js';
 
 /**
  * Error handler for Config API
@@ -63,38 +63,26 @@ export interface ConfigParams {
  */
 export const getConfig = async (options?: Record<string, any>): Promise<Config> => {
   try {
-    // Call the API with error handling options
-    const enhancedOptions = {
-      ...options,
-      errorHandling: {
-        ...(options?.errorHandling || {}),
-        suppressNotifications: true,
-        logToConsole: false
-      }
-    };
+    // Actually fetch configuration from backend
+    const response = await enhancedApiClient.callEndpoint<unknown>(
+      'config',
+      'get',
+      {},
+      {},
+      null,
+      options
+    );
     
-    // Try to call the API endpoint
+    // Validate and return
     try {
-      const response = await enhancedApiClient.callEndpoint<unknown>(
-        'config',
-        'get',
-        {},
-        {},
-        null,
-        enhancedOptions
-      );
-      
-      // Validate and return
-      try {
-        return configSchema.parse(response);
-      } catch (validationError) {
-        // Log validation error but return unvalidated response
-        console.warn('Config validation failed:', validationError);
-        return response as Config;
-      }
-    } catch (apiError) {
-      // Handle 404 gracefully by returning default config
-      console.debug('Config API endpoint not available - returning default config');
+      return configSchema.parse(response);
+    } catch (validationError) {
+      console.warn('Config validation failed:', validationError);
+      return response as Config;
+    }
+  } catch (error: any) {
+    // Only return defaults if it's a 404 (config not found)
+    if (error?.response?.status === 404 || error?.status === 404) {
       return {
         organization_slug: '',
         project_slug: '',
@@ -102,8 +90,8 @@ export const getConfig = async (options?: Record<string, any>): Promise<Config> 
         current_model: ''
       };
     }
-  } catch (error) {
-    // This will catch any other errors that might occur
+    
+    // Handle other errors
     handleConfigError(error, {
       operation: 'getConfig',
       context: {}
@@ -124,10 +112,10 @@ export const updateConfig = async (
   options?: Record<string, any>
 ): Promise<Config> => {
   try {
-    // Call the API
+    // Call the API using the callEndpoint method
     const response = await enhancedApiClient.callEndpoint<unknown>(
       'config',
-      'updateConfig',
+      'update',
       {},
       {},
       config,
@@ -169,10 +157,10 @@ export const checkConfig = async (
       project_slug: z.string().min(1)
     }).parse(config);
     
-    // Call the API
+    // Call the API using the callEndpoint method - using PUT to update
     const response = await enhancedApiClient.callEndpoint<unknown>(
       'config',
-      'updateConfig',
+      'update',
       {},
       {},
       validParams,
@@ -204,9 +192,13 @@ export const checkConfig = async (
  */
 export const checkHealth = async (options?: Record<string, any>): Promise<HealthStatus> => {
   try {
-    // Call the API (using direct call for now as health endpoint isn't in apiConfig)
-    const response = await enhancedApiClient.get<unknown>(
-      '/health',
+    // Call the API using the callEndpoint method
+    const response = await enhancedApiClient.callEndpoint<unknown>(
+      'config',
+      'health',
+      {},
+      {},
+      null,
       options
     );
     

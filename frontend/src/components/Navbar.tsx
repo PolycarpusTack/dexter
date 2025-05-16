@@ -207,7 +207,7 @@ export function Navbar() {
               </ThemeIcon>
             }
             rightSection={<IconChevronRight size={14} />}
-            onClick={() => navigate('/settings')}
+            onClick={() => navigate('/config')}
             style={(theme) => ({
               borderRadius: theme.radius.sm,
             })}

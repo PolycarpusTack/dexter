@@ -1,6 +1,10 @@
 // File: src/types/errorHandling.ts
 
 import { ReactNode } from 'react';
+import { EventDetails as SentryEventDetails } from './eventDetails';
+
+// Re-export the EventDetails type from eventDetails.ts for compatibility
+export type EventDetails = SentryEventDetails;
 
 /**
  * Type for error categories

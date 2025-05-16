@@ -355,14 +355,26 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
 
   // Render model card
   const renderModelCard = (model: Model) => {
-    const isActive = model.id === currentModel;
-    const isDownloading = model.status === ModelStatus.DOWNLOADING;
-    const isAvailable = model.status === ModelStatus.AVAILABLE;
-    const isInError = model.status === ModelStatus.ERROR;
+    if (!model) return null;
+    
+    // Ensure model has required properties with defaults
+    const safeModel = {
+      ...model,
+      capabilities: model.capabilities || [],
+      id: model.id || '',
+      name: model.name || 'Unknown Model',
+      provider: model.provider || ModelProvider.CUSTOM,
+      status: model.status || ModelStatus.UNAVAILABLE,
+      size: model.size || ModelSize.MEDIUM
+    };
+
+    const isActive = safeModel.id === currentModel;
+    const isDownloading = safeModel.status === ModelStatus.DOWNLOADING;
+    const isAvailable = safeModel.status === ModelStatus.AVAILABLE;
+    const isInError = safeModel.status === ModelStatus.ERROR;
 
     return (
       <Card 
-        key={model.id}
         withBorder
         padding="sm"
         radius="md"
@@ -375,7 +387,7 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
         <Card.Section p="xs" withBorder bg={isActive ? theme.colors.blue[0] : undefined}>
           <Group justify="space-between">
             <Group>
-              <ThemeIcon radius="xl" size="md" color={getStatusColor(model.status)}>
+              <ThemeIcon radius="xl" size="md" color={getStatusColor(safeModel.status)}>
                 {isAvailable ? (
                   <IconCheck size={14} />
                 ) : isDownloading ? (
@@ -386,50 +398,51 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                   <IconCloudDownload size={14} />
                 )}
               </ThemeIcon>
-              <Text fw={500} size="sm" truncate>{model.name}</Text>
+              <Text fw={500} size="sm" truncate>{safeModel.name}</Text>
             </Group>
             
-            <Badge color={getSizeColor(model.size)} size="xs">{model.size}</Badge>
+            <Badge color={getSizeColor(safeModel.size)} size="xs">{safeModel.size}</Badge>
           </Group>
         </Card.Section>
         
         <Box mt="xs">
           <Group gap="xs" mb="xs" wrap="nowrap">
             <Badge 
+              key={`${safeModel.id}-provider`}
               size="xs" 
               color="gray" 
               variant="outline"
-              leftSection={getProviderIcon(model.provider)}
+              leftSection={getProviderIcon(safeModel.provider)}
             >
-              {model.provider}
+              {safeModel.provider}
             </Badge>
             
-            {model.capabilities.slice(0, 2).map(cap => (
-              <Badge key={cap} size="xs" variant="dot">
+            {safeModel.capabilities.slice(0, 2).map((cap, capIndex) => (
+              <Badge key={`${safeModel.id}-cap-${capIndex}-${cap}`} size="xs" variant="dot">
                 {cap}
               </Badge>
             ))}
             
-            {model.capabilities.length > 2 && (
-              <Badge size="xs" variant="dot">
-                +{model.capabilities.length - 2}
+            {safeModel.capabilities.length > 2 && (
+              <Badge key={`${safeModel.id}-caps-more`} size="xs" variant="dot">
+                +{safeModel.capabilities.length - 2}
               </Badge>
             )}
           </Group>
           
-          {model.size_mb && (
-            <Text size="xs" c="dimmed">Size: {formatSize(model.size_mb)}</Text>
+          {safeModel.size_mb && (
+            <Text size="xs" c="dimmed">Size: {formatSize(safeModel.size_mb)}</Text>
           )}
           
-          {model.metrics?.avg_response_time && (
+          {safeModel.metrics?.avg_response_time && (
             <Text size="xs" c="dimmed">
-              Avg. Response: {Math.round(model.metrics.avg_response_time / 1000)}s
+              Avg. Response: {Math.round(safeModel.metrics.avg_response_time / 1000)}s
             </Text>
           )}
           
-          {model.error && (
+          {safeModel.error && (
             <Text size="xs" c="red" lineClamp={1}>
-              Error: {model.error}
+              Error: {safeModel.error}
             </Text>
           )}
         </Box>
@@ -441,7 +454,7 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
               size="xs" 
               variant={isActive ? "filled" : "light"} 
               color={isActive ? "blue" : "gray"}
-              onClick={() => handleModelSelect(model.id)}
+              onClick={() => handleModelSelect(safeModel.id)}
               disabled={isActive}
             >
               {isActive ? 'Active' : 'Select'}
@@ -464,7 +477,7 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
               variant="light" 
               color="gray"
               leftSection={<IconDownload size={14} />}
-              onClick={() => handleDownloadModel(model.id)}
+              onClick={() => handleDownloadModel(safeModel.id)}
             >
               Download
             </Button>
@@ -485,7 +498,8 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
           data={models.map(model => ({
             value: model.id,
             label: `${model.name} ${model.status === ModelStatus.AVAILABLE ? '✓' : ''}`,
-            disabled: model.status !== ModelStatus.AVAILABLE
+            disabled: model.status !== ModelStatus.AVAILABLE,
+            key: `active-model-select-${model.id}`
           }))}
           rightSection={modelsQuery.isLoading ? <Loader size="xs" /> : <IconChevronDown size={14} />}
         />
@@ -581,10 +595,11 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                   value={selectedCategory}
                   onChange={(value) => setSelectedCategory(value || 'all')}
                   data={[
-                    { value: 'all', label: 'All Categories' },
-                    ...groups.map(group => ({
+                    { value: 'all', label: 'All Categories', key: 'category-select-all' },
+                    ...groups.map((group) => ({
                       value: group.name,
-                      label: group.name
+                      label: group.name,
+                      key: `category-select-${group.name}`
                     }))
                   ]}
                 />
@@ -595,10 +610,11 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                   value={selectedProvider}
                   onChange={(value) => setSelectedProvider(value || 'all')}
                   data={[
-                    { value: 'all', label: 'All Providers' },
-                    ...providers.map(provider => ({
+                    { value: 'all', label: 'All Providers', key: 'provider-select-all' },
+                    ...providers.map((provider) => ({
                       value: provider,
-                      label: provider
+                      label: provider,
+                      key: `provider-select-${provider}`
                     }))
                   ]}
                 />
@@ -609,12 +625,12 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                   value={selectedSize}
                   onChange={(value) => setSelectedSize(value || 'all')}
                   data={[
-                    { value: 'all', label: 'All Sizes' },
-                    { value: ModelSize.TINY, label: 'Tiny' },
-                    { value: ModelSize.SMALL, label: 'Small' },
-                    { value: ModelSize.MEDIUM, label: 'Medium' },
-                    { value: ModelSize.LARGE, label: 'Large' },
-                    { value: ModelSize.XLARGE, label: 'X-Large' }
+                    { value: 'all', label: 'All Sizes', key: 'size-select-all' },
+                    { value: ModelSize.TINY, label: 'Tiny', key: 'size-select-tiny' },
+                    { value: ModelSize.SMALL, label: 'Small', key: 'size-select-small' },
+                    { value: ModelSize.MEDIUM, label: 'Medium', key: 'size-select-medium' },
+                    { value: ModelSize.LARGE, label: 'Large', key: 'size-select-large' },
+                    { value: ModelSize.XLARGE, label: 'X-Large', key: 'size-select-xlarge' }
                   ]}
                 />
               </Group>
@@ -625,10 +641,10 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                 value={sortBy}
                 onChange={(value) => setSortBy(value || 'name')}
                 data={[
-                  { value: 'name', label: 'Name' },
-                  { value: 'size', label: 'Size' },
-                  { value: 'status', label: 'Status' },
-                  { value: 'provider', label: 'Provider' }
+                  { value: 'name', label: 'Name', key: 'sort-select-name' },
+                  { value: 'size', label: 'Size', key: 'sort-select-size' },
+                  { value: 'status', label: 'Status', key: 'sort-select-status' },
+                  { value: 'provider', label: 'Provider', key: 'sort-select-provider' }
                 ]}
                 icon={<IconArrowsSort size={14} />}
               />
@@ -659,9 +675,9 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                       </Button>
                     </Menu.Target>
                     <Menu.Dropdown>
-                      {fallbackChains.map(chain => (
+                      {fallbackChains.map((chain) => (
                         <Menu.Item 
-                          key={chain.name}
+                          key={`fallback-chain-menu-${chain.name}`}
                           onClick={() => handleSetDefaultFallbackChain(chain.name)}
                           rightSection={
                             chain.name === currentFallbackChain ? (
@@ -741,7 +757,11 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                   spacing="md"
                   mt="md"
                 >
-                  {availableModels.map(renderModelCard)}
+                  {availableModels.map((model, index) => (
+                    <div key={`available-model-${model.id || 'unknown'}-${index}`}>
+                      {renderModelCard(model)}
+                    </div>
+                  ))}
                 </SimpleGrid>
               )}
             </Tabs.Panel>
@@ -757,7 +777,11 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                   spacing="md"
                   mt="md"
                 >
-                  {downloadingModels.map(renderModelCard)}
+                  {downloadingModels.map((model, index) => (
+                    <div key={`downloading-model-${model.id || 'unknown'}-${index}`}>
+                      {renderModelCard(model)}
+                    </div>
+                  ))}
                 </SimpleGrid>
               )}
             </Tabs.Panel>
@@ -773,7 +797,11 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                   spacing="md"
                   mt="md"
                 >
-                  {unavailableModels.map(renderModelCard)}
+                  {unavailableModels.map((model, index) => (
+                    <div key={`unavailable-model-${model.id || 'unknown'}-${index}`}>
+                      {renderModelCard(model)}
+                    </div>
+                  ))}
                 </SimpleGrid>
               )}
             </Tabs.Panel>
@@ -810,8 +838,8 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
           <Text size="sm" fw={500}>Select Models in Order:</Text>
           
           <Stack>
-            {availableModels.map(model => (
-              <Group key={model.id} justify="space-between">
+            {availableModels.map((model, index) => (
+              <Group key={`model-chip-${model.id || 'unknown'}-${index}`} justify="space-between">
                 <Group>
                   <Chip
                     checked={newChainModels.includes(model.id)}
@@ -842,7 +870,7 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                 {newChainModels.map((modelId, index) => {
                   const model = models.find(m => m.id === modelId);
                   return (
-                    <List.Item key={modelId}>
+                    <List.Item key={`new-chain-model-${modelId}-${index}`}>
                       <Group gap="xs">
                         <Badge size="xs">{index + 1}</Badge>
                         <Text>{model?.name || modelId}</Text>
@@ -901,8 +929,8 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
           </Text>
           
           <Accordion>
-            {fallbackChains.map(chain => (
-              <Accordion.Item key={chain.name} value={chain.name}>
+            {fallbackChains.map((chain) => (
+              <Accordion.Item key={`accordion-chain-${chain.name}`} value={chain.name}>
                 <Accordion.Control>
                   <Group>
                     <Text>{chain.name}</Text>
@@ -922,7 +950,7 @@ const EnhancedModelSelector: React.FC<ModelSelectorProps> = ({
                       {chain.models.map((modelId, index) => {
                         const model = models.find(m => m.id === modelId);
                         return (
-                          <List.Item key={modelId}>
+                          <List.Item key={`chain-model-${chain.name}-${modelId}-${index}`}>
                             <Group gap="xs">
                               <Badge size="xs">{index + 1}</Badge>
                               <Text>{model?.name || modelId}</Text>

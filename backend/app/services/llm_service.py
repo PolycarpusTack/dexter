@@ -364,7 +364,8 @@ class LLMService:
                 prompt += f"  Function: {frame['function']}\n"
                 prompt += f"  Line: {frame['line']}, Column: {frame['column']}\n"
                 if frame['code_context']:
-                    prompt += f"  Code:\n    {frame['code_context'].replace('\n', '\n    ')}\n"
+                    code_context = frame['code_context'].replace('\n', '\n    ')
+                    prompt += f"  Code:\n    {code_context}\n"
         
         # Add request information if available
         if 'request' in context and context['request']:

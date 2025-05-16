@@ -48,14 +48,21 @@ const explainResponseSchema = z.object({
  * Fetch list of available models from Ollama (legacy)
  */
 export const fetchModelsList = async (): Promise<any> => {
-  return enhancedApiClient.callEndpoint(
-    'ai',
-    'models',
-    {},
-    {},
-    undefined,
-    { cache: 'stale-while-revalidate' }
-  );
+  try {
+    const response = await enhancedApiClient.callEndpoint(
+      'ai',
+      'models',
+      {},
+      {},
+      undefined,
+      { cache: 'stale-while-revalidate' }
+    );
+    return response || [];
+  } catch (error) {
+    console.debug('Models API endpoint not available - returning empty list');
+    // Return an empty array to ensure consistent typing
+    return [];
+  }
 };
 
 /**
@@ -79,9 +86,17 @@ export const fetchEnhancedModelsList = async (): Promise<ModelsResponse> => {
       }
     );
   } catch (error) {
-    // If the endpoint fails, return an empty models response
+    // If the endpoint fails, return an empty models response with properly structured data
     console.debug('Models API endpoint not available - returning empty list');
-    return { models: [] } as ModelsResponse;
+    return { 
+      models: [],
+      groups: [],
+      fallback_chains: [],
+      providers: [],
+      status: {},
+      current_model: '',
+      current_fallback_chain: ''
+    } as ModelsResponse;
   }
 };
 

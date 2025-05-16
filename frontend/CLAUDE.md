@@ -39,6 +39,15 @@ Overall Phase 1 progress: 100% complete
 
 Current API Client Migration progress: 100% complete
 
+### Backend API Fixes (Completed May 16, 2025)
+
+All backend API endpoint errors have been fixed:
+- ✅ Fixed CORS configuration parsing in settings.py
+- ✅ Fixed AI router f-string syntax error in llm_service.py  
+- ✅ Fixed organization alerts missing imports
+- ✅ Backend runs successfully on http://localhost:8000
+- ✅ All routes are properly registered at /api/v1/*
+
 ### Codebase Structure
 
 The frontend codebase is structured as:
@@ -46,7 +55,7 @@ The frontend codebase is structured as:
   - `src/api/unified/` - New unified API client architecture
     - `apiConfig.ts` - API endpoints configuration
     - `enhancedApiClient.ts` - Core API client with advanced features
-    - `pathResolver.ts` - Dynamic path resolution
+    - `pathResolver.ts` - Dynamic path resolution  
     - `errorHandler.ts` - Unified error handling
     - Domain-specific API modules (eventsApi.ts, issuesApi.ts, etc.)
     - React Query hooks for each domain (in `hooks/` directory)
@@ -60,9 +69,24 @@ The frontend codebase is structured as:
 - `src/theme/` - Theme configuration
 - `src/docs/` - Documentation files
 
+### ESM Module Configuration
+
+The frontend is configured as an ESM module (`"type": "module"` in package.json). This means:
+- Imports must include file extensions (.js for runtime compatibility)
+- TypeScript files use .js extensions in imports (TypeScript resolves these correctly)
+- This is the official TypeScript recommendation for ESM modules
+- Both .ts and .js files exist in the unified API directory
+
 ### Recent Improvements
 
-1. **Context-Aware AI Prompting**
+1. **API Endpoint Error Fixes (May 16, 2025)**
+   - Fixed CORS configuration parsing error in backend
+   - Fixed AI router syntax error with f-strings
+   - Fixed organization alerts missing model imports
+   - Verified all backend routes are properly registered
+   - Backend now runs successfully, resolving all 404 errors
+
+2. **Context-Aware AI Prompting**
    - Implemented comprehensive error analysis with 50+ distinct error categories
    - Created domain-specific prompt templates for specialized AI explanations
    - Added advanced stack trace analysis and root cause inference
@@ -72,7 +96,7 @@ The frontend codebase is structured as:
    - Provided settings for user control of AI behavior
    - Created comprehensive documentation and guides
 
-2. **Unified API Client Architecture**
+3. **Unified API Client Architecture**
    - Implemented enhanced API client with caching, retries, and error handling
    - Created path resolver for dynamic API path generation
    - Added Zod validation for type-safe responses
@@ -83,7 +107,7 @@ The frontend codebase is structured as:
    - Created integration tests for key components
    - Added complete developer documentation
 
-2. **Component Migrations**
+4. **Component Migrations**
    - Migrated all major components to use unified API client:
      - EventTable components
      - DeadlockDisplay components
@@ -93,17 +117,17 @@ The frontend codebase is structured as:
    - Updated relevant hooks to use the unified API
    - Added comprehensive error handling for all API calls
 
-3. **Form Validation Framework**
+5. **Form Validation Framework**
    - Created comprehensive form validation in `src/utils/formValidation.ts`
    - Implemented validation rules for all form components
    - Added real-time validation feedback
 
-4. **UI Modernization**
+6. **UI Modernization**
    - Implemented VSCode/Notion-inspired UI styling
    - Enhanced theme with consistent color tokens and spacing
    - Redesigned header and navbar for better usability
 
-5. **Keyboard Navigation**
+7. **Keyboard Navigation**
    - Implemented global shortcuts via `useGlobalShortcuts` hook
    - Added component-specific keyboard navigation
    - Created keyboard shortcuts guide
@@ -138,7 +162,7 @@ The frontend codebase is structured as:
 - `/frontend/src/components/ExplainError/ExplainError.tsx` - Main AI explanation component
 
 ### API Client Architecture
-- `/frontend/src/api/unified/apiConfig.ts` - API endpoints configuration
+- `/frontend/src/api/unified/apiConfig.ts` - API endpoints configuration (using .js imports for ESM)
 - `/frontend/src/api/unified/enhancedApiClient.ts` - Core API client implementation
 - `/frontend/src/api/unified/pathResolver.ts` - Dynamic path resolution
 - `/frontend/src/api/unified/errorHandler.ts` - Unified error handling system
@@ -148,7 +172,7 @@ The frontend codebase is structured as:
 - `/frontend/src/api/unified/aiApi.ts` - AI/Models API module for explanations
 - `/frontend/src/api/unified/metricsApi.ts` - Metrics API module for performance tracking
 - `/frontend/src/api/unified/templateApi.ts` - Templates API module for prompt management
-- `/frontend/src/api/unified/configApi.ts` - Configuration API module for app settings
+- `/frontend/src/api/unified/configApi.ts` - Configuration API module for app settings (using .js imports for ESM)
 - `/frontend/src/api/unified/hooks/useEvents.ts` - Events API React Query hooks
 - `/frontend/src/api/unified/hooks/useIssues.ts` - Issues API React Query hooks
 - `/frontend/src/api/unified/hooks/useAi.ts` - AI API React Query hooks
@@ -221,13 +245,19 @@ The frontend codebase is structured as:
    - Leverage React Query's caching and state management
    - Use the appropriate error handling strategies based on context
 
-5. UI and Components
+5. ESM Module Import Patterns
+   - Use .js extensions in imports (required for ESM modules)
+   - TypeScript will correctly resolve .js imports to .ts files
+   - This is the official TypeScript recommendation for ESM
+   - Both .ts and .js files may exist in the codebase during migration
+
+6. UI and Components
    - Always use the theme tokens for styling instead of hardcoded values
    - Use the form validation framework for all form components
    - Make sure keyboard navigation works for new components
    - Ensure all components follow the design system guidelines in `UI_IMPROVEMENTS.md`
 
-6. Quality and Testing
+7. Quality and Testing
    - Run linting and type checking before submitting changes
    - Test API integrations with appropriate error cases
    - Add unit tests for new components when possible

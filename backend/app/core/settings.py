@@ -1,4 +1,4 @@
-# File: backend/app/core/settings.py
+# File: backend/app/core/settings_new.py
 
 """
 Settings module for the Dexter backend API.
@@ -7,8 +7,10 @@ Loads settings from environment variables using Pydantic Settings.
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
-from pydantic import Field
+from pydantic import Field, field_validator
+from typing import List, Union
 from urllib.parse import urlparse
+import json
 
 class Settings(BaseSettings):
     """
@@ -28,10 +30,24 @@ class Settings(BaseSettings):
     
     # Application configuration that needs to be directly defined in the Settings class
     app_name: str = Field("Dexter API", env="APP_NAME")
-    cors_origins: list = Field(["http://localhost:5173", "http://localhost:3000"], env="CORS_ORIGINS")
+    cors_origins: Union[List[str], str] = Field(["http://localhost:5173", "http://localhost:3000"], env="CORS_ORIGINS")
     
     # Sentry organization config (used in discover.py)
     SENTRY_ORG: str = Field("", env="SENTRY_ORG")
+
+    @field_validator('cors_origins', mode='before')
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from various formats."""
+        if isinstance(v, str):
+            # Try to parse as JSON array
+            if v.startswith('[') and v.endswith(']'):
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+            # Parse as comma-separated list
+            return [origin.strip() for origin in v.split(',')]
+        return v
 
     @property
     def sentry_org_web_url_base(self) -> str:

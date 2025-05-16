@@ -1,6 +1,6 @@
 // File: src/utils/errorFactory.ts
 
-import { categorizeError, isRetryableError, ErrorCategory } from './errorHandling';
+import { categorizeError, isRetryableError, ErrorCategory } from './errorHandling/index';
 
 /**
  * Interface for EnhancedError constructor options

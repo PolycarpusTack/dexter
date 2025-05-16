@@ -1,4 +1,4 @@
-import { createStyles } from '@mantine/styles';
+import { createStyles } from '@mantine/core';
 
 /**
  * Styles hook for EventRow component

@@ -7,7 +7,7 @@
 
 // Core API client and utilities
 import enhancedApiClient, { EnhancedApiClient } from './enhancedApiClient';
-import { PathResolutionError, resolvePath, getFullUrl } from './pathResolver.js';
+import { getFullUrl, getMethod, resolvePath, validateParams } from './apiResolver';
 import { ErrorFactory, createErrorHandler, showErrorNotification } from './errorHandler';
 import apiConfig from './apiConfig';
 

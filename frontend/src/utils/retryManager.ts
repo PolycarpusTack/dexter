@@ -1,6 +1,6 @@
 // File: src/utils/retryManager.ts
 
-import { isRetryableError } from './errorHandling';
+import { isRetryableError } from './errorHandling/index';
 import ErrorFactory from './errorFactory';
 
 /**

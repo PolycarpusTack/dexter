@@ -67,7 +67,7 @@ export interface Model {
   status: ModelStatus;
   size: ModelSize;
   size_mb?: number;
-  capabilities: ModelCapability[];
+  capabilities: ModelCapability[];  // Keep it required but ensure defaults are provided
   metrics?: {
     avg_response_time?: number;
     tokens_per_second?: number;

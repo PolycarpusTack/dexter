@@ -601,7 +601,7 @@ function extractStackTrace(eventDetails: EventDetails): string {
     
     if (exception?.stacktrace?.frames) {
       return exception.stacktrace.frames
-        .map(frame => `at ${frame.function} (${frame.filename}:${frame.lineno}:${frame.colno})`)
+        .map(frame => `at ${frame.function || 'anonymous'} (${frame.filename || 'unknown'}:${frame.lineno || '?'}:${frame.colno || '?'})`)
         .join('\n');
     }
   }
@@ -614,7 +614,7 @@ function extractStackTrace(eventDetails: EventDetails): string {
         
         if (exception?.stacktrace?.frames) {
           return exception.stacktrace.frames
-            .map(frame => `at ${frame.function} (${frame.filename}:${frame.lineno}:${frame.colno})`)
+            .map(frame => `at ${frame.function || 'anonymous'} (${frame.filename || 'unknown'}:${frame.lineno || '?'}:${frame.colno || '?'})`)
             .join('\n');
         }
       }

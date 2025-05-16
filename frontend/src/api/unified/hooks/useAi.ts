@@ -69,8 +69,27 @@ export function useAiModels(options?: {
   enabled?: boolean;
   staleTime?: number;
 }) {
-  // Wrapper around useModelsEnhanced for backward compatibility
-  return useModelsEnhanced(options);
+  // Return a proper query with array results for backward compatibility
+  return useQuery({
+    queryKey: aiKeys.ollamaModels(),
+    queryFn: async () => {
+      try {
+        const result = await fetchModelsList();
+        // Ensure result is always an array
+        return Array.isArray(result) ? result : [];
+      } catch (error) {
+        console.error('Error fetching models:', error);
+        return [];
+      }
+    },
+    refetchInterval: options?.refetchInterval ?? 30000,
+    staleTime: options?.staleTime ?? 15000,
+    retry: 1,
+    enabled: options?.enabled ?? true,
+    meta: {
+      suppressErrorNotification: true
+    }
+  });
 }
 
 /**
@@ -92,7 +111,16 @@ export const useModelsEnhanced = (
 ) => {
   return useQuery<ModelsResponse>({
     queryKey: aiKeys.enhancedModels(),
-    queryFn: () => fetchEnhancedModelsList(),
+    queryFn: () => fetchEnhancedModelsList().then(response => {
+      // Ensure every model has the required fields
+      if (response.models) {
+        response.models = response.models.map(model => ({
+          ...model,
+          capabilities: model.capabilities || []
+        }));
+      }
+      return response;
+    }),
     // Refresh every 30 seconds to update download status by default
     refetchInterval: options?.refetchInterval ?? 30000,
     // Consider stale after 15 seconds by default

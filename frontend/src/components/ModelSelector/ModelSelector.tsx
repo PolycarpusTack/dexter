@@ -293,7 +293,8 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
     .filter(model => model.status === 'available')
     .map(model => ({
       value: model.name,
-      label: model.name
+      label: model.name,
+      key: `model-option-${model.name}`
     })) || [];
   
   if (isLoadingModels) {
@@ -480,10 +481,10 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
         <Box>
           <Text fw={500} size="sm" mb="xs">Available Models</Text>
           <Stack gap="xs">
-            {modelsData?.models.map(model => {
+            {modelsData?.models.map((model, modelIndex) => {
               const status = getModelStatus(model);
               return (
-                <Paper key={model.name} withBorder p="xs">
+                <Paper key={`model-item-${model.name}-${modelIndex}`} withBorder p="xs">
                   <Group justify="apart">
                     <Group gap="xs">
                       <ThemeIcon color={status.color} size="sm" radius="xl" variant="light">

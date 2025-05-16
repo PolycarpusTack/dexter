@@ -13,6 +13,7 @@ import { useEventFrequency } from './useEventFrequency';
 import { useIssueImpact } from './useIssueImpact';
 import { useRealtimeUpdates } from './useRealtimeUpdates';
 import { useSearchParamState } from './useSearchParamState';
+import { useInitialization } from './useInitialization';
 
 export {
   useKeyboardNavigation,
@@ -27,5 +28,6 @@ export {
   useEventFrequency,
   useIssueImpact,
   useRealtimeUpdates,
-  useSearchParamState
+  useSearchParamState,
+  useInitialization
 };

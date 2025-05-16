@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, Group, Paper } from '@mantine/core';
-import { useTheme } from '@mantine/styles';
+import { useTheme } from '../../utils/mantine-compat';
 
 export interface RenderingProgressIndicatorProps {
   /**

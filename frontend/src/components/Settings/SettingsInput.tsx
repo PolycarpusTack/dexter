@@ -43,28 +43,26 @@ import {
   maxLength
 } from '../../utils/formValidation';
 
-// Import the new API client
-import { 
-  hooks,
-  utils
-} from '../../api/unified';
+// Import API hooks
+import { hooks } from '../../api/unified';
+
+// Import notification functions directly
+import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling/notifications';
 
 // Destructure the hooks for better readability
 const { useCheckConfig } = hooks;
 
-// Define window interface to add our custom global function
+// Type definitions for form state
+interface FormErrors {
+  organization_slug?: string;
+  project_slug?: string;
+}
+
+// Extend Window interface to include openSentrySettings function
 declare global {
   interface Window {
     openSentrySettings?: () => void;
   }
-}
-
-// Import types from unified API client
-import { Config, ConfigParams } from '../../api/unified';
-
-interface FormErrors {
-  organization_slug: string | null;
-  project_slug: string | null;
 }
 
 /**
@@ -98,63 +96,60 @@ function SettingsInput(): JSX.Element {
   // Local form state
   const [orgInput, setOrgInput] = useState<string>(organizationSlug || '');
   const [projectInput, setProjectInput] = useState<string>(projectSlug || '');
-  const [activeTab, setActiveTab] = useState<string>('sentry');
-  const [formErrors, setFormErrors] = useState<FormErrors>({
-    organization_slug: null,
-    project_slug: null
-  });
-  const [touched, setTouched] = useState<Record<string, boolean>>({
-    organization_slug: false,
-    project_slug: false
-  });
   
-  // Define validation rules for our form fields
+  // Form validation state
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
+  
+  // Update local state when global state changes
+  useEffect(() => {
+    if (organizationSlug) setOrgInput(organizationSlug);
+    if (projectSlug) setProjectInput(projectSlug);
+  }, [organizationSlug, projectSlug]);
+  
+  // Validation rules for the config form - ensure we create proper arrays
+  const orgSlugRules = [];
+  orgSlugRules.push(required('Organization slug is required'));
+  orgSlugRules.push(slug('Organization slug must be a valid slug (letters, numbers, hyphens)'));
+  orgSlugRules.push(minLength(3, 'Organization slug must be at least 3 characters'));
+  orgSlugRules.push(maxLength(100, 'Organization slug must be at most 100 characters'));
+  
+  const projectSlugRules = [];
+  projectSlugRules.push(required('Project slug is required'));
+  projectSlugRules.push(slug('Project slug must be a valid slug (letters, numbers, hyphens)'));
+  projectSlugRules.push(minLength(3, 'Project slug must be at least 3 characters'));
+  projectSlugRules.push(maxLength(100, 'Project slug must be at most 100 characters'));
+  
   const validationRules = {
-    organization_slug: [
-      required('Organization slug is required'),
-      slug('Organization slug must contain only lowercase letters, numbers, and hyphens'),
-      minLength(2, 'Organization slug must be at least 2 characters'),
-      maxLength(64, 'Organization slug cannot exceed 64 characters')
-    ],
-    project_slug: [
-      required('Project slug is required'),
-      slug('Project slug must contain only lowercase letters, numbers, and hyphens'),
-      minLength(2, 'Project slug must be at least 2 characters'),
-      maxLength(64, 'Project slug cannot exceed 64 characters')
-    ]
+    organization_slug: orgSlugRules,
+    project_slug: projectSlugRules
   };
   
-  // Validate a specific field and update errors
-  const validateField = useCallback((field: keyof FormErrors, value: string) => {
-    const fieldRules = validationRules[field];
-    if (fieldRules) {
-      for (const rule of fieldRules) {
-        if (!rule.test(value)) {
-          setFormErrors(prev => ({ ...prev, [field]: rule.message }));
-          return false;
-        }
-      }
-      setFormErrors(prev => ({ ...prev, [field]: null }));
-      return true;
-    }
-    return true;
-  }, [validationRules]);
-  
-  // Update organization slug with validation
-  const handleOrgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.currentTarget.value;
-    setOrgInput(newValue);
-    if (touched.organization_slug) {
-      validateField('organization_slug', newValue);
-    }
+  // Validate form field
+  const validateField = (field: keyof FormErrors, value: string) => {
+    const rules = validationRules[field];
+    const fieldResult = validateForm({ [field]: value }, { [field]: rules });
+    
+    setFormErrors(prev => ({
+      ...prev,
+      [field]: fieldResult.errors[field]
+    }));
+    
+    return fieldResult.isValid;
   };
   
-  // Update project slug with validation
-  const handleProjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.currentTarget.value;
-    setProjectInput(newValue);
-    if (touched.project_slug) {
-      validateField('project_slug', newValue);
+  // Handler for form field changes
+  const handleFieldChange = (field: keyof FormErrors, value: string) => {
+    // Update form state
+    if (field === 'organization_slug') {
+      setOrgInput(value);
+    } else if (field === 'project_slug') {
+      setProjectInput(value);
+    }
+    
+    // Validate field if it has been touched
+    if (touched[field]) {
+      validateField(field, value);
     }
   };
   
@@ -169,23 +164,46 @@ function SettingsInput(): JSX.Element {
     }
   };
   
-  // Validate entire form
-  const validateAllFields = () => {
-    const formValues = {
-      organization_slug: orgInput,
-      project_slug: projectInput
-    };
-    
-    const result = validateForm(formValues, validationRules);
-    setFormErrors(result.errors);
-    
-    // Mark all fields as touched
-    setTouched({
-      organization_slug: true,
-      project_slug: true
-    });
-    
-    return result.isValid;
+  // Validate all fields
+  const validateAllFields = (): boolean => {
+    try {
+      // Debug: Check what's being passed
+      console.log('validationRules type:', typeof validationRules);
+      console.log('validationRules:', validationRules);
+      console.log('orgSlugRules type:', typeof orgSlugRules);
+      console.log('orgSlugRules:', orgSlugRules);
+      console.log('projectSlugRules type:', typeof projectSlugRules);
+      console.log('projectSlugRules:', projectSlugRules);
+      
+      // Debug the validation function call
+      console.log('Calling validateForm with:');
+      console.log('values:', {
+        organization_slug: orgInput,
+        project_slug: projectInput
+      });
+      console.log('rules:', validationRules);
+      
+      const result = validateForm(
+        {
+          organization_slug: orgInput,
+          project_slug: projectInput
+        },
+        validationRules
+      );
+      
+      setFormErrors(result.errors);
+      
+      // Mark all fields as touched
+      setTouched({
+        organization_slug: true,
+        project_slug: true
+      });
+      
+      return result.isValid;
+    } catch (error) {
+      console.error('Error in validateAllFields:', error);
+      throw error;
+    }
   };
   
   // Use the mutation hook from the unified API
@@ -198,12 +216,12 @@ function SettingsInput(): JSX.Element {
       const data = configMutation.data;
       if (data && data.organization_slug && data.project_slug) {
         setOrgProject(orgInput, projectInput);
-        hooks.utils.showSuccessNotification({
+        showSuccessNotification({
           title: 'Configuration Saved',
           message: `Connected to Sentry project: ${projectInput}`,
         });
       } else {
-        utils.showErrorNotification({
+        showErrorNotification({
           title: 'Configuration Error',
           error: new Error('Invalid response from server'),
         });
@@ -227,7 +245,7 @@ function SettingsInput(): JSX.Element {
         }));
       }
       
-      utils.showErrorNotification({
+      showErrorNotification({
         title: 'Configuration Error',
         error,
       });
@@ -238,7 +256,7 @@ function SettingsInput(): JSX.Element {
   const handleSave = async (): Promise<void> => {
     // First validate all fields
     if (!validateAllFields()) {
-      utils.showErrorNotification({
+      showErrorNotification({
         title: 'Validation Error',
         error: new Error('Please correct the validation errors'),
       });
@@ -247,273 +265,161 @@ function SettingsInput(): JSX.Element {
     
     // Call the mutation to check configuration
     configMutation.mutate({
-      organization_slug: orgInput.trim(),
-      project_slug: projectInput.trim(),
-    } as ConfigParams);
-  };
-  
-  // Reset form and errors
-  const handleReset = () => {
-    setOrgInput(organizationSlug || '');
-    setProjectInput(projectSlug || '');
-    setFormErrors({
-      organization_slug: null,
-      project_slug: null
-    });
-    setTouched({
-      organization_slug: false,
-      project_slug: false
+      organization_slug: orgInput,
+      project_slug: projectInput
     });
   };
-  
-  // Config status badge
-  const ConfigStatusBadge = (): JSX.Element => {
-    if (configMutation.isPending) {
-      return (
-        <Badge color="blue" variant="outline">
-          Checking...
-        </Badge>
-      );
-    }
-    
-    if (organizationSlug && projectSlug) {
-      return (
-        <Badge color="green" variant="outline" leftSection={<IconCheck size={12} />}>
-          Connected
-        </Badge>
-      );
-    }
-    
-    return (
-      <Badge color="yellow" variant="outline">
-        Not Configured
-      </Badge>
-    );
-  };
-  
-  // Compute whether form is valid
-  const isFormValid = !formErrors.organization_slug && !formErrors.project_slug && 
-                      orgInput.trim() !== '' && projectInput.trim() !== '';
   
   return (
-    <Paper 
-      withBorder 
-      p="md" 
-      radius="md" 
-      className="settings-input"
-      mb="xs"
-      style={{
-        backgroundColor: organizationSlug && projectSlug 
-          ? theme.colors.green[0] 
-          : theme.colors.yellow[0],
-        opacity: 0.8,
-        borderColor: organizationSlug && projectSlug 
-          ? theme.colors.green[3]
-          : theme.colors.yellow[3],
-      }}
-    >
-      {/* Header */}
-      <Group justify="apart" mb="xs">
-        <Group gap="xs">
-          <ThemeIcon
-            size="md"
-            radius="md"
-            color={organizationSlug && projectSlug ? 'green' : 'yellow'}
-          >
-            <IconSettings size={16} />
-          </ThemeIcon>
-          <Title order={5}>Configuration</Title>
-        </Group>
-        
-        <Group gap="xs">
-          <ConfigStatusBadge />
-          <Tooltip label={opened ? "Hide settings" : "Show settings"}>
-            <div>
-              <Button
-                variant="subtle"
-                color={organizationSlug && projectSlug ? 'green' : 'yellow'}
-                size="xs"
-                onClick={toggle}
-                rightSection={opened ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
-                aria-expanded={opened}
-                aria-label={opened ? "Hide settings" : "Show settings"}
-                sx={{ '&:focus': { outline: 'none' } }} // Fix for button focus styles
-              >
-                {opened ? "Hide" : "Settings"}
-              </Button>
-            </div>
-          </Tooltip>
-        </Group>
-      </Group>
-      
-      {/* Current config summary (when collapsed) */}
-      {!opened && organizationSlug && projectSlug && (
-        <Group gap="xs">
-          <Group gap="xs">
-            <AccessibleIcon
-              icon={<IconBrandSentry size={10} />}
-              label="Connected to Sentry"
-            />
-            <Text size="sm">
-              <Text span fw={500}>{organizationSlug}</Text>
-              {' / '}
-              <Text span fw={500}>{projectSlug}</Text>
-            </Text>
-          </Group>
-        </Group>
-      )}
-      
-      {/* Collapsed alert (when not configured) */}
-      {!opened && (!organizationSlug || !projectSlug) && (
-        <Alert
-          color="yellow"
-          icon={<IconInfoCircle size={16} />}
-          radius="md"
-          title="Configuration Required"
-          variant="light"
-          p="xs"
+    <Stack>
+      <Tooltip label="Configure Sentry Connection" withinPortal>
+        <Paper 
+          p="md" 
+          radius="md" 
+          style={{ 
+            border: `1px solid ${theme.colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.gray[3]}`,
+            cursor: 'pointer'
+          }}
+          onClick={toggle}
         >
-          <Text size="xs">
-            Please configure your Sentry organization and project to view issues.
-          </Text>
-        </Alert>
-      )}
-      
-      {/* Expanded settings form */}
-      <Collapse in={opened}>
-        <Divider my="sm" />
-        
-        <Tabs 
-          value={activeTab} 
-          onChange={(value: string | null) => setActiveTab(value || '')}
-          variant="outline"
-          mb="md"
-        >
-          <Tabs.List>
-            <Tabs.Tab 
-              value="sentry" 
-              leftSection={<IconBrandSentry size={14} />}
-            >
-              Sentry
-            </Tabs.Tab>
-            <Tabs.Tab 
-              value="ai" 
-              leftSection={<IconBrain size={14} />}
-            >
-              AI Model
-            </Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
-        
-        {activeTab === 'sentry' && (
-          <Stack gap="xs">
-            <Group gap="xs" mb="xs">
-              <ThemeIcon 
-                size="sm" 
-                radius="xl" 
-                color="blue" 
-                variant="light"
-              >
-                <IconBrandSentry size={14} />
+          <Group justify="space-between" align="center">
+            <Group gap="sm">
+              <ThemeIcon color="blue" variant="light" size="md">
+                <IconBrandSentry size={18} />
               </ThemeIcon>
-              <Text size="sm" fw={500}>
-                Sentry Organization & Project
-              </Text>
-              <InfoTooltip
-                content="Enter your Sentry organization slug and project slug to connect Dexter to your Sentry instance."
-                size={14}
+              <div>
+                <Text fw={500} size="sm">Sentry Connection</Text>
+                <Text size="xs" c="dimmed">
+                  {organizationSlug && projectSlug 
+                    ? `${organizationSlug} / ${projectSlug}` 
+                    : 'Not configured'}
+                </Text>
+              </div>
+            </Group>
+            <Group gap="xs">
+              {organizationSlug && projectSlug && (
+                <Badge 
+                  color="green" 
+                  variant="light" 
+                  size="xs" 
+                  leftSection={<IconCheck size={14} />}
+                >
+                  Connected
+                </Badge>
+              )}
+              <AccessibleIcon
+                label={opened ? "Collapse settings" : "Expand settings"}
+                Icon={opened ? IconChevronUp : IconChevronDown}
+                size={18}
+                color="dimmed"
               />
             </Group>
-            
-            {/* Form validation message */}
-            {(!isFormValid && (touched.organization_slug || touched.project_slug)) && (
+          </Group>
+        </Paper>
+      </Tooltip>
+
+      <Collapse in={opened}>
+        <Paper p="md" radius="md" withBorder>
+          <Tabs defaultValue="sentry">
+            <Tabs.List>
+              <Tabs.Tab value="sentry" leftSection={<IconBrandSentry size={16} />}>
+                Sentry Connection
+              </Tabs.Tab>
+              <Tabs.Tab value="ai" leftSection={<IconBrain size={16} />}>
+                AI Models
+              </Tabs.Tab>
+              <Tabs.Tab value="database" leftSection={<IconDatabase size={16} />}>
+                Database
+              </Tabs.Tab>
+            </Tabs.List>
+
+            <Tabs.Panel value="sentry" pt="md">
+              <Stack gap="sm">
+                <Alert 
+                  icon={<IconInfoCircle size={16} />}
+                  variant="light" 
+                  color="blue"
+                  mb="sm"
+                >
+                  Enter your Sentry organization and project slugs to connect Dexter to your Sentry data.
+                </Alert>
+                
+                <TextInput
+                  label="Organization Slug"
+                  placeholder="my-organization"
+                  value={orgInput}
+                  onChange={(e) => handleFieldChange('organization_slug', e.currentTarget.value)}
+                  onBlur={() => handleBlur('organization_slug')}
+                  error={touched.organization_slug && formErrors.organization_slug}
+                  required
+                  rightSection={
+                    <InfoTooltip info="The organization slug from your Sentry URL. For example, if your Sentry URL is https://sentry.io/organizations/my-org/issues/, your organization slug is 'my-org'." />
+                  }
+                />
+                
+                <TextInput
+                  label="Project Slug"
+                  placeholder="my-project"
+                  value={projectInput}
+                  onChange={(e) => handleFieldChange('project_slug', e.currentTarget.value)}
+                  onBlur={() => handleBlur('project_slug')}
+                  error={touched.project_slug && formErrors.project_slug}
+                  required
+                  rightSection={
+                    <InfoTooltip info="The project slug from your Sentry URL. For example, if your project URL is https://sentry.io/organizations/my-org/projects/my-app/, your project slug is 'my-app'." />
+                  }
+                />
+                
+                <Group justify="space-between" mt="md">
+                  <Button 
+                    variant="light" 
+                    size="sm" 
+                    leftSection={<IconRefresh size={16} />}
+                    onClick={handleSave}
+                    loading={configMutation.isPending}
+                    disabled={configMutation.isPending}
+                  >
+                    Test Connection
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleSave}
+                    leftSection={<IconCheck size={16} />}
+                    loading={configMutation.isPending}
+                    disabled={configMutation.isPending}
+                  >
+                    Save Configuration
+                  </Button>
+                </Group>
+              </Stack>
+            </Tabs.Panel>
+
+            <Tabs.Panel value="ai" pt="md">
+              <Stack gap="md">
+                <Title order={5}>AI Model Configuration</Title>
+                <Text size="sm" c="dimmed">
+                  Select and configure AI models for error analysis
+                </Text>
+                
+                <Divider my="sm" />
+                
+                <ModelSelector />
+              </Stack>
+            </Tabs.Panel>
+
+            <Tabs.Panel value="database" pt="md">
               <Alert
-                color="red"
+                icon={<IconDatabase size={16} />}
                 variant="light"
-                icon={<IconAlertCircle size={16} />}
-                title="Please fix the following errors:"
-                mb="xs"
-              >
-                <Stack gap="xs">
-                  {formErrors.organization_slug && (
-                    <Text size="xs">• {formErrors.organization_slug}</Text>
-                  )}
-                  {formErrors.project_slug && (
-                    <Text size="xs">• {formErrors.project_slug}</Text>
-                  )}
-                </Stack>
-              </Alert>
-            )}
-            
-            {/* Form fields with enhanced validation */}
-            <TextInput
-              label="Organization Slug"
-              placeholder="e.g., acme-corp"
-              value={orgInput}
-              onChange={handleOrgChange}
-              onBlur={() => handleBlur('organization_slug')}
-              required
-              leftSection={<IconDatabase size={16} />}
-              description="The slug of your Sentry organization (lowercase letters, numbers, and hyphens)"
-              aria-label="Sentry organization slug"
-              error={touched.organization_slug ? formErrors.organization_slug : null}
-              withAsterisk
-            />
-            
-            <TextInput
-              label="Project Slug"
-              placeholder="e.g., frontend"
-              value={projectInput}
-              onChange={handleProjectChange}
-              onBlur={() => handleBlur('project_slug')}
-              required
-              leftSection={<IconDatabase size={16} />}
-              description="The slug of your Sentry project (lowercase letters, numbers, and hyphens)"
-              aria-label="Sentry project slug"
-              error={touched.project_slug ? formErrors.project_slug : null}
-              withAsterisk
-            />
-            
-            <Group justify="flex-end" mt="md">
-              <Button
-                leftSection={<IconRefresh size={16} />}
-                onClick={handleReset}
-                variant="subtle"
                 color="gray"
-                disabled={configMutation.isPending}
               >
-                Reset
-              </Button>
-              
-              <Button
-                onClick={handleSave}
-                loading={configMutation.isPending}
-                leftSection={<IconCheck size={16} />}
-                disabled={!isFormValid}
-                color={isFormValid ? 'blue' : 'gray'}
-              >
-                Save Configuration
-              </Button>
-            </Group>
-            
-            <Alert
-              icon={<IconInfoCircle size={16} />}
-              color="blue"
-              variant="light"
-              mt="xs"
-            >
-              <Text size="xs">
-                Note: The Sentry API token must be configured in the backend environment. See the documentation for details.
-              </Text>
-            </Alert>
-          </Stack>
-        )}
-        
-        {activeTab === 'ai' && (
-          <ModelSelector />
-        )}
+                Database configuration settings coming soon.
+              </Alert>
+            </Tabs.Panel>
+          </Tabs>
+        </Paper>
       </Collapse>
-    </Paper>
+    </Stack>
   );
 }
 

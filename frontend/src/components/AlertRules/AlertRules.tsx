@@ -22,18 +22,19 @@ import {
   IconBell,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { alertsApi, AlertRuleResponse } from '../../api/alertsApi';
+import { api } from '../../api/unified';
+import { AlertRule } from '../../api/unified/alertsApi';
 import { AlertRuleBuilder } from './AlertRuleBuilder';
 import { useParams } from 'react-router-dom';
 
 const AlertRules = () => {
   const { org, project } = useParams<{ org: string; project: string }>();
   const [loading, setLoading] = useState(true);
-  const [rules, setRules] = useState<AlertRuleResponse[]>([]);
+  const [rules, setRules] = useState<AlertRule[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingRule, setEditingRule] = useState<{
-    rule: AlertRuleResponse;
+    rule: AlertRule;
     type: 'issue' | 'metric';
   } | null>(null);
 
@@ -49,8 +50,12 @@ const AlertRules = () => {
     try {
       setLoading(true);
       setError(null);
-      const projectSlug = `${org}/${project}`;
-      const response = await alertsApi.listAlertRules(projectSlug);
+      const response = await api.alerts.listAlertRules({
+        projectSlug: project,
+        organizationSlug: org || '',
+        projectId: project,
+        organizationId: org || ''
+      });
       setRules(response);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load alert rules';
@@ -65,12 +70,17 @@ const AlertRules = () => {
     }
   };
 
-  const handleDelete = async (rule: AlertRuleResponse) => {
+  const handleDelete = async (rule: AlertRule) => {
     if (!project) return;
     
     try {
-      const projectSlug = `${org}/${project}`;
-      await alertsApi.deleteAlertRule(projectSlug, rule.id, rule.type);
+      await api.alerts.deleteAlertRule({
+        projectSlug: project,
+        organizationSlug: org || '',
+        projectId: project,
+        organizationId: org || '',
+        ruleId: rule.id
+      });
       notifications.show({
         title: 'Success',
         message: `Alert rule "${rule.name}" deleted`,
@@ -87,8 +97,8 @@ const AlertRules = () => {
     }
   };
 
-  const handleEdit = (rule: AlertRuleResponse) => {
-    setEditingRule({ rule, type: rule.type });
+  const handleEdit = (rule: AlertRule) => {
+    setEditingRule({ rule, type: rule.queryType || 'issue' });
     setShowBuilder(true);
   };
 

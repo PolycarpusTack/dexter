@@ -115,7 +115,7 @@ class AppSettings(BaseSettings):
     MAX_CONNECTIONS: int = 100
     
     # CORS settings
-    CORS_ORIGINS: List[str] = ["*"]
+    CORS_ORIGINS: Union[List[str], str] = ["*"]
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOW_METHODS: List[str] = ["*"]
     CORS_ALLOW_HEADERS: List[str] = ["*"]
@@ -136,6 +136,21 @@ class AppSettings(BaseSettings):
         """Ensure port is in valid range."""
         if not 1 <= v <= 65535:
             raise ValueError(f"Port must be between 1 and 65535, got {v}")
+        return v
+    
+    @field_validator("CORS_ORIGINS", mode='before')
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from various formats."""
+        if isinstance(v, str):
+            # Try to parse as JSON array first
+            if v.startswith('[') and v.endswith(']'):
+                try:
+                    import json
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+            # Parse as comma-separated list
+            return [origin.strip() for origin in v.split(',')]
         return v
     
     @field_validator("CORS_ORIGINS")
@@ -240,23 +255,27 @@ def get_settings() -> AppSettings:
         AppSettings object with values from env vars and YAML config
     """
     # First load base settings from env vars and .env file
-    settings = AppSettings()
+    app_settings = AppSettings()
+    
+    # Copy CORS origins from settings.py if available
+    if hasattr(settings, 'cors_origins'):
+        app_settings.CORS_ORIGINS = settings.cors_origins
     
     # Then override with YAML config
     try:
-        yaml_config = load_yaml_config(settings.APP_MODE)
+        yaml_config = load_yaml_config(app_settings.APP_MODE)
         for key, value in yaml_config.items():
-            if hasattr(settings, key):
-                setattr(settings, key, value)
+            if hasattr(app_settings, key):
+                setattr(app_settings, key, value)
     except Exception as e:
         print(f"Warning: Failed to apply YAML config: {str(e)}")
     
     # Apply env vars again to ensure they take highest precedence
     if PYDANTIC_V2:
-        settings_dict = settings.model_dump()
-        settings = AppSettings.model_validate(settings_dict)
+        settings_dict = app_settings.model_dump()
+        app_settings = AppSettings.model_validate(settings_dict)
     else:
-        settings_dict = settings.dict()
-        settings = AppSettings.parse_obj(settings_dict)
+        settings_dict = app_settings.dict()
+        app_settings = AppSettings.parse_obj(settings_dict)
     
-    return settings
+    return app_settings
