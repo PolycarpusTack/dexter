@@ -4,6 +4,7 @@ import { stateRestoration } from '../services/stateRestoration';
 import { notifications } from '@mantine/notifications';
 import { IconAlertTriangle, IconCheck, IconRefresh } from '@tabler/icons-react';
 import { telemetry } from '../services/telemetry';
+import { AUTOSAVE_INTERVAL_5_MINUTES } from '../constants/timing';
 
 interface ErrorRecoveryStateOptions<T> {
   key: string;
@@ -336,7 +337,7 @@ export function useErrorRecoveryState<T>({
       if (hasUnsavedChanges && !error && !isRecovering) {
         createCheckpoint();
       }
-    }, 5 * 60 * 1000); // Every 5 minutes
+    }, AUTOSAVE_INTERVAL_5_MINUTES);
     
     return () => clearInterval(interval);
   }, [enableCheckpoints, hasUnsavedChanges, error, isRecovering, createCheckpoint]);

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/unified';
 import { extractErrorType, extractErrorMessage, isDatabaseError } from '../utils/eventUtils';
 import { extractTags, getPrioritizedTags } from '../utils/tagUtils';
+import { CACHE_STALE_TIME_5_MINUTES } from '../constants/timing';
 
 /**
  * Hook for fetching and processing Sentry event data
@@ -24,7 +25,7 @@ export function useEventData(eventId: string, projectSlug?: string) {
     queryKey: ['eventDetails', eventId, projectSlug],
     queryFn: () => api.events.getEventDetails({ eventId, projectSlug }),
     enabled: !!eventId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: CACHE_STALE_TIME_5_MINUTES,
     refetchOnWindowFocus: false
   });
   

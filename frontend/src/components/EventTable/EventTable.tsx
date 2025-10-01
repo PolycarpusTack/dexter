@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store';
 import useTableKeyboardNavigation from '../../hooks/useTableKeyboardNavigation';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
 import { ApiErrorDisplay } from '../UI';
+import { CACHE_STALE_TIME_1_MINUTE } from '../../constants/timing';
 
 import type { 
   Event, 
@@ -81,7 +82,7 @@ const EventTable = React.forwardRef<HTMLDivElement, EventTableProps>(({
     queryFn: () => api.events.fetchEvents(queryParams),
     enabled: !isConfigMissing, // Only fetch if configuration is valid
     refetchInterval: refreshInterval,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: CACHE_STALE_TIME_1_MINUTE,
   });
   
   // Extract events from response
