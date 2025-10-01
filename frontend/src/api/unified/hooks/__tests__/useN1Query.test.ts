@@ -23,7 +23,7 @@ jest.mock('../../errorHandler', () => ({
 
 describe('N+1 Query Hooks', () => {
   let queryClient: QueryClient;
-  let wrapper: ({ children }: { children: ReactNode }) => JSX.Element;
+  let wrapper: any;
 
   beforeEach(() => {
     queryClient = new QueryClient({
@@ -32,12 +32,11 @@ describe('N+1 Query Hooks', () => {
         mutations: { retry: false }
       }
     });
-    
-    wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+
+    // Wrapper component for React Query
+    wrapper = ({ children }: { children: ReactNode }) => {
+      return QueryClientProvider({ client: queryClient, children });
+    };
 
     jest.clearAllMocks();
   });
