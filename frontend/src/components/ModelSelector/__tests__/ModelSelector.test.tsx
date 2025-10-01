@@ -6,7 +6,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as aiHooks from '../../../api/unified/hooks/useAi';
-import useAppStore from '../../../store/appStore';
+import useAIStore from '../../../store/aiStore';
 import ModelSelector from '../ModelSelector';
 
 // Mock the AI hooks
@@ -16,8 +16,8 @@ vi.mock('../../../api/unified/hooks/useAi', () => ({
   useSetActiveModel: vi.fn()
 }));
 
-// Mock the app store
-vi.mock('../../../store/appStore', () => ({
+// Mock the AI store
+vi.mock('../../../store/aiStore', () => ({
   default: vi.fn()
 }));
 
@@ -45,10 +45,17 @@ describe('ModelSelector Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
-    // Mock app store
-    vi.mocked(useAppStore).mockReturnValue({
+    // Mock AI store
+    vi.mocked(useAIStore).mockReturnValue({
       activeAIModel: 'llama3',
-      setActiveAIModel: vi.fn()
+      setActiveAIModel: vi.fn(),
+      promptEngineeringPreferences: {
+        level: 'enhanced',
+        debugMode: false
+      },
+      setPromptEngineeringPreferences: vi.fn(),
+      updatePromptEngineeringLevel: vi.fn(),
+      toggleDebugMode: vi.fn()
     });
     
     // Mock useOllamaModels hook

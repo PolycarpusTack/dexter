@@ -30,7 +30,11 @@ import {
   IconDots,
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { discoverApi, DiscoverQueryResponse } from '../../utils/api';
+import { api } from '../../api/unified';
+import type { DiscoverResult } from '../../api/unified/discoverApi';
+
+// Type alias for backward compatibility
+type DiscoverQueryResponse = DiscoverResult;
 
 // Types
 interface ResultTableProps {

@@ -1,0 +1,86 @@
+{
+  "timestamp": "2025-06-07T11:06:43.464839",
+  "dry_run": true,
+  "total_changes": 13,
+  "affected_files": 11,
+  "changes": [
+    {
+      "file": "backend/app/config/providers/openai.py",
+      "line": 21,
+      "old": "organization_id: Optional[str] = Field(",
+      "new": "organization_slug: Optional[str] = Field("
+    },
+    {
+      "file": "backend/app/models/api/sentry.py",
+      "line": 14,
+      "old": "project_id: str = Field(..., alias='projectID')",
+      "new": "project_slug: str = Field(..., alias='projectID')"
+    },
+    {
+      "file": "backend/app/models/api/sentry_generated.py",
+      "line": 82,
+      "old": "project_id: str = Field(..., alias='projectID')",
+      "new": "project_slug: str = Field(..., alias='projectID')"
+    },
+    {
+      "file": "backend/app/routers/api/v1/events.py",
+      "line": 104,
+      "old": "project_id: Optional[str] = Query(None, description=\"Project ID\"),",
+      "new": "project_slug: Optional[str] = Query(None, description=\"Project ID\"),"
+    },
+    {
+      "file": "backend/app/routers/api/v1/events.py",
+      "line": 152,
+      "old": "project_id: Optional[str] = Query(None, description=\"Filter by project\"),",
+      "new": "project_slug: Optional[str] = Query(None, description=\"Filter by project\"),"
+    },
+    {
+      "file": "backend/app/routers/api/v1/events.py",
+      "line": 173,
+      "old": "if project_id:",
+      "new": "if project_slug:"
+    },
+    {
+      "file": "backend/app/services/llm_providers.py",
+      "line": 534,
+      "old": "if self.config.organization_id:",
+      "new": "if self.config.organization_slug:"
+    },
+    {
+      "file": "backend/app/services/websocket_manager.py",
+      "line": 393,
+      "old": "if project_id:",
+      "new": "if project_slug:"
+    },
+    {
+      "file": "frontend/src/api/unified/eventsApi.ts",
+      "line": 32,
+      "old": "projectID: z.string().optional(),",
+      "new": "projectSlug: z.string().optional(),"
+    },
+    {
+      "file": "frontend/src/api/unified/interfaces.ts",
+      "line": 25,
+      "old": "projectID?: string;",
+      "new": "projectSlug?: string;"
+    },
+    {
+      "file": "frontend/src/types/events.ts",
+      "line": 24,
+      "old": "projectID?: string;",
+      "new": "projectSlug?: string;"
+    },
+    {
+      "file": "frontend/src/types/strict-types.ts",
+      "line": 14,
+      "old": "projectID: z.string().optional(),",
+      "new": "projectSlug: z.string().optional(),"
+    },
+    {
+      "file": "frontend/src/types/api/sentry-generated.ts",
+      "line": 35,
+      "old": "projectID: string;",
+      "new": "projectSlug: string;"
+    }
+  ]
+}

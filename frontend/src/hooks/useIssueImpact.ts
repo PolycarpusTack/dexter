@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/unified';
-import useAppStore from '../store/appStore';
+import { useAuthStore } from '../store';
 
 /**
  * Hook for fetching issue impact data
@@ -13,7 +13,7 @@ import useAppStore from '../store/appStore';
  */
 export function useIssueImpact(issueId: string, timeRange: string = '7d') {
   // Get organization from the store
-  const organizationSlug = useAppStore(state => state.organizationId || state.organizationSlug || 'default');
+  const organizationSlug = useAuthStore(state => state.organizationId || state.organizationSlug || 'default');
 
   const {
     data,

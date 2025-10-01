@@ -77,52 +77,80 @@ export function ResultsTable({ data, loading, onSort }: ResultsTableProps) {
     setVisibleColumns(new Set(columns));
   }
 
-  // Filter and sort data
+  // Optimize filtering with early termination and single-pass processing
   const processedData = useMemo(() => {
-    if (!data?.data) return { filtered: [], paginated: [] };
+    if (!data?.data || data.data.length === 0) return { filtered: [], paginated: [] };
     
+    // Convert filters to lowercase once
+    const activeFilters = Object.entries(columnFilters)
+      .filter(([_, filter]) => filter)
+      .map(([column, filter]) => ({ column, filter: filter.toLowerCase() }));
+    
+    const searchTermLower = searchTerm?.toLowerCase();
+    
+    // Single-pass filtering with early termination
     let filtered = data.data;
-
-    // Apply column filters
-    Object.entries(columnFilters).forEach(([column, filter]) => {
-      if (filter) {
-        filtered = filtered.filter((row) => {
+    
+    // Only filter if there are active filters
+    if (activeFilters.length > 0 || searchTermLower) {
+      filtered = data.data.filter((row) => {
+        // Check column filters first (usually more selective)
+        for (const { column, filter } of activeFilters) {
           const value = row[column];
-          return String(value).toLowerCase().includes(filter.toLowerCase());
-        });
-      }
-    });
-
-    // Apply global search
-    if (searchTerm) {
-      filtered = filtered.filter((row) => {
-        return Object.values(row).some((value) =>
-          String(value).toLowerCase().includes(searchTerm.toLowerCase())
-        );
+          if (!String(value).toLowerCase().includes(filter)) {
+            return false; // Early termination
+          }
+        }
+        
+        // Check global search only if column filters pass
+        if (searchTermLower) {
+          // Cache object values to avoid repeated conversion
+          const values = Object.values(row);
+          let hasMatch = false;
+          
+          for (const value of values) {
+            if (String(value).toLowerCase().includes(searchTermLower)) {
+              hasMatch = true;
+              break; // Early termination on match
+            }
+          }
+          
+          if (!hasMatch) return false;
+        }
+        
+        return true;
       });
     }
 
-    // Apply sorting
+    // Apply sorting only on filtered data
     if (sortField) {
+      // Use a more efficient sorting approach
+      const isNumericSort = filtered.length > 0 && 
+        typeof filtered[0][sortField] === 'number';
+      
       filtered = [...filtered].sort((a, b) => {
         const aVal = a[sortField];
         const bVal = b[sortField];
         
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
-          return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+        if (isNumericSort) {
+          return sortDirection === 'asc' 
+            ? (aVal as number) - (bVal as number) 
+            : (bVal as number) - (aVal as number);
         }
         
-        const aStr = String(aVal);
-        const bStr = String(bVal);
+        // String comparison with null handling
+        const aStr = aVal == null ? '' : String(aVal);
+        const bStr = bVal == null ? '' : String(bVal);
         return sortDirection === 'asc' 
           ? aStr.localeCompare(bStr)
           : bStr.localeCompare(aStr);
       });
     }
 
-    // Apply pagination
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
+    // Apply pagination with bounds checking
+    const totalItems = filtered.length;
+    const startIndex = Math.min((currentPage - 1) * pageSize, totalItems);
+    const endIndex = Math.min(startIndex + pageSize, totalItems);
     const paginated = filtered.slice(startIndex, endIndex);
 
     return { filtered, paginated };

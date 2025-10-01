@@ -1,0 +1,13 @@
+{
+  "fixes_applied": 7,
+  "timestamp": "/mnt/c/Projects/dexter",
+  "files_processed": [
+    "backend/app/services/n_plus_one_service.py",
+    "backend/app/utils/n_plus_one_parser.py",
+    "backend/app/routers/api/v1/n_plus_one.py",
+    "frontend/src/api/unified/n1QueryApi.ts",
+    "frontend/src/components/N1QueryModal/N1QueryModal.tsx",
+    "frontend/src/api/unified/hooks/useN1Query.ts",
+    "frontend/src/api/unified/analyzersApi.ts"
+  ]
+}

@@ -1,6 +1,6 @@
-// frontend/src/components/DeadlockDisplay/EnhancedDeadlockDisplay.tsx
+// frontend/src/components/DeadlockDisplay/EnhancedDeadlockDisplay.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Paper, 
   Text, 
@@ -11,12 +11,16 @@ import {
   Badge,
   Skeleton,
   Divider,
+  Accordion,
+  Loader,
   useMantineTheme,
   Collapse,
+  Code,
   Switch,
   Title,
   Alert,
   Modal,
+  ScrollArea,
   Tooltip
 } from '@mantine/core';
 import { 
@@ -43,82 +47,20 @@ import EnhancedGraphView from './EnhancedGraphView';
 import TableInfo from './TableInfo';
 import RecommendationPanel from './RecommendationPanel';
 
-// Import API functions from unified API client
+// Import API functions from unified API
 import { api } from '../../api/unified';
 import { showSuccessNotification, showErrorNotification } from '../../utils/errorHandling';
-
-// Define interfaces for props and data types
-interface EventTag {
-  key: string;
-  value: string;
-}
-
-interface EventException {
-  type?: string;
-  value?: string;
-}
-
-interface EventExceptionContainer {
-  values?: EventException[];
-}
-
-// @ts-ignore
-interface EventEntry {
-  type: string;
-  data?: {
-    values?: EventExceptionValue[];
-  };
-}
-
-interface EventExceptionValue {
-  value?: string;
-}
-
-interface EventDetails {
-  message?: string;
-  tags?: EventTag[];
-  exception?: EventExceptionContainer;
-  entries?: EventEntry[];
-  projectId?: string;
-  project?: {
-    id?: string;
-  };
-  [key: string]: any; // For any additional fields
-}
-
-interface DeadlockMetadata {
-  execution_time_ms: number;
-  parser_version?: string;
-  cycles_found: number;
-}
-
-interface DeadlockAnalysis {
-  timestamp?: string;
-  metadata?: DeadlockMetadata;
-  visualization_data?: any;
-  recommended_fix?: string;
-}
-
-interface DeadlockData {
-  analysis?: DeadlockAnalysis;
-  [key: string]: any; // For any additional fields
-}
-
-interface EnhancedDeadlockDisplayProps {
-  eventId?: string;
-  eventDetails?: EventDetails | null;
-}
 
 /**
  * Enhanced main component for PostgreSQL deadlock visualization and analysis
  */
-const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ eventId, eventDetails }) => {
+function EnhancedDeadlockDisplay({ eventId, eventDetails }) {
   const theme = useMantineTheme();
-  const [activeTab, setActiveTab] = useState<string>('graph');
+  const [activeTab, setActiveTab] = useState('graph');
   const [rawViewOpen, { toggle: toggleRawView }] = useDisclosure(false);
   const [historyModalOpened, { open: openHistoryModal, close: closeHistoryModal }] = useDisclosure(false);
-  const [useEnhancedAnalysis, setUseEnhancedAnalysis] = useState<boolean>(true);
-  const [copySuccess, setCopySuccess] = useState<boolean>(false);
+  const [useEnhancedAnalysis, setUseEnhancedAnalysis] = useState(true);
+  const [copySuccess, setCopySuccess] = useState(false);
   
   // Determine if this is a deadlock event
   const isDeadlockEvent = React.useMemo(() => {
@@ -147,8 +89,8 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
   // Extract a unique ID that combines eventId and project
   const uniqueId = React.useMemo(() => {
     if (!eventId) return null;
-    const projectId = eventDetails?.projectId || eventDetails?.project?.id || '';
-    return `${projectId}-${eventId}`;
+    const projectSlug = eventDetails?.projectSlug || eventDetails?.project?.slug || '';
+    return `${projectSlug}-${eventId}`;
   }, [eventId, eventDetails]);
   
   // Fetch deadlock analysis data
@@ -158,13 +100,13 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
     isError,
     error,
     refetch
-  } = useQuery<DeadlockData>({
+  } = useQuery({
     queryKey: ['deadlockAnalysis', uniqueId, useEnhancedAnalysis], // Include enhancement flag in the key
-    queryFn: () => api.analyzers.analyzeDeadlock(eventId as string, { 
+    queryFn: () => api.analyzers.analyzeDeadlock(eventId, { 
       useEnhancedAnalysis,
       apiPath: useEnhancedAnalysis ? 'enhanced-analyzers' : 'analyzers'
-    }),
-    enabled: !!uniqueId && isDeadlockEvent,
+    }, eventDetails),
+    enabled: !!uniqueId && isDeadlockEvent && !!eventDetails,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
@@ -181,8 +123,8 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
   const handleExportSVG = () => {
     // Get the SVG element
     const svgElement = document.querySelector('.deadlock-graph svg');
-    if (svgElement && eventId) {
-      api.analyzers.exportDeadlockSVG(eventId, svgElement as SVGElement);
+    if (svgElement) {
+      api.analyzers.exportDeadlockSVG(eventId, svgElement);
       showSuccessNotification({
         title: 'SVG Exported',
         message: 'Deadlock visualization has been exported as SVG'
@@ -196,7 +138,7 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
   };
   
   // Toggle enhanced analysis
-  const handleToggleEnhancedAnalysis = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleToggleEnhancedAnalysis = (event) => {
     setUseEnhancedAnalysis(event.currentTarget.checked);
   };
   
@@ -204,7 +146,7 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
   if (!isDeadlockEvent) {
     return (
       <Paper withBorder p="md" radius="md">
-        <Group justify="apart" mb="xs">
+        <Group position="apart" mb="xs">
           <Text fw={600}>PostgreSQL Deadlock Analysis</Text>
           <Badge color="gray">Not Available</Badge>
         </Group>
@@ -236,7 +178,7 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
   
   return (
     <Paper withBorder p="md" radius="md">
-      <Group justify="apart" mb="md">
+      <Group position="apart" mb="md">
         <Group>
           <Text fw={600} size="lg">PostgreSQL Deadlock Analysis</Text>
           {isDeadlockEvent && (
@@ -253,7 +195,7 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
           )}
         </Group>
         
-        <Group gap="xs">
+        <Group spacing="xs">
           <Switch
             size="xs"
             label="Enhanced Analysis"
@@ -289,6 +231,7 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
             leftSection={<IconHistory size={14} />}
             onClick={openHistoryModal}
             disabled
+            tooltip="Coming soon"
           >
             History
           </Button>
@@ -298,14 +241,14 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
       {/* Analysis execution metadata */}
       {deadlockData?.analysis?.metadata && (
         <Box mb="md">
-          <Group gap="xs" justify="right">
+          <Group spacing="xs" position="right">
             <Text size="xs" c="dimmed">
               Analysis time: {deadlockData.analysis.metadata.execution_time_ms}ms
             </Text>
             <Text size="xs" c="dimmed">
               Parser: {deadlockData.analysis.metadata.parser_version || 'standard'}
             </Text>
-            {deadlockData?.analysis?.metadata?.cycles_found > 0 && (
+            {deadlockData.analysis.metadata.cycles_found > 0 && (
               <Badge size="xs" color="red" variant="light">
                 {deadlockData.analysis.metadata.cycles_found} cycle{deadlockData.analysis.metadata.cycles_found !== 1 ? 's' : ''}
               </Badge>
@@ -316,12 +259,12 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
       
       {isError ? (
         <Paper p="md" bg="rgba(255,0,0,0.05)" withBorder radius="md" mb="md">
-          <Group gap="xs" mb="xs">
+          <Group spacing="xs" mb="xs">
             <IconAlertCircle size={18} color={theme.colors.red[6]} />
             <Text fw={500}>Error Analyzing Deadlock</Text>
           </Group>
           <Text size="sm">
-            An error occurred while analyzing the deadlock information: {(error as Error)?.message || 'Unknown error'}
+            An error occurred while analyzing the deadlock information: {error?.message || 'Unknown error'}
           </Text>
           <Button 
             size="xs" 
@@ -335,7 +278,7 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
         </Paper>
       ) : (
         <>
-          <Tabs value={activeTab} onChange={(value) => setActiveTab(value || '')} mb="md">
+          <Tabs value={activeTab} onChange={setActiveTab} mb="md">
             <Tabs.List>
               <Tabs.Tab 
                 value="graph"
@@ -372,7 +315,7 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
             
             {activeTab === 'recommendation' && (
               <Box>
-                <Group justify="right" mb="sm">
+                <Group position="right" mb="sm">
                   <Button
                     size="xs"
                     variant="light"
@@ -385,10 +328,7 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
                 </Group>
                 <RecommendationPanel 
                   data={{
-                    processes: deadlockData?.analysis?.visualization_data?.processes || [],
-                    relations: deadlockData?.analysis?.visualization_data?.relations || [],
-                    deadlockChain: deadlockData?.analysis?.visualization_data?.deadlockChain || [],
-                    pattern: deadlockData?.analysis?.visualization_data?.pattern,
+                    ...deadlockData?.analysis?.visualization_data,
                     recommendedFix: deadlockData?.analysis?.recommended_fix
                   }} 
                   isLoading={isLoading} 
@@ -449,12 +389,12 @@ const EnhancedDeadlockDisplay: React.FC<EnhancedDeadlockDisplayProps> = ({ event
       </Modal>
     </Paper>
   );
-};
+}
 
 /**
  * Extract the deadlock message from event details
  */
-function extractDeadlockMessage(eventDetails: EventDetails): string {
+function extractDeadlockMessage(eventDetails) {
   if (!eventDetails) return '';
   
   // Check in message field

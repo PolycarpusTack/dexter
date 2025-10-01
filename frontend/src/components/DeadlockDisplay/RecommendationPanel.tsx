@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { renderMarkdownText } from '../../utils/htmlSanitizer';
 import { 
   Paper, 
   Text, 
@@ -249,18 +250,14 @@ const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
                     return <Text key={index} size="md" fw={700} mb="xs">{line.substring(4)}</Text>;
                   }
                   
-                  // Convert markdown-style bold
-                  const boldPattern = /\*\*([^*]+)\*\*/g;
-                  const lineWithBold = line.replace(boldPattern, '<strong>$1</strong>');
-                  
                   // Empty lines become margin
                   if (line.trim() === '') {
                     return <Box key={index} mb="md" />;
                   }
                   
-                  // Regular lines
+                  // Regular lines with markdown bold support
                   return (
-                    <Text key={index} mb="xs" dangerouslySetInnerHTML={{ __html: lineWithBold }} />
+                    <Text key={index} mb="xs" dangerouslySetInnerHTML={renderMarkdownText(line)} />
                   );
                 })}
               </div>

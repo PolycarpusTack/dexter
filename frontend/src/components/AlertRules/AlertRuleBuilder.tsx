@@ -27,8 +27,12 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
-import { api } from '../../api/unified';
 import { AlertRule, AlertRuleAction, AlertRuleInput } from '../../api/unified/alertsApi';
+import {
+  useAlertRule,
+  useCreateAlertRule,
+  useUpdateAlertRule
+} from '../../api/unified/hooks/useAlerts';
 
 // Local type definitions for form values
 interface AlertRuleCondition {
@@ -128,7 +132,6 @@ export function AlertRuleBuilder({
   onCancel,
 }: AlertRuleBuilderProps) {
   const { org, project } = useParams<{ org: string; project: string }>();
-  const [loading, setLoading] = useState(false);
   const [ruleType, setRuleType] = useState<'issue' | 'metric'>(
     initialRuleType || editingRule?.type || 'issue'
   );
@@ -169,38 +172,48 @@ export function AlertRuleBuilder({
     }
   }, [editingRule]);
 
-  const loadRuleData = async () => {
-    if (!editingRule || !project) return;
+  // Use React Query hooks for data fetching
+  const {
+    data: existingRule,
+    isLoading: isLoadingRule,
+    error: loadError
+  } = useAlertRule(
+    project || '',
+    editingRule?.id || '',
+    ruleType,
+    { enabled: !!editingRule && !!project }
+  );
 
-    try {
-      const ruleData = await api.alerts.getAlertRule({
-        projectSlug: project,
-        organizationSlug: org || '',
-        projectId: project,
-        organizationId: org || '',
-        ruleId: editingRule.id
-      });
+  const createAlertRuleMutation = useCreateAlertRule();
+  const updateAlertRuleMutation = useUpdateAlertRule();
 
+  // Load existing rule data when available
+  useEffect(() => {
+    if (existingRule) {
       if (ruleType === 'issue') {
-        issueForm.setValues(ruleData as IssueAlertRule);
+        issueForm.setValues(existingRule as unknown as IssueAlertRule);
       } else {
-        metricForm.setValues(ruleData as MetricAlertRule);
+        metricForm.setValues(existingRule as unknown as MetricAlertRule);
       }
-    } catch (err) {
+    }
+  }, [existingRule, ruleType]);
+
+  // Handle loading error
+  useEffect(() => {
+    if (loadError) {
       notifications.show({
         title: 'Error',
         message: 'Failed to load alert rule data',
         color: 'red',
       });
     }
-  };
+  }, [loadError]);
 
   const handleSubmit = async () => {
     if (!project) return;
 
     try {
-      setLoading(true);
-      
+
       if (ruleType === 'issue') {
         const values = issueForm.values;
         const ruleInput: AlertRuleInput = {
@@ -211,23 +224,19 @@ export function AlertRuleBuilder({
           environment: values.environment || null,
           frequency: values.frequency
         };
-        
+
         if (editingRule) {
-          await api.alerts.updateAlertRule({
+          await updateAlertRuleMutation.mutateAsync({
             projectSlug: project,
-            organizationSlug: org || '',
-            projectId: project,
-            organizationId: org || '',
             ruleId: editingRule.id,
-            rule: ruleInput
+            data: ruleInput,
+            ruleType: 'issue'
           });
         } else {
-          await api.alerts.createAlertRule({
+          await createAlertRuleMutation.mutateAsync({
             projectSlug: project,
-            organizationSlug: org || '',
-            projectId: project,
-            organizationId: org || '',
-            rule: ruleInput
+            data: ruleInput,
+            ruleType: 'issue'
           });
         }
       } else {
@@ -239,25 +248,21 @@ export function AlertRuleBuilder({
           environment: values.environment || null,
           timeWindow: values.timeWindow,
           aggregation: values.aggregate,
-          projectIds: [project]
+          projectSlugs: [project]
         };
-        
+
         if (editingRule) {
-          await api.alerts.updateAlertRule({
+          await updateAlertRuleMutation.mutateAsync({
             projectSlug: project,
-            organizationSlug: org || '',
-            projectId: project,
-            organizationId: org || '',
             ruleId: editingRule.id,
-            rule: ruleInput
+            data: ruleInput,
+            ruleType: 'metric'
           });
         } else {
-          await api.alerts.createAlertRule({
+          await createAlertRuleMutation.mutateAsync({
             projectSlug: project,
-            organizationSlug: org || '',
-            projectId: project,
-            organizationId: org || '',
-            rule: ruleInput
+            data: ruleInput,
+            ruleType: 'metric'
           });
         }
       }
@@ -275,8 +280,13 @@ export function AlertRuleBuilder({
         message,
         color: 'red',
       });
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save alert rule';
+      notifications.show({
+        title: 'Error',
+        message,
+        color: 'red',
+      });
     }
   };
 
@@ -774,9 +784,9 @@ export function AlertRuleBuilder({
               <Button variant="subtle" onClick={onCancel}>
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                loading={loading}
+              <Button
+                type="submit"
+                loading={createAlertRuleMutation.isPending || updateAlertRuleMutation.isPending || isLoadingRule}
                 disabled={issueForm.values.conditions.length === 0 || issueForm.values.actions.length === 0}
               >
                 {editingRule ? 'Update Rule' : 'Create Rule'}
@@ -916,9 +926,9 @@ export function AlertRuleBuilder({
               <Button variant="subtle" onClick={onCancel}>
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                loading={loading}
+              <Button
+                type="submit"
+                loading={createAlertRuleMutation.isPending || updateAlertRuleMutation.isPending || isLoadingRule}
                 disabled={!metricForm.values.triggers.some((t: MetricAlertTrigger) => t.label === 'critical')}
               >
                 {editingRule ? 'Update Rule' : 'Create Rule'}

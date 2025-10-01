@@ -14,6 +14,8 @@ import { useIssueImpact } from './useIssueImpact';
 import { useRealtimeUpdates } from './useRealtimeUpdates';
 import { useSearchParamState } from './useSearchParamState';
 import { useInitialization } from './useInitialization';
+import { useAutoSave, useUnsavedChangesWarning } from './useAutoSave';
+import { useErrorRecoveryState } from './useErrorRecoveryState';
 
 export {
   useKeyboardNavigation,
@@ -29,5 +31,8 @@ export {
   useIssueImpact,
   useRealtimeUpdates,
   useSearchParamState,
-  useInitialization
+  useInitialization,
+  useAutoSave,
+  useUnsavedChangesWarning,
+  useErrorRecoveryState
 };

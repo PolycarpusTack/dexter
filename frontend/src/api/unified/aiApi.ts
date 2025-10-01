@@ -1,6 +1,7 @@
 // frontend/src/api/unified/aiApi.ts
 
 import { z } from 'zod';
+
 import { enhancedApiClient } from './enhancedApiClient';
 import type { 
   ErrorExplanationRequest, 
@@ -12,6 +13,7 @@ import type {
   ModelPreferences,
   FallbackChain
 } from './types';
+import type { ProviderSettings } from './interfaces';
 
 // API endpoints
 const AI_ENDPOINTS = {
@@ -41,13 +43,13 @@ const explainResponseSchema = z.object({
   explanation: z.string(),
   model: z.string().optional(),
   processing_time: z.number().optional(),
-  debug: z.record(z.any()).optional()
+  debug: z.record(z.unknown()).optional()
 });
 
 /**
  * Fetch list of available models from Ollama (legacy)
  */
-export const fetchModelsList = async (): Promise<any> => {
+export const fetchModelsList = async (): Promise<Model[]> => {
   try {
     const response = await enhancedApiClient.callEndpoint(
       'ai',
@@ -72,7 +74,7 @@ export const fetchEnhancedModelsList = async (): Promise<ModelsResponse> => {
   try {
     // Try the API call with error suppression
     return await enhancedApiClient.callEndpoint<ModelsResponse>(
-      'ai',
+      'ai-enhanced',
       'models',
       {},
       {},
@@ -103,7 +105,7 @@ export const fetchEnhancedModelsList = async (): Promise<ModelsResponse> => {
 /**
  * Pull/download a model from Ollama (legacy)
  */
-export const pullModel = async (modelName: string): Promise<any> => {
+export const pullModel = async (modelName: string): Promise<ModelResponse> => {
   return enhancedApiClient.callEndpoint(
     'ai',
     'pullModel',
@@ -117,7 +119,7 @@ export const pullModel = async (modelName: string): Promise<any> => {
 /**
  * Pull/download a model from any provider (enhanced)
  */
-export const pullModelEnhanced = async (modelId: string): Promise<any> => {
+export const pullModelEnhanced = async (modelId: string): Promise<ModelResponse> => {
   return enhancedApiClient.callEndpoint(
     'ai-enhanced',
     'pullModelEnhanced',
@@ -131,13 +133,13 @@ export const pullModelEnhanced = async (modelId: string): Promise<any> => {
 /**
  * Select active model (legacy)
  */
-export const selectModel = async (modelName: string): Promise<any> => {
+export const selectModel = async (modelName: string): Promise<ModelResponse> => {
   return enhancedApiClient.callEndpoint(
     'ai',
     'selectModel',
     {},
     {},
-    { model: modelName },
+    { model_name: modelName },
     { method: 'POST' }
   );
 };
@@ -159,7 +161,7 @@ export const selectModelEnhanced = async (request: ModelRequest): Promise<ModelR
 /**
  * Create a fallback chain
  */
-export const createFallbackChain = async (chain: FallbackChain): Promise<any> => {
+export const createFallbackChain = async (chain: FallbackChain): Promise<FallbackChain> => {
   return enhancedApiClient.callEndpoint(
     'ai-enhanced',
     'createFallbackChain',
@@ -173,7 +175,7 @@ export const createFallbackChain = async (chain: FallbackChain): Promise<any> =>
 /**
  * Set default fallback chain
  */
-export const setDefaultFallbackChain = async (chainId: string): Promise<any> => {
+export const setDefaultFallbackChain = async (chainId: string): Promise<{ success: boolean; fallback_chain: FallbackChain }> => {
   return enhancedApiClient.callEndpoint(
     'ai-enhanced',
     'setDefaultFallbackChain',
@@ -203,7 +205,7 @@ export const getUserPreferences = async (userId: string): Promise<ModelPreferenc
 export const setUserPreferences = async (
   userId: string, 
   preferences: ModelPreferences
-): Promise<any> => {
+): Promise<ModelPreferences> => {
   return enhancedApiClient.callEndpoint(
     'ai-enhanced',
     'userPreferences',
@@ -219,7 +221,7 @@ export const setUserPreferences = async (
  */
 export const explainError = async (
   request: ErrorExplanationRequest,
-  options?: Record<string, any>
+  options?: { debug?: boolean; timeout?: number; useEnhancedEndpoint?: boolean; [key: string]: unknown }
 ): Promise<ErrorExplanationResponse> => {
   // Validate at least one error source is provided
   if (!request.eventId && !request.issueId && !request.errorText && 
@@ -264,8 +266,8 @@ export const explainError = async (
  */
 export const setProviderConfig = async (
   provider: string,
-  config: Record<string, any>
-): Promise<any> => {
+  config: ProviderSettings
+): Promise<{ success: boolean; provider: string; config: ProviderSettings }> => {
   return enhancedApiClient.callEndpoint(
     'ai-enhanced',
     'providerConfig',
@@ -283,7 +285,7 @@ export const testProviderConnection = async (
   provider: string,
   apiKey: string,
   baseUrl?: string
-): Promise<any> => {
+): Promise<{ success: boolean; message: string; latency?: number }> => {
   return enhancedApiClient.callEndpoint(
     'ai-enhanced',
     'testConnection',

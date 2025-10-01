@@ -1,26 +1,23 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Table, ScrollArea, Group, Badge, Text, ActionIcon, LoadingOverlay, Box, Container, Alert, Button } from '@mantine/core';
 import { IconExternalLink, IconAlertCircle } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/unified';
-import useAppStore from '../../store/appStore';
+import { useAuthStore } from '../../store';
 import useTableKeyboardNavigation from '../../hooks/useTableKeyboardNavigation';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
 import { ApiErrorDisplay } from '../UI';
 
-export interface Event {
-  id: string;
-  title: string;
-  level: string;
-  platform: string;
-  count: number;
-  lastSeen: string;
-  [key: string]: any;
-}
+import type { 
+  Event, 
+  BaseEvent,
+  EventFilters, 
+  EventsResponse 
+} from '../../types/events';
 
 export interface EventTableProps {
-  filters?: any;
+  filters?: EventFilters;
   onRowClick?: (event: Event) => void;
   refreshInterval?: number;
   optimized?: boolean;
@@ -28,47 +25,60 @@ export interface EventTableProps {
   onExport?: (data: Event[]) => void;
   virtualized?: boolean;
   organizationId?: string;
-  projectId?: string;
+  projectSlug?: string;
 }
 
+/**
+ * EventTable component for displaying and managing Sentry events
+ * 
+ * @param filters - Filter criteria for events
+ * @param onRowClick - Callback when a row is clicked
+ * @param refreshInterval - Interval for auto-refresh in milliseconds
+ * @param organizationId - Organization ID override
+ * @param projectSlug - Project slug override
+ * @param ref - Forwarded ref to the container element
+ */
 const EventTable = React.forwardRef<HTMLDivElement, EventTableProps>(({ 
   filters, 
   onRowClick,
   refreshInterval,
   organizationId,
-  projectId
+  projectSlug
 }, ref) => {
   // Get organization and project from global state if not provided
-  const orgFromStore = useAppStore(state => state.organizationId || state.organizationSlug);
-  const projectFromStore = useAppStore(state => state.projectId || state.projectSlug);
+  const orgFromStore = useAuthStore(state => state.organizationId || state.organizationSlug);
+  const projectFromStore = useAuthStore(state => state.projectSlug);
   
   // Use provided props or fall back to store values
   const effectiveOrgId = organizationId || orgFromStore || 'default';
-  const effectiveProjectId = projectId || projectFromStore || 'default';
+  const effectiveProjectSlug = projectSlug || projectFromStore || 'default';
   
   // Check if configuration is missing
   const isConfigMissing = !effectiveOrgId || effectiveOrgId === 'default' || 
-                         !effectiveProjectId || effectiveProjectId === 'default';
+                         !effectiveProjectSlug || effectiveProjectSlug === 'default';
   
+  // Memoize query parameters to prevent unnecessary refetches
+  const queryParams = useMemo(() => ({
+    organization: effectiveOrgId,
+    projectSlug: effectiveProjectSlug,
+    query: filters?.query,
+    limit: filters?.limit,
+    sort: filters?.sort,
+    sortDirection: filters?.sortDirection,
+    environment: filters?.environment,
+    timeRange: filters?.timeRange,
+    level: filters?.level,
+    page: filters?.page,
+    perPage: filters?.perPage,
+    options: {
+      useIssues: filters?.useIssues
+    }
+  }), [effectiveOrgId, effectiveProjectSlug, filters]);
+
   // Use React Query to fetch events
   const { data: eventsResponse, isLoading, error, refetch } = useQuery({
-    queryKey: ['events', effectiveOrgId, effectiveProjectId, filters],
-    queryFn: () => api.events.getEvents({
-      organization: effectiveOrgId,
-      projectId: effectiveProjectId,
-      query: filters?.query,
-      limit: filters?.limit,
-      sort: filters?.sort,
-      sortDirection: filters?.sortDirection,
-      environment: filters?.environment,
-      timeRange: filters?.timeRange,
-      level: filters?.level,
-      page: filters?.page,
-      perPage: filters?.perPage,
-      options: {
-        useIssues: filters?.useIssues
-      }
-    }),
+    queryKey: ['events', queryParams],
+    queryFn: () => api.events.fetchEvents(queryParams),
     enabled: !isConfigMissing, // Only fetch if configuration is valid
     refetchInterval: refreshInterval,
     staleTime: 60 * 1000, // 1 minute
@@ -76,6 +86,55 @@ const EventTable = React.forwardRef<HTMLDivElement, EventTableProps>(({
   
   // Extract events from response
   const events = eventsResponse?.items || [];
+
+  // Memoized EventRow component for performance
+  const EventRow = React.memo(({ event, index, onRowClick, getRowProps }: {
+    event: BaseEvent;
+    index: number;
+    onRowClick?: (event: BaseEvent) => void;
+    getRowProps: (index: number) => React.HTMLAttributes<HTMLTableRowElement>;
+  }) => {
+    const formattedDate = useMemo(() => 
+      event.lastSeen ? new Date(event.lastSeen).toLocaleString() : 'Unknown', 
+      [event.lastSeen]
+    );
+
+    const handleRowClick = useCallback(() => {
+      onRowClick?.(event);
+    }, [onRowClick, event]);
+
+    return (
+      <tr 
+        key={event.id} 
+        onClick={handleRowClick}
+        {...getRowProps(index)}
+        data-testid={`event-row-${index}`}
+      >
+        <td>{event.title}</td>
+        <td>
+          <Badge color={event.level === 'error' ? 'red' : 'yellow'}>
+            {event.level}
+          </Badge>
+        </td>
+        <td>{event.platform || 'Unknown'}</td>
+        <td>{event.count || 0}</td>
+        <td>{formattedDate}</td>
+        <td>
+          <Group>
+            <ActionIcon 
+              variant="subtle"
+              onClick={(e) => {
+                e.stopPropagation();
+                // Open in new tab or perform other action
+              }}
+            >
+              <IconExternalLink size={16} />
+            </ActionIcon>
+          </Group>
+        </td>
+      </tr>
+    );
+  });
   
   // Container ref for keyboard navigation
   const containerRef = useRef<HTMLDivElement>(null);
@@ -147,10 +206,21 @@ const EventTable = React.forwardRef<HTMLDivElement, EventTableProps>(({
       element.addEventListener('blur', handleBlur);
       
       return () => {
-        element.removeEventListener('focus', handleFocus);
-        element.removeEventListener('blur', handleBlur);
+        // Fix: Use the same element reference in cleanup
+        if (element) {
+          element.removeEventListener('focus', handleFocus);
+          element.removeEventListener('blur', handleBlur);
+        }
       };
     }
+    // Return cleanup function even if element is null initially
+    return () => {
+      const currentElement = containerRef.current;
+      if (currentElement) {
+        currentElement.removeEventListener('focus', handleFocus);
+        currentElement.removeEventListener('blur', handleBlur);
+      }
+    };
   }, [setActiveScope, resetScope]);
 
   // Check for missing configuration first
@@ -221,35 +291,13 @@ const EventTable = React.forwardRef<HTMLDivElement, EventTableProps>(({
           </thead>
           <tbody>
             {events?.map((event, index) => (
-              <tr 
-                key={event.id} 
-                onClick={() => onRowClick?.(event)} 
-                {...getRowProps(index)}
-                data-testid={`event-row-${index}`}
-              >
-                <td>{event.title}</td>
-                <td>
-                  <Badge color={event.level === 'error' ? 'red' : 'yellow'}>
-                    {event.level}
-                  </Badge>
-                </td>
-                <td>{event.platform || 'Unknown'}</td>
-                <td>{event.count || 0}</td>
-                <td>{event.lastSeen ? new Date(event.lastSeen).toLocaleString() : 'Unknown'}</td>
-                <td>
-                  <Group>
-                    <ActionIcon 
-                      variant="subtle"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Open in new tab or perform other action
-                      }}
-                    >
-                      <IconExternalLink size={16} />
-                    </ActionIcon>
-                  </Group>
-                </td>
-              </tr>
+              <EventRow
+                key={event.id}
+                event={event}
+                index={index}
+                onRowClick={onRowClick}
+                getRowProps={getRowProps}
+              />
             ))}
           </tbody>
         </Table>

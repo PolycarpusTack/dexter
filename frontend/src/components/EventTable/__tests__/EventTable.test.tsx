@@ -23,12 +23,11 @@ jest.mock('../../../api/unified', () => ({
   }
 }));
 
-// Mock the store
-jest.mock('../../../store/appStore', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    organizationId: 'org123',
-    projectId: 'proj123'
+// Mock the stores
+jest.mock('../../../store', () => ({
+  useAuthStore: jest.fn(() => ({
+    organizationSlug: 'org123',
+    projectSlug: 'proj123'
   }))
 }));
 

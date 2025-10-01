@@ -1,7 +1,7 @@
 // File: src/hooks/useEventData.ts
 
 import { useQuery } from '@tanstack/react-query';
-import { fetchEventDetails } from '../api/eventsApi';
+import { api } from '../api/unified';
 import { extractErrorType, extractErrorMessage, isDatabaseError } from '../utils/eventUtils';
 import { extractTags, getPrioritizedTags } from '../utils/tagUtils';
 
@@ -9,10 +9,10 @@ import { extractTags, getPrioritizedTags } from '../utils/tagUtils';
  * Hook for fetching and processing Sentry event data
  * 
  * @param eventId - Sentry event ID to fetch
- * @param projectId - Optional project ID
+ * @param projectSlug - Optional project slug
  * @returns Object with event data and utility functions
  */
-export function useEventData(eventId: string, projectId?: string) {
+export function useEventData(eventId: string, projectSlug?: string) {
   // Fetch event details query
   const {
     data: eventDetails,
@@ -21,23 +21,50 @@ export function useEventData(eventId: string, projectId?: string) {
     error,
     refetch
   } = useQuery({
-    queryKey: ['eventDetails', eventId, projectId],
-    queryFn: () => fetchEventDetails(eventId, projectId),
+    queryKey: ['eventDetails', eventId, projectSlug],
+    queryFn: () => api.events.getEventDetails({ eventId, projectSlug }),
     enabled: !!eventId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false
   });
   
-  // Extract tags from event data
-  const tags = eventDetails ? extractTags(eventDetails) : [];
-  const prioritizedTags = getPrioritizedTags(tags);
+  // Extract tags from event data with error handling
+  let tags: Array<{ key: string; value: string }> = [];
+  let prioritizedTags: Array<{ key: string; value: string }> = [];
   
-  // Extract common fields
-  const errorType = eventDetails ? extractErrorType(eventDetails) : '';
-  const errorMessage = eventDetails ? extractErrorMessage(eventDetails) : '';
+  try {
+    tags = eventDetails ? extractTags(eventDetails) : [];
+    prioritizedTags = getPrioritizedTags(tags);
+  } catch (error) {
+    // Silently handle error and return empty arrays
+    // Error logging can be enabled in development via logger utility
+  }
   
-  // Determine if it's a database error
-  const isDbError = eventDetails ? isDatabaseError(eventDetails) : false;
+  // Extract common fields with error handling
+  let errorType = '';
+  let errorMessage = '';
+  let isDbError = false;
+  
+  try {
+    errorType = eventDetails ? extractErrorType(eventDetails) : '';
+  } catch (error) {
+    // Default to 'Unknown Error' on extraction failure
+    errorType = 'Unknown Error';
+  }
+  
+  try {
+    errorMessage = eventDetails ? extractErrorMessage(eventDetails) : '';
+  } catch (error) {
+    // Default error message on extraction failure
+    errorMessage = 'Error message unavailable';
+  }
+  
+  try {
+    isDbError = eventDetails ? isDatabaseError(eventDetails) : false;
+  } catch (error) {
+    // Default to false on error
+    isDbError = false;
+  }
   
   return {
     eventDetails,

@@ -9,7 +9,7 @@ import { setupServer } from 'msw/node';
 import { rest } from 'msw';
 import * as aiApi from '../../aiApi';
 import { apiConfig } from '../../apiConfig';
-import { resolveApiPath } from '../../pathResolver';
+import { resolveApiPath } from '../../apiResolver';
 
 // Create MSW server
 const server = setupServer();

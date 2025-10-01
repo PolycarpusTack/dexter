@@ -5,8 +5,8 @@
  * @param defaultMessage Default message to show if error object doesn't have one
  * @returns ApiError with formatted message
  */
-export function handleApiError(error: any, defaultMessage: string = 'API call failed'): ApiError {
-  return createErrorHandler('API')(error);
+export function handleApiError(error: unknown, defaultMessage: string = 'API call failed'): ApiError {
+  return createErrorHandler('API')(error as Error);
 }
 
 /**
@@ -15,6 +15,7 @@ export function handleApiError(error: any, defaultMessage: string = 'API call fa
 
 import { AxiosError } from 'axios';
 import { ApiError, ErrorCategory } from './types';
+import { ApiErrorDetails } from './interfaces';
 
 /**
  * Factory for creating API errors with consistent format
@@ -72,7 +73,7 @@ export class ErrorFactory {
   /**
    * Create a validation error
    */
-  static createValidationError(status: number, message?: string, details?: any): ApiError {
+  static createValidationError(status: number, message?: string, details?: ApiErrorDetails): ApiError {
     return {
       message: message || 'Validation failed. Please check your input.',
       status,
@@ -146,7 +147,7 @@ export class ErrorFactory {
     }
 
     const status = error.response.status;
-    const data = error.response.data as any;
+    const data = error.response.data as { message?: string; error?: string; errors?: ApiErrorDetails; [key: string]: unknown };
     const message = data?.message || data?.error || error.message;
 
     // Categorize based on status code
@@ -175,8 +176,8 @@ export class ErrorFactory {
 export function createErrorHandler(domain: string) {
   return (error: Error | AxiosError): ApiError => {
     // If it's already an ApiError, return it
-    if ((error as any).category) {
-      return error as unknown as ApiError;
+    if (error && typeof error === 'object' && 'category' in error) {
+      return error as ApiError;
     }
 
     // Handle Axios errors
@@ -200,8 +201,8 @@ export function createErrorHandler(domain: string) {
 /**
  * Type guard for Axios errors
  */
-function isAxiosError(error: any): error is AxiosError {
-  return error.isAxiosError === true;
+function isAxiosError(error: unknown): error is AxiosError {
+  return error !== null && typeof error === 'object' && 'isAxiosError' in error && error.isAxiosError === true;
 }
 
 // Import the real notification system
@@ -217,7 +218,7 @@ import {
  */
 export function showErrorNotification(options: NotificationOptions) {
   // Check if this error should be suppressed from notifications
-  if (options.error && (options.error as any).suppressNotifications) {
+  if (options.error && typeof options.error === 'object' && 'suppressNotifications' in options.error && options.error.suppressNotifications) {
     console.debug('Suppressing error notification:', options.title);
     return;
   }

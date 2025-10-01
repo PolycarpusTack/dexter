@@ -1,0 +1,165 @@
+# GitHub Actions workflow for building and testing Dexter
+name: Build and Test
+
+# Trigger on pull requests and pushes to main and develop branches
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+# Define job environments
+jobs:
+  # Backend tests
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    strategy:
+      matrix:
+        python-version: [3.10]
+
+    steps:
+      # Checkout code
+      - uses: actions/checkout@v3
+
+      # Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      # Install Poetry
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.3.2
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      # Cache Poetry dependencies
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          poetry install
+
+      # Run linting
+      - name: Run linting
+        run: |
+          poetry run flake8 app
+          poetry run black --check app
+          poetry run isort --check app
+
+      # Run type checking
+      - name: Run type checking
+        run: |
+          poetry run mypy app
+
+      # Run tests
+      - name: Run tests
+        run: |
+          poetry run pytest --cov=app --cov-report=xml --cov-report=term
+
+      # Upload coverage reports
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+
+  # Frontend tests
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    strategy:
+      matrix:
+        node-version: [16.x]
+
+    steps:
+      # Checkout code
+      - uses: actions/checkout@v3
+
+      # Set up Node.js
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+
+      # Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # Run linting
+      - name: Run linting
+        run: npm run lint
+
+      # Run type checking
+      - name: Run type checking
+        run: npm run typecheck
+
+      # Run tests
+      - name: Run tests
+        run: npm test -- --coverage
+
+      # Upload coverage reports
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./frontend/coverage/coverage-final.json
+          flags: frontend
+          name: frontend-coverage
+
+  # Build check
+  build-check:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: [frontend-tests]
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      # Checkout code
+      - uses: actions/checkout@v3
+
+      # Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+
+      # Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # Build frontend
+      - name: Build frontend
+        run: npm run build:prod
+        env:
+          VITE_API_BASE_URL: https://api.example.com
+          VITE_APP_MODE: production
+
+      # Analyze bundle size
+      - name: Analyze bundle size
+        run: npm run build:analyze

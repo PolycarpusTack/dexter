@@ -14,7 +14,7 @@ export interface IssueAction {
   /** Action value */
   value: any;
   /** Project ID (optional) */
-  projectId?: string;
+  projectSlug?: string;
 }
 
 /**
@@ -29,8 +29,8 @@ function useIssueActions() {
   
   // Update issue status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: (params: { issueId: string; status: string; projectId?: string }) => 
-      updateIssueStatus(params.issueId, params.status, params.projectId),
+    mutationFn: (params: { issueId: string; status: string; projectSlug?: string }) => 
+      updateIssueStatus(params.issueId, params.status, params.projectSlug),
     onSuccess: (_, variables) => {
       showSuccessNotification({
         title: 'Status Updated',
@@ -45,7 +45,7 @@ function useIssueActions() {
       logEvent('update_status', {
         issueId: variables.issueId,
         status: variables.status,
-        projectId: variables.projectId
+        projectSlug: variables.projectSlug
       });
     },
     onError: (error) => {
@@ -58,8 +58,8 @@ function useIssueActions() {
   
   // Assign issue mutation
   const assignIssueMutation = useMutation({
-    mutationFn: (params: { issueId: string; assigneeId: string; projectId?: string }) => 
-      assignIssue(params.issueId, params.assigneeId, params.projectId),
+    mutationFn: (params: { issueId: string; assigneeId: string; projectSlug?: string }) => 
+      assignIssue(params.issueId, params.assigneeId, params.projectSlug),
     onSuccess: (data, variables) => {
       showSuccessNotification({
         title: 'Issue Assigned',
@@ -74,7 +74,7 @@ function useIssueActions() {
       logEvent('assign_issue', {
         issueId: variables.issueId,
         assigneeId: variables.assigneeId,
-        projectId: variables.projectId
+        projectSlug: variables.projectSlug
       });
     },
     onError: (error) => {
@@ -87,8 +87,8 @@ function useIssueActions() {
   
   // Add comment mutation
   const addCommentMutation = useMutation({
-    mutationFn: (params: { issueId: string; comment: string; projectId?: string }) => 
-      addIssueComment(params.issueId, params.comment, params.projectId),
+    mutationFn: (params: { issueId: string; comment: string; projectSlug?: string }) => 
+      addIssueComment(params.issueId, params.comment, params.projectSlug),
     onSuccess: (_, variables) => {
       showSuccessNotification({
         title: 'Comment Added',
@@ -102,7 +102,7 @@ function useIssueActions() {
       logEvent('add_comment', {
         issueId: variables.issueId,
         commentLength: variables.comment.length,
-        projectId: variables.projectId
+        projectSlug: variables.projectSlug
       });
     },
     onError: (error) => {
@@ -115,8 +115,8 @@ function useIssueActions() {
   
   // Add tags mutation
   const addTagsMutation = useMutation({
-    mutationFn: (params: { issueId: string; tags: string[]; projectId?: string }) => 
-      addIssueTags(params.issueId, params.tags, params.projectId),
+    mutationFn: (params: { issueId: string; tags: string[]; projectSlug?: string }) => 
+      addIssueTags(params.issueId, params.tags, params.projectSlug),
     onSuccess: (_, variables) => {
       showSuccessNotification({
         title: 'Tags Added',
@@ -131,7 +131,7 @@ function useIssueActions() {
       logEvent('add_tags', {
         issueId: variables.issueId,
         tags: variables.tags,
-        projectId: variables.projectId
+        projectSlug: variables.projectSlug
       });
     },
     onError: (error) => {
@@ -157,28 +157,28 @@ function useIssueActions() {
           return await updateStatusMutation.mutateAsync({
             issueId: action.id,
             status: action.value,
-            projectId: action.projectId
+            projectSlug: action.projectSlug
           });
           
         case 'assign':
           return await assignIssueMutation.mutateAsync({
             issueId: action.id,
             assigneeId: action.value,
-            projectId: action.projectId
+            projectSlug: action.projectSlug
           });
           
         case 'comment':
           return await addCommentMutation.mutateAsync({
             issueId: action.id,
             comment: action.value,
-            projectId: action.projectId
+            projectSlug: action.projectSlug
           });
           
         case 'tag':
           return await addTagsMutation.mutateAsync({
             issueId: action.id,
             tags: Array.isArray(action.value) ? action.value : [action.value],
-            projectId: action.projectId
+            projectSlug: action.projectSlug
           });
           
         default:
@@ -209,7 +209,7 @@ function useIssueActions() {
             updateStatusMutation.mutateAsync({
               issueId: id,
               status: updates.status,
-              projectId: updates.projectId
+              projectSlug: updates.projectSlug
             })
           );
         }
@@ -219,7 +219,7 @@ function useIssueActions() {
             assignIssueMutation.mutateAsync({
               issueId: id,
               assigneeId: updates.assigneeId,
-              projectId: updates.projectId
+              projectSlug: updates.projectSlug
             })
           );
         }
@@ -229,7 +229,7 @@ function useIssueActions() {
             addTagsMutation.mutateAsync({
               issueId: id,
               tags: updates.tags,
-              projectId: updates.projectId
+              projectSlug: updates.projectSlug
             })
           );
         }
@@ -248,7 +248,7 @@ function useIssueActions() {
       logEvent('bulk_update', {
         issueCount: issueIds.length,
         updates,
-        projectId: updates.projectId
+        projectSlug: updates.projectSlug
       });
       
       // Invalidate issues query
@@ -268,17 +268,17 @@ function useIssueActions() {
   };
   
   return {
-    updateStatus: (issueId: string, status: string, projectId?: string) => 
-      performAction({ id: issueId, type: 'status', value: status, projectId }),
+    updateStatus: (issueId: string, status: string, projectSlug?: string) => 
+      performAction({ id: issueId, type: 'status', value: status, projectSlug }),
     
-    assignTo: (issueId: string, assigneeId: string, projectId?: string) => 
-      performAction({ id: issueId, type: 'assign', value: assigneeId, projectId }),
+    assignTo: (issueId: string, assigneeId: string, projectSlug?: string) => 
+      performAction({ id: issueId, type: 'assign', value: assigneeId, projectSlug }),
     
-    addComment: (issueId: string, comment: string, projectId?: string) => 
-      performAction({ id: issueId, type: 'comment', value: comment, projectId }),
+    addComment: (issueId: string, comment: string, projectSlug?: string) => 
+      performAction({ id: issueId, type: 'comment', value: comment, projectSlug }),
     
-    addTags: (issueId: string, tags: string[], projectId?: string) => 
-      performAction({ id: issueId, type: 'tag', value: tags, projectId }),
+    addTags: (issueId: string, tags: string[], projectSlug?: string) => 
+      performAction({ id: issueId, type: 'tag', value: tags, projectSlug }),
     
     bulkUpdate,
     

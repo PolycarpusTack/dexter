@@ -1,52 +1,45 @@
 // File: frontend/src/store/types.ts
 
 /**
- * Interface for the application store state
+ * Common types used across all domain stores
+ * 
+ * Note: The old appStore has been removed and replaced with domain-specific stores:
+ * - AuthStore: User authentication and organization/project context
+ * - UIStore: Theme and display preferences
+ * - SelectionStore: Selected items and navigation state
+ * - FilterStore: Search and filter criteria
+ * - KeyboardStore: Keyboard shortcuts and accessibility
+ * - AIStore: AI model configuration and preferences
  */
-export interface AppState {
-  // Configuration
-  organizationSlug: string;
-  projectSlug: string;
-  
-  // Selection state
-  selectedIssueId: string | null;
-  selectedEventId: string | null;
-  
-  // Filter state
-  statusFilter: string;
-  searchQuery: string;
-  
-  // AI model settings
-  activeAIModel: string;
-  
-  // Events map for "latest event" information
-  latestEventsByIssue: Record<string, string>;
-}
 
 /**
- * Interface for the application store actions
+ * Common display preference type used by UIStore
  */
-export interface AppActions {
-  // Organization and project actions
-  setOrgProject: (organizationSlug: string, projectSlug: string) => void;
-  
-  // Selection actions
-  setSelectedIssue: (issueId: string | null, eventId?: string | null) => void;
-  clearSelection: () => void;
-  
-  // Filter actions
-  setStatusFilter: (statusFilter: string) => void;
-  setSearchQuery: (searchQuery: string) => void;
-  resetFilters: () => void;
-  
-  // AI model actions
-  setActiveAIModel: (modelName: string) => void;
-  
-  // Event tracking actions
-  storeLatestEventId: (issueId: string, eventId: string) => void;
-}
+export type DisplayPreference = 'compact' | 'comfortable' | 'spacious';
 
 /**
- * Complete application store type combining state and actions
+ * Common theme type used by UIStore
  */
-export type AppStore = AppState & AppActions;
+export type ThemeMode = 'light' | 'dark' | 'auto';
+
+/**
+ * Common filter status type used by FilterStore
+ */
+export type FilterStatus = 'all' | 'unresolved' | 'resolved' | 'ignored' | 'bookmarked';
+
+/**
+ * Common sort direction type
+ */
+export type SortDirection = 'asc' | 'desc';
+
+/**
+ * Common time range type
+ */
+export type TimeRange = '1h' | '6h' | '24h' | '7d' | '30d' | 'all';
+
+export interface AuditEvent {
+  action: string;
+  timestamp: Date;
+  userId?: string;
+  metadata?: Record<string, any>;
+}

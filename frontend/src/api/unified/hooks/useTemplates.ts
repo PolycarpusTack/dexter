@@ -2,8 +2,7 @@
  * React Query hooks for the template API.
  */
 import { useMutation, useQuery, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
-import { 
-  templateApi, 
+import templateApi, { 
   TemplateCategory, 
   TemplateType,
   PromptTemplate,
@@ -85,11 +84,11 @@ export const useTemplateVersions = (
 export const useDefaultTemplates = (
   category: TemplateCategory,
   type?: TemplateType,
-  options?: UseQueryOptions<PromptTemplate[]>
+  options?: UseQueryOptions<TemplateListResponse>
 ) => {
-  return useQuery<PromptTemplate[]>(
+  return useQuery<TemplateListResponse>(
     queryKeys.defaultTemplates(category, type),
-    () => templateApi.getDefaultTemplates(category, type),
+    () => templateApi.getDefaultTemplates(category),
     {
       staleTime: 5 * 60 * 1000, // 5 minutes
       enabled: !!category,

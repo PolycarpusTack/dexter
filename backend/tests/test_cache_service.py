@@ -152,7 +152,7 @@ class TestCachedDecorator:
         response = await test_func(mock_request)
         
         # Should return cached data
-        assert response.headers['X-Cache'] = 'HIT'
+        assert response.headers['X-Cache'] == 'HIT'
         mock_cache.get.assert_called_once()
     
     @pytest.mark.asyncio
@@ -177,7 +177,7 @@ class TestCachedDecorator:
         response = await test_func(mock_request)
         
         # Should set cache and return new data
-        assert response.headers['X-Cache'] = 'MISS'
+        assert response.headers['X-Cache'] == 'MISS'
         mock_cache.set.assert_called_once()
     
     @pytest.mark.asyncio
@@ -199,7 +199,7 @@ class TestCachedDecorator:
         response = await test_func(mock_request)
         
         # Should bypass cache
-        assert response.headers['X-Cache'] = 'BYPASS'
+        assert response.headers['X-Cache'] == 'BYPASS'
         mock_cache.get.assert_not_called()
         mock_cache.set.assert_not_called()
 

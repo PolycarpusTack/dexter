@@ -32,7 +32,7 @@ export interface SentryEvent {
   id: string;
   groupID?: string;
   eventID: string;
-  projectID: string;
+  projectSlug: string;
   title: string;
   message?: string;
   platform?: string;
@@ -853,7 +853,7 @@ export interface UpdateClientKeyResponse {
 
 export interface CreateaDeployRequest {
   organization_slug: string;
-  {version: string;
+  version: string;
 }
 
 export interface CreateaDeployResponse {

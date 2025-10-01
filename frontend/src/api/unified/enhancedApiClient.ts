@@ -17,52 +17,69 @@ import {
   QueryParams
 } from './types';
 import apiConfig from './apiConfig';
-import { getFullUrl, getMethod, resolvePath, validateParams } from './apiResolver';
-import useAppStore from '../../store/appStore';
+import { getFullUrl, getMethod, resolvePath, validateParams } from './utils';
+import { BoundedCache, CacheEntry, RequestDeduplicator } from './cache';
+import { RetryManager, RetryConfig } from './retryManager';
+import { tokenManager } from './tokenManager';
+import { useAuthStore } from '../../store';
+import { REQUEST_TIMEOUTS, CONTENT_TYPES } from '../../constants/api';
+import { CACHE_CONFIG } from '../../constants/cache';
+import { addCSRFHeader, fetchCSRFToken, getCSRFToken } from '../../utils/csrf';
 
 // Default axios config
 const defaultAxiosConfig: AxiosRequestConfig = {
   headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    'Content-Type': CONTENT_TYPES.JSON,
+    'Accept': CONTENT_TYPES.JSON,
   },
-  timeout: 30000, // 30 seconds
+  timeout: REQUEST_TIMEOUTS.DEFAULT,
   withCredentials: false,
 };
 
-// Cache implementation
+// Cache adapter for backward compatibility
 class ApiCache {
-  private cache: Map<string, { data: any; timestamp: number; ttl: number; etag?: string }> = new Map();
+  private cache: BoundedCache<unknown>;
 
-  set(key: string, data: any, ttl: number = 300000, etag?: string): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl,
-      etag
+  constructor() {
+    this.cache = new BoundedCache({
+      maxSize: CACHE_CONFIG.DEFAULT_MAX_SIZE,
+      maxBytes: CACHE_CONFIG.DEFAULT_MAX_BYTES,
+      defaultTTL: CACHE_CONFIG.DEFAULT_TTL
     });
   }
 
-  get<T>(key: string): T | null {
-    const entry = this.cache.get(key);
-    if (!entry) return null;
-    
-    // Check if entry is expired
-    if (Date.now() - entry.timestamp > entry.ttl) {
-      this.cache.delete(key);
-      return null;
-    }
-    
-    return entry.data as T;
+  /**
+   * Store data in cache with optional TTL and ETag
+   * @param key - Cache key
+   * @param data - Data to cache
+   * @param ttl - Time to live in milliseconds
+   * @param etag - Optional ETag for cache validation
+   */
+  set(key: string, data: unknown, ttl: number = CACHE_CONFIG.DEFAULT_TTL, etag?: string): void {
+    this.cache.set(key, data, ttl, etag);
   }
 
+  /**
+   * Retrieve data from cache
+   * @param key - Cache key
+   * @returns Cached data or null if not found/expired
+   */
+  get<T>(key: string): T | null {
+    return this.cache.get(key) as T;
+  }
+
+  /**
+   * Get ETag for cached entry
+   * @param key - Cache key
+   * @returns ETag string or undefined if not found
+   */
   getEtag(key: string): string | undefined {
-    const entry = this.cache.get(key);
+    const entry = this.cache.getEntry(key);
     return entry?.etag;
   }
 
   remove(key: string): void {
-    this.cache.delete(key);
+    this.cache.remove(key);
   }
 
   clear(): void {
@@ -70,133 +87,26 @@ class ApiCache {
   }
 
   has(key: string): boolean {
-    const entry = this.cache.get(key);
-    if (!entry) return false;
-    
-    // Check if entry is expired
-    if (Date.now() - entry.timestamp > entry.ttl) {
-      this.cache.delete(key);
-      return false;
-    }
-    
-    return true;
+    return this.cache.has(key) && this.cache.isValid(key);
   }
 
   // Remove entries with keys that match the pattern
   removePattern(pattern: RegExp): void {
-    for (const key of this.cache.keys()) {
+    const stats = this.cache.getStats();
+    for (const key of Object.keys(stats.entries)) {
       if (pattern.test(key)) {
-        this.cache.delete(key);
+        this.cache.remove(key);
       }
     }
   }
 
   // Get cache statistics
-  getStats(): { size: number; sizeBytes: number; entries: Record<string, { age: number; ttl: number; hasEtag: boolean }> } {
-    let sizeBytes = 0;
-    const entries: Record<string, { age: number; ttl: number; hasEtag: boolean }> = {};
-    
-    for (const [key, entry] of this.cache.entries()) {
-      const age = Date.now() - entry.timestamp;
-      entries[key] = {
-        age,
-        ttl: entry.ttl,
-        hasEtag: !!entry.etag
-      };
-      
-      // Estimate size in bytes
-      sizeBytes += key.length * 2; // Rough estimate for string
-      sizeBytes += JSON.stringify(entry.data).length * 2; // Rough estimate for data
-    }
-    
-    return {
-      size: this.cache.size,
-      sizeBytes,
-      entries
-    };
+  getStats() {
+    return this.cache.getStats();
   }
 }
 
-// Request deduplication implementation
-class RequestDeduplicator {
-  private pendingRequests: Map<string, Promise<any>> = new Map();
-
-  async deduplicate<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
-    // If there's already a pending request for this key, return it
-    if (this.pendingRequests.has(key)) {
-      return this.pendingRequests.get(key) as Promise<T>;
-    }
-    
-    // Create a new request and store it
-    const requestPromise = requestFn()
-      .finally(() => {
-        // Remove the request from pending when it's done
-        this.pendingRequests.delete(key);
-      });
-    
-    this.pendingRequests.set(key, requestPromise);
-    return requestPromise;
-  }
-
-  isPending(key: string): boolean {
-    return this.pendingRequests.has(key);
-  }
-
-  clearPending(): void {
-    this.pendingRequests.clear();
-  }
-}
-
-// Request retry implementation
-class RetryManager {
-  async retry<T>(
-    requestFn: () => Promise<T>, 
-    maxRetries: number = 3,
-    baseDelay: number = 300,
-    retryableStatusCodes: number[] = [408, 429, 500, 502, 503, 504]
-  ): Promise<T> {
-    let retryCount = 0;
-    
-    const executeWithRetry = async (): Promise<T> => {
-      try {
-        return await requestFn();
-      } catch (error) {
-        // Handle axios errors
-        if (error && typeof error === 'object' && 'isAxiosError' in error) {
-          const axiosError = error as AxiosError;
-          
-          // Check if we can retry
-          const canRetry = retryCount < maxRetries && (
-            // Network errors
-            !axiosError.response ||
-            // Retryable status codes
-            (axiosError.response && retryableStatusCodes.includes(axiosError.response.status))
-          );
-          
-          if (canRetry) {
-            retryCount++;
-            
-            // Exponential backoff with jitter
-            const delay = baseDelay * Math.pow(2, retryCount - 1) * (1 + Math.random() * 0.1);
-            
-            console.warn(`API request failed, retrying (${retryCount}/${maxRetries}) in ${delay}ms...`);
-            
-            // Wait before retrying
-            await new Promise(resolve => setTimeout(resolve, delay));
-            
-            // Retry
-            return executeWithRetry();
-          }
-        }
-        
-        // If we can't retry, rethrow
-        throw error;
-      }
-    };
-    
-    return executeWithRetry();
-  }
-}
+// Use imported RequestDeduplicator - already defined in cache.ts
 
 /**
  * Enhanced API Client Implementation
@@ -216,7 +126,11 @@ export class EnhancedApiClient implements ApiClient {
     });
     this.cache = new ApiCache();
     this.deduplicator = new RequestDeduplicator();
-    this.retryManager = new RetryManager();
+    this.retryManager = new RetryManager({
+      maxRetries: 3,
+      initialDelay: 300,
+      backoffMultiplier: 2
+    });
     
     this.setupInterceptors();
   }
@@ -227,21 +141,52 @@ export class EnhancedApiClient implements ApiClient {
   private setupInterceptors(): void {
     // Request interceptor
     this.axiosInstance.interceptors.request.use(
-      config => {
+      async config => {
         // Log the full URL being requested
         const fullURL = `${config.baseURL}${config.url}`;
         console.log(`[${config.method?.toUpperCase()}] ${fullURL}`);
         
         // Add request timing
-        (config as any).metadata = { startTime: Date.now() };
+        const configWithMetadata = config as AxiosRequestConfig & { metadata?: { startTime: number } };
+        configWithMetadata.metadata = { startTime: Date.now() };
         
-        // Add authorization header from store
-        const apiToken = useAppStore.getState().apiToken;
-        if (apiToken) {
-          config.headers = { 
-            ...config.headers, 
-            'Authorization': `Bearer ${apiToken}` 
-          };
+        // Add authorization header using token manager
+        const skipAuth = (config as any).skipAuth;
+        if (!skipAuth) {
+          try {
+            const token = await tokenManager.getValidToken();
+            if (token) {
+              config.headers = { 
+                ...config.headers, 
+                'Authorization': `Bearer ${token}` 
+              };
+            }
+          } catch (error) {
+            console.warn('Failed to get auth token:', error);
+            // Fall back to store token
+            const apiToken = useAuthStore.getState().apiToken;
+            if (apiToken) {
+              config.headers = { 
+                ...config.headers, 
+                'Authorization': `Bearer ${apiToken}` 
+              };
+            }
+          }
+        }
+        
+        // Add CSRF token for non-safe methods
+        const method = config.method?.toUpperCase();
+        if (method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+          // Ensure we have a CSRF token
+          if (!getCSRFToken()) {
+            try {
+              await fetchCSRFToken();
+            } catch (error) {
+              console.warn('Failed to fetch CSRF token:', error);
+            }
+          }
+          
+          config.headers = addCSRFHeader(config.headers || {});
         }
         
         // Add cache headers if applicable
@@ -334,7 +279,7 @@ export class EnhancedApiClient implements ApiClient {
     let message = 'An unknown error occurred';
     let status: number | undefined = undefined;
     let retryable = false;
-    let data: any = undefined;
+    let data: unknown = undefined;
     
     // Network errors
     if (!error.response) {
@@ -352,9 +297,10 @@ export class EnhancedApiClient implements ApiClient {
         if (typeof data === 'string') {
           message = data;
         } else if (typeof data === 'object') {
-          if (data.message) message = data.message;
-          else if (data.error) message = data.error;
-          else if (data.detail) message = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+          const dataObj = data as { message?: string; error?: string; detail?: string | object };
+          if (dataObj.message) message = dataObj.message;
+          else if (dataObj.error) message = dataObj.error;
+          else if (dataObj.detail) message = typeof dataObj.detail === 'string' ? dataObj.detail : JSON.stringify(dataObj.detail);
         }
       }
       
@@ -388,18 +334,14 @@ export class EnhancedApiClient implements ApiClient {
                          error.config?.url?.includes('/api/v1/ai-enhanced/models')));
 
     // Create the error object
-    const apiError = new Error(message) as ApiError;
-    apiError.name = 'ApiError';
-    apiError.status = status;
-    apiError.category = category;
-    apiError.data = data;
-    apiError.retryable = retryable;
-    apiError.retryCount = 0;
-    apiError.originalError = error;
-    apiError.suppressNotifications = !!shouldSuppressNotification;
-    apiError.metadata = {
-      url: error.config?.url,
-      method: error.config?.method
+    const apiError: ApiError = {
+      message,
+      status: status || 0,
+      category,
+      isRetryable: retryable,
+      originalError: error,
+      suppressNotifications: !!shouldSuppressNotification,
+      details: typeof data === 'object' && data !== null ? data as ApiErrorDetails : undefined
     };
     
     return apiError;
@@ -408,7 +350,7 @@ export class EnhancedApiClient implements ApiClient {
   /**
    * Make a GET request
    */
-  async get<T = any>(url: string, options: ApiCallOptions = {}): Promise<T> {
+  async get<T = unknown>(url: string, options: ApiCallOptions = {}): Promise<T> {
     const cacheKey = url;
     
     // Check cache first (unless bypass requested)
@@ -428,7 +370,7 @@ export class EnhancedApiClient implements ApiClient {
     
     // Use deduplication for GET requests
     return this.deduplicator.deduplicate<T>(cacheKey, () => {
-      return this.retryManager.retry(
+      return this.retryManager.execute(
         () => this.axiosInstance.request<T>(config).then(response => response.data),
         options.retry?.maxRetries || 3
       );
@@ -438,7 +380,7 @@ export class EnhancedApiClient implements ApiClient {
   /**
    * Make a POST request
    */
-  async post<T = any>(url: string, data?: any, options: ApiCallOptions = {}): Promise<T> {
+  async post<T = unknown>(url: string, data?: unknown, options: ApiCallOptions = {}): Promise<T> {
     const config: AxiosRequestConfig = {
       ...this.createRequestConfig(options),
       method: 'POST',
@@ -446,7 +388,7 @@ export class EnhancedApiClient implements ApiClient {
       data
     };
     
-    return this.retryManager.retry(
+    return this.retryManager.execute(
       () => this.axiosInstance.request<T>(config).then(response => response.data),
       options.retry?.maxRetries || 3
     );
@@ -455,7 +397,7 @@ export class EnhancedApiClient implements ApiClient {
   /**
    * Make a PUT request
    */
-  async put<T = any>(url: string, data?: any, options: ApiCallOptions = {}): Promise<T> {
+  async put<T = unknown>(url: string, data?: unknown, options: ApiCallOptions = {}): Promise<T> {
     const config: AxiosRequestConfig = {
       ...this.createRequestConfig(options),
       method: 'PUT',
@@ -463,7 +405,7 @@ export class EnhancedApiClient implements ApiClient {
       data
     };
     
-    return this.retryManager.retry(
+    return this.retryManager.execute(
       () => this.axiosInstance.request<T>(config).then(response => response.data),
       options.retry?.maxRetries || 3
     );
@@ -472,7 +414,7 @@ export class EnhancedApiClient implements ApiClient {
   /**
    * Make a DELETE request
    */
-  async delete<T = any>(url: string, options: ApiCallOptions = {}): Promise<T> {
+  async delete<T = unknown>(url: string, options: ApiCallOptions = {}): Promise<T> {
     // Invalidate cache for this URL
     this.cache.remove(url);
     
@@ -482,7 +424,7 @@ export class EnhancedApiClient implements ApiClient {
       url
     };
     
-    return this.retryManager.retry(
+    return this.retryManager.execute(
       () => this.axiosInstance.request<T>(config).then(response => response.data),
       options.retry?.maxRetries || 3
     );
@@ -491,7 +433,7 @@ export class EnhancedApiClient implements ApiClient {
   /**
    * Make a PATCH request
    */
-  async patch<T = any>(url: string, data?: any, options: ApiCallOptions = {}): Promise<T> {
+  async patch<T = unknown>(url: string, data?: unknown, options: ApiCallOptions = {}): Promise<T> {
     // Invalidate cache for this URL
     this.cache.remove(url);
     
@@ -502,7 +444,7 @@ export class EnhancedApiClient implements ApiClient {
       data
     };
     
-    return this.retryManager.retry(
+    return this.retryManager.execute(
       () => this.axiosInstance.request<T>(config).then(response => response.data),
       options.retry?.maxRetries || 3
     );
@@ -514,6 +456,7 @@ export class EnhancedApiClient implements ApiClient {
   private createRequestConfig(options: ApiCallOptions): AxiosRequestConfig {
     return {
       headers: options.headers,
+      params: options.params,
       timeout: options.timeout,
       responseType: options.responseType,
       signal: options.signal
@@ -523,32 +466,16 @@ export class EnhancedApiClient implements ApiClient {
   /**
    * Make a request using endpoint name, resolving path automatically
    */
-  async callEndpoint<T = any>(
+  async callEndpoint<T = unknown>(
     category: string,
     endpoint: string,
     pathParams: PathParams = {},
     queryParams: QueryParams = {},
-    data?: any,
+    data?: unknown,
     options: ApiCallOptions = {}
   ): Promise<T> {
     try {
-      // Special case for config endpoint to avoid 404 errors
-      if (category === 'config' && endpoint === 'get') {
-        console.debug('Using mock config endpoint instead of API');
-        // Import the mock implementation dynamically to avoid circular dependencies
-        const { getConfig } = await import('./configApiMock');
-        return getConfig() as Promise<T>;
-      }
-      
-      // Special case for selectModelEnhanced endpoint to avoid 404 errors
-      if (category === 'ai-enhanced' && endpoint === 'selectModelEnhanced') {
-        console.debug('Using mock selectModelEnhanced endpoint instead of API');
-        const mockResponse = {
-          success: true,
-          model_id: data?.model_id || 'gpt-3.5-turbo'
-        };
-        return mockResponse as T;
-      }
+      // All mock implementations have been removed - using real API only
       
       // Get the method
       const method = getMethod(category, endpoint);
@@ -561,46 +488,31 @@ export class EnhancedApiClient implements ApiClient {
         case HttpMethod.GET:
           return await this.get<T>(url, {
             ...options,
-            headers: {
-              ...options.headers,
-              params: queryParams
-            }
+            params: queryParams,
           });
           
         case HttpMethod.POST:
           return await this.post<T>(url, data, {
             ...options,
-            headers: {
-              ...options.headers,
-              params: queryParams
-            }
+            params: queryParams,
           });
           
         case HttpMethod.PUT:
           return await this.put<T>(url, data, {
             ...options,
-            headers: {
-              ...options.headers,
-              params: queryParams
-            }
+            params: queryParams,
           });
           
         case HttpMethod.DELETE:
           return await this.delete<T>(url, {
             ...options,
-            headers: {
-              ...options.headers,
-              params: queryParams
-            }
+            params: queryParams,
           });
           
         case HttpMethod.PATCH:
           return await this.patch<T>(url, data, {
             ...options,
-            headers: {
-              ...options.headers,
-              params: queryParams
-            }
+            params: queryParams,
           });
           
         default:
@@ -615,7 +527,7 @@ export class EnhancedApiClient implements ApiClient {
   /**
    * Batch multiple GET requests
    */
-  async batchGet<T = any>(urls: string[], options: ApiCallOptions = {}): Promise<T[]> {
+  async batchGet<T = unknown>(urls: string[], options: ApiCallOptions = {}): Promise<T[]> {
     return Promise.all(urls.map(url => this.get<T>(url, options)));
   }
 

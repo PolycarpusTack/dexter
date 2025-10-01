@@ -2,6 +2,40 @@
 
 This file contains important information about the Dexter project that Claude should remember between sessions.
 
+## Latest Progress Update (May 18, 2025)
+
+Fixed critical build errors in the frontend API client architecture:
+
+### Root Causes & Fixes
+1. **Root Cause**: templateApi was exported as a default export but imported as a named import
+   - **Fix**: Changed `import { templateApi, ... }` to `import templateApi, { ... }` in useTemplates.ts
+
+2. **Root Cause**: Missing function implementations for functions referenced in hooks
+   - **Fix**: Implemented `getTemplateVersions()` and `setTemplateAsDefault()` functions in templateApi.ts
+
+3. **Root Cause**: pathResolver utility referenced but not defined
+   - **Fix**: Added pathResolver implementation to apiResolver.ts with proper exports
+
+4. **Root Cause**: Undefined PathResolutionError class exported in index.ts
+   - **Fix**: Implemented PathResolutionError class in index.ts
+
+5. **Root Cause**: Multiple indentation errors in Python code, especially in try/except blocks
+   - **Fix**: Fixed indentation in config_service.py and factory.py following PEP 8 standards
+
+### Red Flags Identified
+1. 🚩 Inconsistent export/import patterns between modules
+2. 🚩 Functions referenced but not implemented
+3. 🚩 Utilities used without proper implementation
+4. 🚩 Python indentation issues in try/except blocks
+5. 🚩 Type mismatches between hook return types and API responses
+
+### Recommendations
+1. Standardize on export patterns across API modules
+2. Implement comprehensive tests for each hook
+3. Centralize common utilities in a dedicated module
+4. Use automated linting for Python code
+5. Implement shared type interfaces between API and hooks
+
 ## Project Overview
 
 Dexter is an application for monitoring, analyzing and explaining errors from Sentry. It provides:

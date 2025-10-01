@@ -2,7 +2,39 @@
  * WebSocket client for real-time updates
  */
 
-import { EventEmitter } from 'events';
+// Lightweight EventEmitter for browser environments (no Node.js deps)
+class MinimalEventEmitter {
+  private listeners: Map<string, Set<(...args: any[]) => void>> = new Map();
+
+  on(event: string, fn: (...args: any[]) => void): this {
+    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    this.listeners.get(event)!.add(fn);
+    return this;
+  }
+
+  off(event: string, fn: (...args: any[]) => void): this {
+    this.listeners.get(event)?.delete(fn);
+    return this;
+  }
+
+  emit(event: string, ...args: any[]): boolean {
+    const fns = this.listeners.get(event);
+    if (!fns || fns.size === 0) return false;
+    for (const fn of Array.from(fns)) {
+      try { fn(...args); } catch (e) { /* swallow */ }
+    }
+    return true;
+  }
+
+  removeAllListeners(event?: string): this {
+    if (event) {
+      this.listeners.delete(event);
+    } else {
+      this.listeners.clear();
+    }
+    return this;
+  }
+}
 
 export interface WebSocketConfig {
   url: string;
@@ -21,7 +53,7 @@ export interface WebSocketMessage {
 
 export type WebSocketStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error';
 
-export class WebSocketClient extends EventEmitter {
+export class WebSocketClient extends MinimalEventEmitter {
   private ws: WebSocket | null = null;
   private config: Required<WebSocketConfig>;
   private reconnectAttempts = 0;
@@ -81,9 +113,24 @@ export class WebSocketClient extends EventEmitter {
     this.reconnectAttempts = 0;
     
     if (this.ws) {
+      // Remove all event listeners before closing
+      this.ws.onopen = null;
+      this.ws.onmessage = null;
+      this.ws.onclose = null;
+      this.ws.onerror = null;
+      
       this.ws.close(1000, 'Client disconnect');
       this.ws = null;
     }
+    
+    // Clear all event emitter listeners to prevent memory leaks
+    this.removeAllListeners();
+    
+    // Clear pending messages
+    this.pendingMessages = [];
+    
+    // Clear subscriptions
+    this.subscriptions.clear();
     
     this.status = 'disconnected';
     this.emit('statusChange', this.status);
@@ -325,8 +372,16 @@ export function getWebSocketClient(config?: WebSocketConfig): WebSocketClient {
 export function initializeWebSocket(config: WebSocketConfig): WebSocketClient {
   if (wsClient) {
     wsClient.disconnect();
+    wsClient = null; // Clear reference to allow garbage collection
   }
   
   wsClient = new WebSocketClient(config);
   return wsClient;
+}
+
+export function destroyWebSocketClient(): void {
+  if (wsClient) {
+    wsClient.disconnect();
+    wsClient = null;
+  }
 }

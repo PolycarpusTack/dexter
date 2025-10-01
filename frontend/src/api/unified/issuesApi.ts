@@ -40,15 +40,15 @@ export const issueSchema = z.object({
   userCount: z.number().optional(),
   permalink: z.string().optional(),
   type: z.string().optional(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.unknown()).optional()
 });
 
 /**
  * Issues response validation schema
  */
 export const issuesResponseSchema = z.object({
-  items: z.array(issueSchema).or(z.array(z.any())),
-  issues: z.array(issueSchema).or(z.array(z.any())).optional(),
+  items: z.array(issueSchema).or(z.array(z.unknown())),
+  issues: z.array(issueSchema).or(z.array(z.unknown())).optional(),
   links: z.object({
     previous: z.object({ cursor: z.string() }).optional(),
     next: z.object({ cursor: z.string() }).optional()

@@ -6,18 +6,17 @@
  */
 
 import { z } from 'zod';
-import enhancedApiClient from './enhancedApiClient.js';
-import { createErrorHandler } from './errorHandler.js';
-import { validateParams } from './apiResolver.js';
+import { AxiosError } from 'axios';
+
+import { createErrorHandler } from './errorHandler';
+import { validateParams } from './apiResolver';
+import enhancedApiClient from './enhancedApiClient';
+import { ApiCallOptions } from './types';
 
 /**
  * Error handler for Config API
  */
-const handleConfigError = createErrorHandler({
-  module: 'ConfigAPI',
-  showNotifications: true,
-  logToConsole: true
-});
+const handleConfigError = createErrorHandler('ConfigAPI');
 
 /**
  * Configuration validation schema
@@ -34,7 +33,7 @@ export const configSchema = z.object({
   })).optional(),
   current_model: z.string().optional(),
   // Additional config fields can be added here
-}).catchall(z.unknown());
+}).strict();
 
 /**
  * Health status validation schema
@@ -43,7 +42,7 @@ export const healthStatusSchema = z.object({
   status: z.string(),
   sentry_connected: z.boolean(),
   ollama_available: z.boolean()
-}).catchall(z.unknown());
+}).strict();
 
 // Type inferences from Zod schemas
 export type Config = z.infer<typeof configSchema>;
@@ -61,7 +60,7 @@ export interface ConfigParams {
  * @param options - API call options
  * @returns Promise with configuration
  */
-export const getConfig = async (options?: Record<string, any>): Promise<Config> => {
+export const getConfig = async (options?: ApiCallOptions): Promise<Config> => {
   try {
     // Actually fetch configuration from backend
     const response = await enhancedApiClient.callEndpoint<unknown>(
@@ -80,9 +79,10 @@ export const getConfig = async (options?: Record<string, any>): Promise<Config> 
       console.warn('Config validation failed:', validationError);
       return response as Config;
     }
-  } catch (error: any) {
+  } catch (error) {
     // Only return defaults if it's a 404 (config not found)
-    if (error?.response?.status === 404 || error?.status === 404) {
+    if (error && typeof error === 'object' && 'status' in error && 
+        (error.status === 404 || (error as AxiosError)?.response?.status === 404)) {
       return {
         organization_slug: '',
         project_slug: '',
@@ -109,7 +109,7 @@ export const getConfig = async (options?: Record<string, any>): Promise<Config> 
  */
 export const updateConfig = async (
   config: Partial<Config>,
-  options?: Record<string, any>
+  options?: ApiCallOptions
 ): Promise<Config> => {
   try {
     // Call the API using the callEndpoint method
@@ -148,7 +148,7 @@ export const updateConfig = async (
  */
 export const checkConfig = async (
   config: ConfigParams,
-  options?: Record<string, any>
+  options?: ApiCallOptions
 ): Promise<Config> => {
   try {
     // Validate parameters
@@ -190,7 +190,7 @@ export const checkConfig = async (
  * @param options - API call options
  * @returns Promise with health status
  */
-export const checkHealth = async (options?: Record<string, any>): Promise<HealthStatus> => {
+export const checkHealth = async (options?: ApiCallOptions): Promise<HealthStatus> => {
   try {
     // Call the API using the callEndpoint method
     const response = await enhancedApiClient.callEndpoint<unknown>(

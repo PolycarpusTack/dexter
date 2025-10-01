@@ -5,7 +5,39 @@
  * including user interactions, performance metrics, and error events.
  */
 
-import { v4 as uuidv4 } from 'uuid';
+// Lightweight UUID generator to avoid external deps
+const uuidv4 = (): string => {
+  try {
+    // Prefer cryptographic UUID when available
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      // @ts-ignore - randomUUID is widely supported in modern browsers
+      return crypto.randomUUID();
+    }
+    if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+      const buf = new Uint8Array(16);
+      // @ts-ignore
+      crypto.getRandomValues(buf);
+      // Per RFC 4122 v4
+      buf[6] = (buf[6] & 0x0f) | 0x40;
+      buf[8] = (buf[8] & 0x3f) | 0x80;
+      const bth = Array.from({ length: 256 }, (_, i) => (i + 0x100).toString(16).substring(1));
+      return (
+        bth[buf[0]] + bth[buf[1]] + bth[buf[2]] + bth[buf[3]] + '-' +
+        bth[buf[4]] + bth[buf[5]] + '-' + bth[buf[6]] + bth[buf[7]] + '-' +
+        bth[buf[8]] + bth[buf[9]] + '-' +
+        bth[buf[10]] + bth[buf[11]] + bth[buf[12]] + bth[buf[13]] + bth[buf[14]] + bth[buf[15]]
+      );
+    }
+  } catch (_) {
+    // ignore and fall back
+  }
+  // Non-crypto fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 // Event types for telemetry
 export type EventType = 
@@ -242,6 +274,13 @@ export class TelemetryService {
   private throttleTimestamp: number = 0;
   private throttleCount: number = 0;
   private callbacks: Record<string, ((event: TelemetryEvent) => void)[]> = {};
+  
+  // Event handler references for cleanup
+  private errorHandler?: (event: ErrorEvent) => void;
+  private rejectionHandler?: (event: PromiseRejectionEvent) => void;
+  private beforeUnloadHandler?: (event: BeforeUnloadEvent) => void;
+  private visibilityChangeHandler?: () => void;
+  private popStateHandler?: () => void;
   
   /**
    * Create a new telemetry service instance
@@ -592,10 +631,60 @@ export class TelemetryService {
   }
   
   /**
+   * Clean up all event listeners and resources
+   */
+  public destroy(): void {
+    // Remove error handlers
+    if (this.errorHandler) {
+      window.removeEventListener('error', this.errorHandler);
+      this.errorHandler = undefined;
+    }
+    
+    if (this.rejectionHandler) {
+      window.removeEventListener('unhandledrejection', this.rejectionHandler);
+      this.rejectionHandler = undefined;
+    }
+    
+    // Remove navigation handlers
+    if (this.popStateHandler) {
+      window.removeEventListener('popstate', this.popStateHandler);
+      this.popStateHandler = undefined;
+    }
+    
+    // Remove other handlers if they exist
+    if (this.beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+      this.beforeUnloadHandler = undefined;
+    }
+    
+    if (this.visibilityChangeHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeHandler = undefined;
+    }
+    
+    // Clear the send timer
+    if (this.sendTimer) {
+      clearInterval(this.sendTimer);
+      this.sendTimer = null;
+    }
+    
+    // Flush any remaining events
+    this.flush();
+    
+    // Clear event queue and callbacks
+    this.eventQueue = [];
+    this.callbacks = {};
+    
+    // Disable the service
+    this.isEnabled = false;
+  }
+  
+  /**
    * Set up global error collection
    */
   private setupErrorCollection(): void {
-    window.addEventListener('error', (event) => {
+    // Store references to handlers for cleanup
+    this.errorHandler = (event: ErrorEvent) => {
       this.trackError({
         name: 'Uncaught Error',
         message: event.message,
@@ -608,9 +697,9 @@ export class TelemetryService {
           colno: event.colno,
         },
       });
-    });
+    };
     
-    window.addEventListener('unhandledrejection', (event) => {
+    this.rejectionHandler = (event: PromiseRejectionEvent) => {
       this.trackError({
         name: 'Unhandled Promise Rejection',
         message: event.reason?.message || String(event.reason),
@@ -621,7 +710,10 @@ export class TelemetryService {
           reason: event.reason,
         },
       });
-    });
+    };
+    
+    window.addEventListener('error', this.errorHandler);
+    window.addEventListener('unhandledrejection', this.rejectionHandler);
   }
   
   /**
@@ -690,7 +782,7 @@ export class TelemetryService {
       };
       
       // Track popstate (back/forward navigation)
-      window.addEventListener('popstate', () => {
+      this.popStateHandler = () => {
         const to = window.location.pathname;
         
         this.trackNavigation({
@@ -700,7 +792,9 @@ export class TelemetryService {
         });
         
         currentPath = to;
-      });
+      };
+      
+      window.addEventListener('popstate', this.popStateHandler);
     }
   }
   
@@ -921,15 +1015,6 @@ export class TelemetryService {
    */
   private generateSessionId(): string {
     return uuidv4();
-  }
-  
-  /**
-   * Clean up resources when service is destroyed
-   */
-  public destroy(): void {
-    this.stopSendingInterval();
-    this.flush().catch(() => {});
-    this.callbacks = {};
   }
 }
 

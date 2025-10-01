@@ -1,0 +1,194 @@
+{
+  "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py": {
+    "docstrings": [
+      "Line 43: Replaced TODO docstring",
+      "Line 71: Replaced TODO docstring",
+      "Line 85: Replaced TODO docstring",
+      "Line 92: Replaced TODO docstring",
+      "Line 108: Replaced TODO docstring",
+      "Line 199: Replaced TODO docstring",
+      "Line 235: Replaced TODO docstring",
+      "Line 241: Replaced TODO docstring"
+    ],
+    "imports": [],
+    "type_hints": [
+      "Function 'validate_max_retries': Add type hint for parameter 'cls'",
+      "Function 'validate_max_retries': Add type hint for parameter 'v'",
+      "Function 'validate_bucket_size': Add type hint for parameter 'cls'",
+      "Function 'validate_bucket_size': Add type hint for parameter 'v'",
+      "Function 'validate_refill_rate': Add type hint for parameter 'cls'",
+      "Function 'validate_refill_rate': Add type hint for parameter 'v'",
+      "Function 'validate_max_connections': Add type hint for parameter 'cls'",
+      "Function 'validate_max_connections': Add type hint for parameter 'v'",
+      "Function 'validate_max_connections': Add type hint for parameter 'values'"
+    ],
+    "duplication": [],
+    "magic_values": [],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/app/services/integrations/connector_registry.py": {
+    "docstrings": [],
+    "imports": [],
+    "type_hints": [],
+    "duplication": [],
+    "magic_values": [],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/app/services/integration_service.py": {
+    "docstrings": [],
+    "imports": [],
+    "type_hints": [],
+    "duplication": [],
+    "magic_values": [
+      "Line 213: Replaced 1000 with MS_PER_SECOND",
+      "Line 358: Replaced 1000 with MS_PER_SECOND"
+    ],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py": {
+    "docstrings": [],
+    "imports": [],
+    "type_hints": [],
+    "duplication": [],
+    "magic_values": [],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py": {
+    "docstrings": [],
+    "imports": [],
+    "type_hints": [
+      "Function 'parse_expires_at': Add type hint for parameter 'cls'",
+      "Function 'parse_expires_at': Add type hint for parameter 'v'"
+    ],
+    "duplication": [
+      "Added TODO comment for refactoring duplicate methods"
+    ],
+    "magic_values": [
+      "Line 169: Replaced 100000 with PBKDF2_ITERATIONS",
+      "Line 169: Replaced 1000 with MS_PER_SECOND"
+    ],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/app/models/integrations.py": {
+    "docstrings": [],
+    "imports": [],
+    "type_hints": [
+      "Function 'mask_sensitive_fields': Add type hint for parameter 'cls'",
+      "Function 'mask_sensitive_fields': Add type hint for parameter 'v'"
+    ],
+    "duplication": [],
+    "magic_values": [],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/app/routers/integrations.py": {
+    "docstrings": [],
+    "imports": [],
+    "type_hints": [
+      "Function 'validate_config_fields': Add type hint for parameter 'cls'",
+      "Function 'validate_config_fields': Add type hint for parameter 'v'",
+      "Function 'validate_config_fields': Add type hint for parameter 'values'"
+    ],
+    "duplication": [],
+    "magic_values": [],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py": {
+    "docstrings": [],
+    "imports": [
+      "Commented out unused import: Union",
+      "Commented out unused import: Dict",
+      "Commented out unused import: Optional",
+      "Commented out unused import: List"
+    ],
+    "type_hints": [
+      "Function 'integration_service': Add type hint for parameter 'mock_external_api_service'",
+      "Function 'sample_integration': Add type hint for parameter 'sample_integration_config'"
+    ],
+    "duplication": [],
+    "magic_values": [
+      "Line 41: Replaced hardcoded URL with TEST_URL_HTTPS___API_EXAMPLE_COM",
+      "Line 86: Replaced hardcoded URL with TEST_URL_HTTPS___HOOKS_SLACK_COM_TEST",
+      "Line 132: Replaced hardcoded URL with TEST_URL_HTTPS___NEW_API_EXAMPLE_COM",
+      "Line 139: Replaced hardcoded URL with TEST_URL_HTTPS___NEW_API_EXAMPLE_COM",
+      "Line 328: Replaced hardcoded URL with TEST_URL_HTTPS___JIRA_EXAMPLE_COM",
+      "Line 345: Replaced hardcoded URL with TEST_URL_HTTPS___HOOKS_SLACK_COM_TEST",
+      "Line 635: Replaced hardcoded URL with TEST_URL_HTTPS___API_EXAMPLE_COM",
+      "Line 841: Replaced hardcoded URL with TEST_URL_HTTPS___JIRA_EXAMPLE_COM",
+      "Line 851: Replaced hardcoded URL with TEST_URL_HTTPS___NEW_JIRA_EXAMPLE_COM",
+      "Line 854: Replaced hardcoded URL with TEST_URL_HTTPS___NEW_JIRA_EXAMPLE_COM",
+      "Line 937: Replaced 1000 with MS_PER_SECOND",
+      "Line 951: Replaced hardcoded URL with TEST_URL_HTTPS___EXAMPLE_COM_PATH_QUERY"
+    ],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/tests/routers/test_integrations.py": {
+    "docstrings": [],
+    "imports": [
+      "Commented out unused import: pytest",
+      "Commented out unused import: patch",
+      "Commented out unused import: Mock"
+    ],
+    "type_hints": [
+      "Function 'test_placeholder': Add return type hint"
+    ],
+    "duplication": [],
+    "magic_values": [],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/tests/models/test_integrations.py": {
+    "docstrings": [],
+    "imports": [
+      "Commented out unused import: pytest",
+      "Commented out unused import: patch",
+      "Commented out unused import: Mock"
+    ],
+    "type_hints": [
+      "Function 'test_placeholder': Add return type hint"
+    ],
+    "duplication": [],
+    "magic_values": [],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/tests/services/test_connector_registry.py": {
+    "docstrings": [],
+    "imports": [
+      "Commented out unused import: pytest",
+      "Commented out unused import: patch",
+      "Commented out unused import: Mock"
+    ],
+    "type_hints": [
+      "Function 'test_placeholder': Add return type hint"
+    ],
+    "duplication": [],
+    "magic_values": [],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/tests/services/test_base_connector.py": {
+    "docstrings": [],
+    "imports": [
+      "Commented out unused import: pytest",
+      "Commented out unused import: patch",
+      "Commented out unused import: Mock"
+    ],
+    "type_hints": [
+      "Function 'test_placeholder': Add return type hint"
+    ],
+    "duplication": [],
+    "magic_values": [],
+    "test_stubs": []
+  },
+  "/mnt/c/Projects/dexter/backend/tests/services/test_auth_manager.py": {
+    "docstrings": [],
+    "imports": [
+      "Commented out unused import: pytest",
+      "Commented out unused import: patch",
+      "Commented out unused import: Mock"
+    ],
+    "type_hints": [
+      "Function 'test_placeholder': Add return type hint"
+    ],
+    "duplication": [],
+    "magic_values": [],
+    "test_stubs": []
+  }
+}

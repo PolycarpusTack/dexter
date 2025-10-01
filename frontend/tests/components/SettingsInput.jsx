@@ -1,15 +1,16 @@
 // File: frontend/tests/components/SettingsInput.test.jsx (Example)
 
 import React from 'react';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import SettingsInput from '../../src/components/Settings/SettingsInput';
 // Mock the zustand store if it interferes or provides necessary state
-// import useAppStore from '../../src/store/appStore';
+import useAuthStore from '../../src/store/authStore';
 
-// vi.mock('../../src/store/appStore'); // Basic mock
+vi.mock('../../src/store/authStore'); // Basic mock
 
 const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } }, // Disable retries for tests
@@ -18,7 +19,7 @@ const queryClient = new QueryClient({
 // Helper to wrap component in necessary providers
 const renderWithProviders = (ui) => {
   // Mock Zustand state if needed for this component
-  // useAppStore.setState({ organizationSlug: 'initial-org', projectSlug: 'initial-proj', setConfig: vi.fn() });
+  useAuthStore.setState({ organizationSlug: 'initial-org', projectSlug: 'initial-proj', setConfig: vi.fn() });
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -36,8 +37,8 @@ describe('SettingsInput Component', () => {
       // Reset query cache before each test
        queryClient.clear();
        // Reset zustand mock if used
-       // vi.clearAllMocks();
-       // useAppStore.setState({ organizationSlug: 'initial-org', projectSlug: 'initial-proj', setConfig: vi.fn() });
+       vi.clearAllMocks();
+       useAuthStore.setState({ organizationSlug: 'initial-org', projectSlug: 'initial-proj', setConfig: vi.fn() });
   });
 
   test('renders loading state initially', () => {
@@ -89,7 +90,12 @@ describe('SettingsInput Component', () => {
 
         // Verify inputs *might* have updated if mutation updates cache/state instantly,
         // or check if zustand store was called if mocking store's setConfig
-       // expect(orgInput).toHaveValue('updated-org'); // Depends on timing/state update strategy
+       // Check if authStore setConfig was called
+       const mockSetConfig = useAuthStore.getState().setConfig;
+       expect(mockSetConfig).toHaveBeenCalledWith({
+         organization_slug: 'updated-org',
+         project_slug: 'updated-proj'
+       });
 
    });
 

@@ -1,0 +1,92 @@
+{
+  "family": "dexter-backend",
+  "executionRoleArn": "arn:aws:iam::123456789012:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::123456789012:role/dexterBackendTaskRole",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "name": "dexter-backend",
+      "image": "ghcr.io/your-org/dexter-backend:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "8000"
+        },
+        {
+          "name": "HOST",
+          "value": "0.0.0.0"
+        },
+        {
+          "name": "DEBUG",
+          "value": "false"
+        },
+        {
+          "name": "CORS_ORIGINS",
+          "value": "[\"https://dexter.your-domain.com\"]"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "SENTRY_API_TOKEN",
+          "valueFrom": "arn:aws:ssm:us-west-2:123456789012:parameter/dexter/prod/sentry_api_token"
+        },
+        {
+          "name": "SENTRY_ORGANIZATION_SLUG",
+          "valueFrom": "arn:aws:ssm:us-west-2:123456789012:parameter/dexter/prod/sentry_organization_slug"
+        },
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:us-west-2:123456789012:parameter/dexter/prod/secret_key"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/dexter-backend",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8000/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "cpu": 512,
+      "memory": 1024,
+      "memoryReservation": 512
+    }
+  ],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "1024",
+  "memory": "2048",
+  "tags": [
+    {
+      "key": "Environment",
+      "value": "Production"
+    },
+    {
+      "key": "Application",
+      "value": "Dexter"
+    },
+    {
+      "key": "Component",
+      "value": "Backend"
+    }
+  ]
+}

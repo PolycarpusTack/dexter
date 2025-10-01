@@ -1,10 +1,13 @@
 /**
  * Template API client for managing prompt templates.
  */
-import { apiClient } from './apiClient';
+import enhancedApiClient from './enhancedApiClient';
 import { handleApiError } from './errorHandler';
 import { validateParams } from './apiResolver';
 import { AxiosRequestConfig } from 'axios';
+import { ApiCallOptions } from './types';
+import { Metadata, ModelConfig } from './interfaces';
+import { pathResolver } from './apiResolver';
 
 // Type definitions
 export enum TemplateCategory {
@@ -62,8 +65,8 @@ export interface PromptTemplate {
   is_default: boolean;
   is_public: boolean;
   tags: string[];
-  model_specific?: Record<string, any>;
-  provider_specific?: Record<string, any>;
+  model_specific?: ModelConfig;
+  provider_specific?: Metadata;
 }
 
 export interface TemplateListResponse {
@@ -87,8 +90,8 @@ export interface CreateTemplateRequest {
   is_default?: boolean;
   is_public?: boolean;
   tags?: string[];
-  model_specific?: Record<string, any>;
-  provider_specific?: Record<string, any>;
+  model_specific?: ModelConfig;
+  provider_specific?: Metadata;
 }
 
 export interface UpdateTemplateRequest {
@@ -102,8 +105,8 @@ export interface UpdateTemplateRequest {
   is_default?: boolean;
   is_public?: boolean;
   tags?: string[];
-  model_specific?: Record<string, any>;
-  provider_specific?: Record<string, any>;
+  model_specific?: ModelConfig;
+  provider_specific?: Metadata;
 }
 
 export interface TemplateSearchParams {
@@ -114,6 +117,7 @@ export interface TemplateSearchParams {
   is_public?: boolean;
   limit?: number;
   offset?: number;
+  [key: string]: unknown;
 }
 
 export interface RenderTemplateResponse {
@@ -128,11 +132,11 @@ export interface RenderTemplateResponse {
  */
 export const listTemplates = async (
   params?: TemplateSearchParams,
-  config?: AxiosRequestConfig
+  config?: ApiCallOptions
 ): Promise<TemplateListResponse> => {
   try {
     const path = pathResolver.resolve('templates');
-    const response = await apiClient.get<TemplateListResponse>(path, { 
+    const response = await enhancedApiClient.get<TemplateListResponse>(path, { 
       params,
       ...config
     });
@@ -148,11 +152,11 @@ export const listTemplates = async (
 export const getTemplate = async (
   templateId: string,
   version?: string,
-  config?: AxiosRequestConfig
+  config?: ApiCallOptions
 ): Promise<TemplateResponse> => {
   try {
     const path = pathResolver.resolve(`templates/${templateId}`);
-    const response = await apiClient.get<TemplateResponse>(path, {
+    const response = await enhancedApiClient.get<TemplateResponse>(path, {
       params: { version },
       ...config
     });
@@ -167,11 +171,11 @@ export const getTemplate = async (
  */
 export const createTemplate = async (
   template: CreateTemplateRequest,
-  config?: AxiosRequestConfig
+  config?: ApiCallOptions
 ): Promise<TemplateResponse> => {
   try {
     const path = pathResolver.resolve('templates');
-    const response = await apiClient.post<TemplateResponse>(path, template, config);
+    const response = await enhancedApiClient.post<TemplateResponse>(path, template, config);
     return response.data;
   } catch (error) {
     throw handleApiError(error, 'Failed to create template');
@@ -184,11 +188,11 @@ export const createTemplate = async (
 export const updateTemplate = async (
   templateId: string,
   template: UpdateTemplateRequest,
-  config?: AxiosRequestConfig
+  config?: ApiCallOptions
 ): Promise<TemplateResponse> => {
   try {
     const path = pathResolver.resolve(`templates/${templateId}`);
-    const response = await apiClient.put<TemplateResponse>(path, template, config);
+    const response = await enhancedApiClient.put<TemplateResponse>(path, template, config);
     return response.data;
   } catch (error) {
     throw handleApiError(error, `Failed to update template with ID ${templateId}`);
@@ -200,11 +204,11 @@ export const updateTemplate = async (
  */
 export const deleteTemplate = async (
   templateId: string,
-  config?: AxiosRequestConfig
+  config?: ApiCallOptions
 ): Promise<void> => {
   try {
     const path = pathResolver.resolve(`templates/${templateId}`);
-    await apiClient.delete(path, config);
+    await enhancedApiClient.delete(path, config);
   } catch (error) {
     throw handleApiError(error, `Failed to delete template with ID ${templateId}`);
   }
@@ -215,19 +219,15 @@ export const deleteTemplate = async (
  */
 export const renderTemplate = async (
   templateId: string,
-  variables: Record<string, any>,
+  variables: { [key: string]: string | number | boolean | null | undefined },
   version?: string,
-  config?: AxiosRequestConfig
+  config?: ApiCallOptions
 ): Promise<RenderTemplateResponse> => {
   try {
     const path = pathResolver.resolve(`templates/${templateId}/render`);
-    const response = await apiClient.post<RenderTemplateResponse>(
-      path, 
-      variables, 
-      {
-        params: { version },
-        ...config
-      }
+    const response = await enhancedApiClient.post<RenderTemplateResponse>(path, 
+      { variables, version },
+      config
     );
     return response.data;
   } catch (error) {
@@ -236,38 +236,55 @@ export const renderTemplate = async (
 };
 
 /**
- * Get all versions of a template
+ * Get default templates for a category
  */
-export const getTemplateVersions = async (
-  templateId: string,
-  config?: AxiosRequestConfig
-): Promise<TemplateVersion[]> => {
+export const getDefaultTemplates = async (
+  category?: TemplateCategory,
+  config?: ApiCallOptions
+): Promise<TemplateListResponse> => {
   try {
-    const path = pathResolver.resolve(`templates/${templateId}/versions`);
-    const response = await apiClient.get<TemplateVersion[]>(path, config);
-    return response.data;
+    const params: TemplateSearchParams = {
+      is_default: true,
+      category,
+    };
+    return await listTemplates(params, config);
   } catch (error) {
-    throw handleApiError(error, `Failed to get versions for template with ID ${templateId}`);
+    throw handleApiError(error, 'Failed to get default templates');
   }
 };
 
 /**
- * Get default templates for a category
+ * Search templates by query
  */
-export const getDefaultTemplates = async (
-  category: TemplateCategory,
-  type?: TemplateType,
-  config?: AxiosRequestConfig
-): Promise<PromptTemplate[]> => {
+export const searchTemplates = async (
+  query: string,
+  params?: Omit<TemplateSearchParams, 'query'>,
+  config?: ApiCallOptions
+): Promise<TemplateListResponse> => {
   try {
-    const path = pathResolver.resolve(`templates/categories/${category}/defaults`);
-    const response = await apiClient.get<PromptTemplate[]>(path, {
-      params: { type },
-      ...config
-    });
-    return response.data;
+    const searchParams: TemplateSearchParams = {
+      ...params,
+      query,
+    };
+    return await listTemplates(searchParams, config);
   } catch (error) {
-    throw handleApiError(error, `Failed to get default templates for category ${category}`);
+    throw handleApiError(error, `Failed to search templates with query: ${query}`);
+  }
+};
+
+/**
+ * Get all versions of a template
+ */
+export const getTemplateVersions = async (
+  templateId: string,
+  config?: ApiCallOptions
+): Promise<TemplateVersion[]> => {
+  try {
+    const path = pathResolver.resolve(`templates/${templateId}/versions`);
+    const response = await enhancedApiClient.get<{ versions: TemplateVersion[] }>(path, config);
+    return response.data.versions;
+  } catch (error) {
+    throw handleApiError(error, `Failed to get versions for template with ID ${templateId}`);
   }
 };
 
@@ -276,28 +293,27 @@ export const getDefaultTemplates = async (
  */
 export const setTemplateAsDefault = async (
   templateId: string,
-  config?: AxiosRequestConfig
+  config?: ApiCallOptions
 ): Promise<TemplateResponse> => {
   try {
-    const path = pathResolver.resolve(`templates/${templateId}/set-as-default`);
-    const response = await apiClient.post<TemplateResponse>(path, {}, config);
+    const path = pathResolver.resolve(`templates/${templateId}/default`);
+    const response = await enhancedApiClient.post<TemplateResponse>(path, {}, config);
     return response.data;
   } catch (error) {
-    throw handleApiError(error, `Failed to set template ${templateId} as default`);
+    throw handleApiError(error, `Failed to set template with ID ${templateId} as default`);
   }
 };
 
-// Export all functions
-export const templateApi = {
+// Export the template API client as default
+export default {
   listTemplates,
   getTemplate,
   createTemplate,
   updateTemplate,
   deleteTemplate,
   renderTemplate,
-  getTemplateVersions,
   getDefaultTemplates,
+  searchTemplates,
+  getTemplateVersions,
   setTemplateAsDefault,
 };
-
-export default templateApi;

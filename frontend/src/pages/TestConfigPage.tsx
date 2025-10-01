@@ -2,16 +2,16 @@ import React from 'react';
 import { Container, Text, Title, Alert, Button, Stack, Code } from '@mantine/core';
 import { Link } from 'react-router-dom';
 import { IconCircleCheck, IconAlertCircle } from '@tabler/icons-react';
-import useAppStore from '../store/appStore';
+import { useAuthStore } from '../store';
 import { api } from '../api/unified';
 import { useQuery } from '@tanstack/react-query';
 
 export function TestConfigPage() {
-  const { apiToken, organizationId, projectId } = useAppStore();
+  const { apiToken, organizationId, projectSlug } = useAuthStore();
   
   // Check configuration
   const isConfigured = !!apiToken && !!organizationId && organizationId !== 'default' && 
-                      !!projectId && projectId !== 'default';
+                      !!projectSlug && projectSlug !== 'default';
   
   // Try to fetch actual config from backend
   const { data: config, isLoading, error } = useQuery({
@@ -46,8 +46,8 @@ export function TestConfigPage() {
               {organizationId === 'default' && <Text span c="yellow" size="xs"> (default value)</Text>}
             </Text>
             <Text>
-              <strong>Project ID:</strong> {projectId || 'Not set'}
-              {projectId === 'default' && <Text span c="yellow" size="xs"> (default value)</Text>}
+              <strong>Project Slug:</strong> {projectSlug || 'Not set'}
+              {projectSlug === 'default' && <Text span c="yellow" size="xs"> (default value)</Text>}
             </Text>
           </Stack>
         </div>

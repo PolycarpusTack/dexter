@@ -9,7 +9,7 @@ import { setupServer } from 'msw/node';
 import { rest } from 'msw';
 import EnhancedEventTable from '../EnhancedEventTable';
 import { api } from '../../../api/unified';
-import { resolveApiPath } from '../../../api/unified/pathResolver';
+import { resolveApiPath } from '../../../api/unified/apiResolver';
 
 // Mock API data
 const mockEvents = {
@@ -44,16 +44,21 @@ const mockEvents = {
   }
 };
 
-// Mock the app store
-vi.mock('../../../store/appStore', () => ({
-  default: vi.fn(() => ({
+// Mock the stores
+import { useAuthStore, useSelectionStore } from '../../../store';
+
+vi.mock('../../../store', () => ({
+  useAuthStore: vi.fn(() => ({
     organizationId: 'test-org',
-    projectId: 'test-project',
-    setSelectedIssue: vi.fn()
+    organizationSlug: 'test-org',
+    projectSlug: 'test-project',
+    isAuthenticated: vi.fn(() => true)
   })),
-  getState: () => ({
-    setSelectedIssue: vi.fn()
-  })
+  useSelectionStore: vi.fn(() => ({
+    setSelectedIssue: vi.fn(),
+    selectedIssueId: null,
+    selectedEventId: null
+  }))
 }));
 
 // Mock the audit log hook
@@ -155,8 +160,7 @@ describe('EnhancedEventTable Integration', () => {
     // Verify API was called with correct parameters
     expect(apiSpy).toHaveBeenCalledWith(expect.objectContaining({
       organization: 'test-org',
-      projectId: 'test-project',
-      page: 1
+      projectSlug: 'test-project'
     }));
     
     // Check that both events are displayed

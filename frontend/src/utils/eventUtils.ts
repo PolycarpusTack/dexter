@@ -1,6 +1,6 @@
 // File: src/utils/eventUtils.ts
 
-import { SentryEvent } from '../types/deadlock';
+import { SentryEvent } from '../types/api/sentry-generated';
 
 /**
  * Extract an error type from event data

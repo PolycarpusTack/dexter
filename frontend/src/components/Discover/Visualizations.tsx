@@ -47,7 +47,10 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { DiscoverQueryResponse } from '../../utils/api';
+import type { DiscoverResult } from '../../api/unified/discoverApi';
+
+// Type alias for backward compatibility
+type DiscoverQueryResponse = DiscoverResult;
 
 // Types
 interface VisualizationProps {

@@ -102,6 +102,10 @@ class UserActivityTracker {
   private sessionCheckInterval: number | null = null;
   private userId: string | null = null;
   
+  // Event handler references for cleanup
+  private visibilityChangeHandler?: () => void;
+  private beforeUnloadHandler?: () => void;
+  
   /**
    * Initialize the activity tracker
    */
@@ -458,6 +462,38 @@ class UserActivityTracker {
   }
   
   /**
+   * Clean up all event listeners and resources
+   */
+  public destroy(): void {
+    // End current session
+    this.endSession();
+    
+    // Remove event listeners
+    if (this.visibilityChangeHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeHandler = undefined;
+    }
+    
+    if (this.beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+      this.beforeUnloadHandler = undefined;
+    }
+    
+    // Clear session check interval
+    if (this.sessionCheckInterval) {
+      clearInterval(this.sessionCheckInterval);
+      this.sessionCheckInterval = null;
+    }
+    
+    // Clear all data
+    this.features.clear();
+    this.pathFlows.clear();
+    this.featureStartTimes.clear();
+    this.session = null;
+    this.userId = null;
+  }
+  
+  /**
    * Check if session is active and renew if needed
    */
   private checkSession(): void {
@@ -698,18 +734,21 @@ class UserActivityTracker {
    */
   private setupEventListeners(): void {
     // Track page visibility changes
-    document.addEventListener('visibilitychange', () => {
+    this.visibilityChangeHandler = () => {
       if (document.visibilityState === 'hidden') {
         this.trackEvent('page_hidden');
       } else {
         this.trackEvent('page_visible');
       }
-    });
+    };
     
     // Track page unload
-    window.addEventListener('beforeunload', () => {
+    this.beforeUnloadHandler = () => {
       this.endSession();
-    });
+    };
+    
+    document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+    window.addEventListener('beforeunload', this.beforeUnloadHandler);
   }
   
   /**

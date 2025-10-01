@@ -1,14 +1,13 @@
 // File: src/types/index.ts
 
-import { SentryEvent, EventTag, EventException, EventEntry, EventContext } from './deadlock';
+import { SentryEvent } from './api/sentry-generated';
+import { EventTag, EventContexts as EventContext } from './events';
 import { VisualizationNode, VisualizationEdge, GraphData, VisualizationOptions } from './visualization';
 
 // Re-export all types
 export type {
   SentryEvent,
   EventTag,
-  EventException,
-  EventEntry,
   EventContext,
   VisualizationNode,
   VisualizationEdge,
@@ -75,7 +74,7 @@ export interface OllamaModel {
   status: 'available' | 'unavailable' | 'downloading' | 'error';
   size?: number;
   modified_at?: string;
-  details?: any;
+  details?: Record<string, unknown>;
   error?: string;
 }
 
@@ -114,8 +113,8 @@ export interface InfoTooltipProps {
   size?: number;
   color?: string;
   position?: string;
-  iconProps?: any;
-  tooltipProps?: any;
+  iconProps?: Record<string, unknown>;
+  tooltipProps?: Record<string, unknown>;
 }
 
 export interface ProgressIndicatorProps {
@@ -143,3 +142,21 @@ export interface KeyboardShortcutsGuideProps {
   onClose: () => void;
   isMac?: boolean;
 }
+
+// Export new type modules
+export * from './api';
+export { 
+  BaseEvent, 
+  EventUser, 
+  EventFilters, 
+  EventsResponse, 
+  EventTableSort, 
+  EventTableColumn, 
+  EventTableConfig,
+  EventAction,
+  EventStatus,
+  EventLevel,
+  EventPlatform
+} from './events';
+export * from './strict';
+export * from './analyzers';

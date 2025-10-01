@@ -1,49 +1,26 @@
-import { useState, useCallback, useEffect } from 'react';
-import { errorHandling } from '../utils';
+import { useState, useCallback } from 'react';
+import { showSuccessNotification, showErrorNotification } from '../utils/errorHandling';
 
-interface ClipboardOptions {
+interface CopyOptions {
   successMessage?: string;
   errorMessage?: string;
   successDuration?: number;
   showNotification?: boolean;
 }
 
-interface UseClipboardResult {
+interface UseClipboardReturn {
   isCopied: boolean;
-  copyToClipboard: (text: string, options?: ClipboardOptions) => Promise<boolean>;
-  resetCopied: () => void;
+  copyToClipboard: (text: string, options?: CopyOptions) => Promise<boolean>;
 }
 
 /**
- * Hook for clipboard operations with enhanced error handling and fallbacks
- * @returns Object with clipboard state and functions
+ * Custom hook for clipboard operations with error handling
+ * and success feedback
  */
-export function useClipboard(): UseClipboardResult {
-  const [isCopied, setIsCopied] = useState<boolean>(false);
+export function useClipboard(): UseClipboardReturn {
+  const [isCopied, setIsCopied] = useState(false);
   
-  // Reset the copied state after a timeout
-  const resetCopied = useCallback(() => {
-    setIsCopied(false);
-  }, []);
-  
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      // No timeout to clean up here, moved to copyToClipboard function
-    };
-  }, []);
-  
-  /**
-   * Copy text to clipboard with modern navigator.clipboard API
-   * Falls back to document.execCommand for older browsers
-   * @param text - Text to copy
-   * @param options - Options for clipboard operation
-   * @returns Promise resolving to success status
-   */
-  const copyToClipboard = useCallback(async (
-    text: string,
-    options: ClipboardOptions = {}
-  ): Promise<boolean> => {
+  const copyToClipboard = useCallback(async (text: string, options: CopyOptions = {}): Promise<boolean> => {
     const {
       successMessage = 'Copied to clipboard',
       errorMessage = 'Failed to copy to clipboard',
@@ -51,86 +28,73 @@ export function useClipboard(): UseClipboardResult {
       showNotification = true
     } = options;
     
+    if (!text) {
+      if (showNotification) {
+        showErrorNotification({
+          title: 'Copy Failed',
+          message: 'Nothing to copy'
+        });
+      }
+      return false;
+    }
+    
     try {
-      // Try the modern Clipboard API first
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-        setIsCopied(true);
-        
-        if (showNotification) {
-          errorHandling.showSuccessNotification({
-            title: 'Success',
-            message: successMessage
-          });
-        }
-        
-        // Reset the copied state after a timeout
-        const timeoutId = setTimeout(() => {
-          setIsCopied(false);
-        }, successDuration);
-        
-        // Return true to indicate success
-        return true;
-      }
-      
-      // Fallback to older document.execCommand method
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      
-      // Make the textarea out of viewport
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
-      textArea.style.top = '-999999px';
-      document.body.appendChild(textArea);
-      
-      // Select and copy
-      textArea.focus();
-      textArea.select();
-      const success = document.execCommand('copy');
-      
-      // Clean up
-      document.body.removeChild(textArea);
-      
-      if (success) {
-        setIsCopied(true);
-        
-        if (showNotification) {
-          errorHandling.showSuccessNotification({
-            title: 'Success',
-            message: successMessage
-          });
-        }
-        
-        // Reset the copied state after a timeout
-        const timeoutId = setTimeout(() => {
-          setIsCopied(false);
-        }, successDuration);
-        
-        // Return true to indicate success
-        return true;
-      } else {
-        throw new Error('execCommand returned false');
-      }
-    } catch (error) {
-      console.error('Clipboard error:', error);
+      await navigator.clipboard.writeText(text);
+      setIsCopied(true);
       
       if (showNotification) {
-        errorHandling.showErrorNotification({
-          title: 'Error',
-          message: errorMessage
+        showSuccessNotification({
+          title: 'Copied!',
+          message: successMessage
         });
       }
       
-      // Return false to indicate failure
+      // Reset after success duration
+      setTimeout(() => setIsCopied(false), successDuration);
+      return true;
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      
+      if (showNotification) {
+        showErrorNotification({
+          title: 'Copy Failed',
+          message: `${errorMessage}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        });
+      }
+      
+      // Fallback to legacy method
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';  // Avoid scrolling to bottom
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        
+        if (successful) {
+          setIsCopied(true);
+          if (showNotification) {
+            showSuccessNotification({
+              title: 'Copied!',
+              message: successMessage
+            });
+          }
+          setTimeout(() => setIsCopied(false), successDuration);
+          return true;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback copying failed:', fallbackError);
+      }
+      
       return false;
     }
   }, []);
   
   return {
     isCopied,
-    copyToClipboard,
-    resetCopied
+    copyToClipboard
   };
 }
-
-export default useClipboard;

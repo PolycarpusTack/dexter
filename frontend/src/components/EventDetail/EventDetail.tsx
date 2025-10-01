@@ -2,7 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Paper, Stack, Title, Text, Badge, Group, Tabs, LoadingOverlay } from '@mantine/core';
 import { IconBug, IconClock, IconUser } from '@tabler/icons-react';
-import { apiClient } from '../../api/apiClient';
+import { apiClient } from '../../api/unified';
 
 interface EventDetailProps {
   eventId: string;

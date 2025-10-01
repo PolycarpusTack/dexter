@@ -1,0 +1,120 @@
+{
+  "stats": {
+    "todo_docstrings": 13,
+    "unused_imports": 28,
+    "missing_type_hints": 23,
+    "code_duplication": 7,
+    "magic_values": 16,
+    "empty_test_stubs": 0
+  },
+  "issues": {
+    "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py": [
+      "Line 43: \"\"\"TODO: Add docstring for __init__.\"\"\"",
+      "Line 71: \"\"\"TODO: Add docstring for validate_max_retries.\"\"\"",
+      "Line 85: \"\"\"TODO: Add docstring for validate_bucket_size.\"\"\"",
+      "Line 92: \"\"\"TODO: Add docstring for validate_refill_rate.\"\"\"",
+      "Line 108: \"\"\"TODO: Add docstring for validate_max_connections.\"\"\"",
+      "Line 199: \"\"\"TODO: Add docstring for __init__.\"\"\"",
+      "Line 235: \"\"\"TODO: Add docstring for State class.\"\"\"",
+      "Line 241: \"\"\"TODO: Add docstring for __init__.\"\"\"",
+      "Function 'validate_max_retries': parameter 'cls' missing type hint",
+      "Function 'validate_max_retries': parameter 'v' missing type hint",
+      "Function 'validate_bucket_size': parameter 'cls' missing type hint",
+      "Function 'validate_bucket_size': parameter 'v' missing type hint",
+      "Function 'validate_refill_rate': parameter 'cls' missing type hint",
+      "Function 'validate_refill_rate': parameter 'v' missing type hint",
+      "Function 'validate_max_connections': parameter 'cls' missing type hint",
+      "Function 'validate_max_connections': parameter 'v' missing type hint",
+      "Function 'validate_max_connections': parameter 'values' missing type hint",
+      "Function '__init__' defined 4 times"
+    ],
+    "/mnt/c/Projects/dexter/backend/app/services/integrations/connector_registry.py": [
+      "Line 13: Unused import 'ConnectorError'"
+    ],
+    "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py": [
+      "Function 'parse_expires_at': parameter 'cls' missing type hint",
+      "Function 'parse_expires_at': parameter 'v' missing type hint",
+      "Function 'apply_to_request' defined 4 times",
+      "Function '__init__' defined 2 times",
+      "Line 168: Magic value 100000",
+      "Line 168: Magic value 1000"
+    ],
+    "/mnt/c/Projects/dexter/backend/app/services/integration_service.py": [
+      "Line 213: Magic value 1000",
+      "Line 358: Magic value 1000"
+    ],
+    "/mnt/c/Projects/dexter/backend/app/models/integrations.py": [
+      "Function 'mask_sensitive_fields': parameter 'cls' missing type hint",
+      "Function 'mask_sensitive_fields': parameter 'v' missing type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/app/routers/integrations.py": [
+      "Line 13: Unused import 'HTTP_409_CONFLICT'",
+      "Line 26: Unused import 'IntegrationHealth'",
+      "Line 26: Unused import 'ServiceSyncResult'",
+      "Function 'validate_config_fields': parameter 'cls' missing type hint",
+      "Function 'validate_config_fields': parameter 'v' missing type hint",
+      "Function 'validate_config_fields': parameter 'values' missing type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py": [
+      "Line 2: Unused import 'Dict'",
+      "Line 2: Unused import 'List'",
+      "Line 2: Unused import 'Optional'",
+      "Line 2: Unused import 'Union'",
+      "Function 'integration_service': parameter 'mock_external_api_service' missing type hint",
+      "Function 'sample_integration': parameter 'sample_integration_config' missing type hint",
+      "Line 41: Hardcoded URL https://api.example.com",
+      "Line 86: Hardcoded URL https://hooks.slack.com/test",
+      "Line 132: Hardcoded URL https://new-api.example.com",
+      "Line 139: Hardcoded URL https://new-api.example.com",
+      "Line 328: Hardcoded URL https://jira.example.com",
+      "Line 345: Hardcoded URL https://hooks.slack.com/test",
+      "Line 635: Hardcoded URL https://api.example.com",
+      "Line 841: Hardcoded URL https://jira.example.com",
+      "Line 851: Hardcoded URL https://new-jira.example.com",
+      "Line 854: Hardcoded URL https://new-jira.example.com",
+      "Line 937: Magic value 1000",
+      "Line 951: Hardcoded URL https://example.com/path?query=test&foo=bar"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/routers/test_integrations.py": [
+      "Line 17: \"\"\"TODO: Replace with actual tests.\"\"\"",
+      "Line 6: Unused import 'pytest'",
+      "Line 7: Unused import 'Mock'",
+      "Line 7: Unused import 'patch'",
+      "Line 10: Unused import '*'",
+      "Function 'test_placeholder': missing return type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/models/test_integrations.py": [
+      "Line 17: \"\"\"TODO: Replace with actual tests.\"\"\"",
+      "Line 6: Unused import 'pytest'",
+      "Line 7: Unused import 'Mock'",
+      "Line 7: Unused import 'patch'",
+      "Line 10: Unused import '*'",
+      "Function 'test_placeholder': missing return type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/services/test_connector_registry.py": [
+      "Line 17: \"\"\"TODO: Replace with actual tests.\"\"\"",
+      "Line 6: Unused import 'pytest'",
+      "Line 7: Unused import 'Mock'",
+      "Line 7: Unused import 'patch'",
+      "Line 10: Unused import '*'",
+      "Function 'test_placeholder': missing return type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/services/test_base_connector.py": [
+      "Line 17: \"\"\"TODO: Replace with actual tests.\"\"\"",
+      "Line 6: Unused import 'pytest'",
+      "Line 7: Unused import 'Mock'",
+      "Line 7: Unused import 'patch'",
+      "Line 10: Unused import '*'",
+      "Function 'test_placeholder': missing return type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/services/test_auth_manager.py": [
+      "Line 17: \"\"\"TODO: Replace with actual tests.\"\"\"",
+      "Line 6: Unused import 'pytest'",
+      "Line 7: Unused import 'Mock'",
+      "Line 7: Unused import 'patch'",
+      "Line 10: Unused import '*'",
+      "Function 'test_placeholder': missing return type hint"
+    ]
+  },
+  "total_issues": 87
+}

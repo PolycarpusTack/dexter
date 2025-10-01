@@ -1,0 +1,85 @@
+groups:
+  - name: dexter-alerts
+    rules:
+      # Backend API alerts
+      - alert: BackendDown
+        expr: up{job="dexter_backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          title: Backend API is down
+          description: Dexter backend API has been down for more than 1 minute.
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{job="dexter_backend", status=~"5.."}[5m]) / rate(http_requests_total{job="dexter_backend"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          title: High API error rate
+          description: Dexter backend API has a high error rate (>5%) for the last 5 minutes.
+
+      - alert: SlowAPIResponse
+        expr: http_request_duration_seconds{job="dexter_backend", quantile="0.9"} > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          title: Slow API response time
+          description: 90% of Dexter backend API requests are taking more than 1 second to complete.
+
+      # Frontend alerts
+      - alert: FrontendDown
+        expr: up{job="nginx"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: frontend
+        annotations:
+          title: Frontend is down
+          description: Dexter frontend server has been down for more than 1 minute.
+
+      # System alerts
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          title: High CPU usage
+          description: CPU usage is above 85% for the last 5 minutes.
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          title: High memory usage
+          description: Memory usage is above 90% for the last 5 minutes.
+
+      - alert: DiskSpaceRunningOut
+        expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          title: Disk space running out
+          description: Disk usage is above 85% for the last 5 minutes.
+
+      - alert: InstanceDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: instance
+        annotations:
+          title: Instance is down
+          description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes."

@@ -1,0 +1,75 @@
+{
+  "stats": {
+    "todo_docstrings": 5,
+    "unused_imports": 9,
+    "missing_type_hints": 23,
+    "code_duplication": 7,
+    "magic_values": 0,
+    "empty_test_stubs": 0
+  },
+  "issues": {
+    "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py": [
+      "Function 'validate_max_retries': parameter 'cls' missing type hint",
+      "Function 'validate_max_retries': parameter 'v' missing type hint",
+      "Function 'validate_bucket_size': parameter 'cls' missing type hint",
+      "Function 'validate_bucket_size': parameter 'v' missing type hint",
+      "Function 'validate_refill_rate': parameter 'cls' missing type hint",
+      "Function 'validate_refill_rate': parameter 'v' missing type hint",
+      "Function 'validate_max_connections': parameter 'cls' missing type hint",
+      "Function 'validate_max_connections': parameter 'v' missing type hint",
+      "Function 'validate_max_connections': parameter 'values' missing type hint",
+      "Function '__init__' defined 4 times"
+    ],
+    "/mnt/c/Projects/dexter/backend/app/services/integrations/connector_registry.py": [
+      "Line 13: Unused import 'ConnectorError'"
+    ],
+    "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py": [
+      "Function 'parse_expires_at': parameter 'cls' missing type hint",
+      "Function 'parse_expires_at': parameter 'v' missing type hint",
+      "Function 'apply_to_request' defined 4 times",
+      "Function '__init__' defined 2 times"
+    ],
+    "/mnt/c/Projects/dexter/backend/app/models/integrations.py": [
+      "Function 'mask_sensitive_fields': parameter 'cls' missing type hint",
+      "Function 'mask_sensitive_fields': parameter 'v' missing type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/app/routers/integrations.py": [
+      "Line 13: Unused import 'HTTP_409_CONFLICT'",
+      "Line 26: Unused import 'IntegrationHealth'",
+      "Line 26: Unused import 'ServiceSyncResult'",
+      "Function 'validate_config_fields': parameter 'cls' missing type hint",
+      "Function 'validate_config_fields': parameter 'v' missing type hint",
+      "Function 'validate_config_fields': parameter 'values' missing type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py": [
+      "Function 'integration_service': parameter 'mock_external_api_service' missing type hint",
+      "Function 'sample_integration': parameter 'sample_integration_config' missing type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/routers/test_integrations.py": [
+      "Line 17: \"\"\"TODO: Replace with actual tests.\"\"\"",
+      "Line 10: Unused import '*'",
+      "Function 'test_placeholder': missing return type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/models/test_integrations.py": [
+      "Line 17: \"\"\"TODO: Replace with actual tests.\"\"\"",
+      "Line 10: Unused import '*'",
+      "Function 'test_placeholder': missing return type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/services/test_connector_registry.py": [
+      "Line 17: \"\"\"TODO: Replace with actual tests.\"\"\"",
+      "Line 10: Unused import '*'",
+      "Function 'test_placeholder': missing return type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/services/test_base_connector.py": [
+      "Line 17: \"\"\"TODO: Replace with actual tests.\"\"\"",
+      "Line 10: Unused import '*'",
+      "Function 'test_placeholder': missing return type hint"
+    ],
+    "/mnt/c/Projects/dexter/backend/tests/services/test_auth_manager.py": [
+      "Line 17: \"\"\"TODO: Replace with actual tests.\"\"\"",
+      "Line 10: Unused import '*'",
+      "Function 'test_placeholder': missing return type hint"
+    ]
+  },
+  "total_issues": 44
+}

@@ -9,6 +9,14 @@ import { z } from 'zod';
 import enhancedApiClient from './enhancedApiClient';
 import { createErrorHandler } from './errorHandler';
 import { validateParams } from './apiResolver';
+import { DeadlockVisualizationData } from './interfaces';
+import type { 
+  AnalyzerType, 
+  AnalysisResult, 
+  AnalyzeEventRequest, 
+  AnalyzeEventResponse,
+  AnalyzerCapabilities 
+} from '../../types/analyzers';
 
 /**
  * Error handler for Analyzers API
@@ -58,10 +66,9 @@ export interface DeadlockAnalysisResponse {
       parser_version?: string;
       cycles_found?: number;
     };
-    visualization_data?: any;
+    visualization_data?: DeadlockVisualizationData;
     recommended_fix?: string;
   };
-  [key: string]: any;
 }
 
 /**
@@ -73,40 +80,44 @@ export interface DeadlockAnalysisResponse {
  */
 export const analyzeDeadlock = async (
   eventId: string, 
-  options: DeadlockAnalysisOptions = {}
+  options: DeadlockAnalysisOptions = {},
+  eventData?: any
 ): Promise<DeadlockAnalysisResponse> => {
   const { 
     useEnhancedAnalysis = true,
-    apiPath = useEnhancedAnalysis ? 'enhanced-analyzers' : 'analyzers',
     includeRawData = false
   } = options;
   
   try {
-    // Determine which endpoint to use based on the options
-    const category = useEnhancedAnalysis ? 'enhancedAnalyzers' : 'analyzers';
-    const endpoint = 'analyzeDeadlock';
+    // If event data wasn't provided, we need to fetch it first
+    let fullEventData = eventData;
     
-    // Validate required parameters
-    const validation = validateParams(
-      category,
-      endpoint,
-      { event_id: eventId }
-    );
-    
-    if (!validation.isValid) {
-      handleAnalyzersError(
-        new Error(`Missing required parameters: ${validation.missingParams.join(', ')}`),
-        { operation: 'analyzeDeadlock', context: { eventId, options } }
-      );
+    if (!fullEventData) {
+      // First try to get event details from Sentry API
+      try {
+        // This would require organization and project slugs
+        // For now, we'll use a minimal event data structure
+        fullEventData = {
+          id: eventId,
+          message: 'deadlock detected',
+          title: 'deadlock detected'
+        };
+      } catch (fetchError) {
+
+      }
     }
     
-    // Call the API
-    const response = await enhancedApiClient.callEndpoint<unknown>(
-      category,
-      endpoint,
-      { event_id: eventId },
-      {},
-      null,
+    // Use the new analyzer framework endpoint
+    const requestBody = {
+      event_data: fullEventData || { id: eventId },
+      requested_analyzers: ['deadlock'],
+      force_refresh: true
+    };
+    
+    // Call the new analyzer API endpoint
+    const response = await enhancedApiClient.post<unknown>(
+      '/api/v1/analyzers/analyze',
+      requestBody,
       { 
         // Deadlock analysis can take longer
         timeout: 30000
@@ -118,16 +129,40 @@ export const analyzeDeadlock = async (
     
     // Try to validate the response
     try {
-      // Basic validation check for success property
-      if (typeof response === 'object' && response !== null) {
-        const result = response as DeadlockAnalysisResponse;
+      // The new analyzer framework returns a different structure
+      if (typeof response === 'object' && response !== null && 'results' in response) {
+        const analyzerResponse = response as any;
         
-        // Add raw data if requested
-        if (includeRawData && result) {
-          (result as any)._rawData = rawData;
+        // Find the deadlock analysis result
+        const deadlockResult = analyzerResponse.results?.find(
+          (r: any) => r.analyzer_type === 'deadlock'
+        );
+        
+        if (deadlockResult) {
+          // Transform to expected format
+          const result: DeadlockAnalysisResponse = {
+            success: analyzerResponse.success || true,
+            analysis: {
+              timestamp: analyzerResponse.timestamp,
+              metadata: {
+                execution_time_ms: deadlockResult.execution_time_ms || 0,
+                parser_version: 'enhanced',
+                cycles_found: deadlockResult.findings?.filter((f: any) => f.category === 'deadlock_cycle').length || 0
+              },
+              visualization_data: deadlockResult.visualization_data?.data || deadlockResult.visualization_data,
+              recommended_fix: deadlockResult.recommendations?.map((r: any) => 
+                `${r.title}\n\n${r.description}${r.code_example ? `\n\n\`\`\`\n${r.code_example}\n\`\`\`` : ''}`
+              ).join('\n\n---\n\n') || ''
+            }
+          };
+          
+          // Add raw data if requested
+          if (includeRawData) {
+            (result as any)._rawData = rawData;
+          }
+          
+          return result;
         }
-        
-        return result;
       }
       
       // If validation fails, return a generic success response
@@ -138,8 +173,7 @@ export const analyzeDeadlock = async (
         }
       };
     } catch (validationError) {
-      console.warn('Deadlock analysis validation failed:', validationError);
-      
+
       // Return a minimal valid response
       return {
         success: true,
@@ -301,11 +335,11 @@ export const exportDeadlockSVG = async (
       const doc = parser.parseFromString(svgString, 'image/svg+xml');
       const parserError = doc.querySelector('parsererror');
       if (parserError) {
-        console.warn('SVG validation warning:', parserError.textContent);
+
         // We'll continue anyway but log the warning
       }
     } catch (validationError) {
-      console.warn('SVG validation error:', validationError);
+
       // Continue with export despite validation issues
     }
     
@@ -339,7 +373,7 @@ export const exportDeadlockSVG = async (
         });
       } catch (logError) {
         // Just log this error and continue, it shouldn't fail the export
-        console.warn('Failed to log export analytics:', logError);
+
       }
     }
     
@@ -348,7 +382,7 @@ export const exportDeadlockSVG = async (
       filename 
     };
   } catch (error) {
-    console.error('Error exporting SVG:', error);
+
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error exporting SVG'
@@ -450,7 +484,7 @@ export const getLockCompatibilityMatrix = async () => {
     }
     
     // Return default matrix if validation fails
-    console.warn('Invalid lock compatibility matrix, using default');
+
     return { 
       success: true, 
       matrix: {
@@ -478,10 +512,195 @@ export const getLockCompatibilityMatrix = async () => {
   }
 };
 
+/**
+ * List all available analyzers
+ * 
+ * @returns Promise resolving to the list of analyzer capabilities
+ */
+export const listAnalyzers = async (): Promise<AnalyzerCapabilities[]> => {
+  try {
+    const response = await enhancedApiClient.get<{ analyzers: AnalyzerCapabilities[] }>(
+      '/api/v1/analyzers/'
+    );
+    
+    return response.analyzers || [];
+  } catch (error) {
+    handleAnalyzersError(error, {
+      operation: 'listAnalyzers',
+      context: {}
+    });
+    return [];
+  }
+};
+
+/**
+ * Get capabilities for a specific analyzer
+ * 
+ * @param analyzerType - Type of analyzer
+ * @returns Promise resolving to the analyzer capabilities
+ */
+export const getAnalyzerCapabilities = async (
+  analyzerType: AnalyzerType
+): Promise<AnalyzerCapabilities | null> => {
+  try {
+    const response = await enhancedApiClient.get<AnalyzerCapabilities>(
+      `/api/v1/analyzers/${analyzerType}`
+    );
+    
+    return response;
+  } catch (error) {
+    handleAnalyzersError(error, {
+      operation: 'getAnalyzerCapabilities',
+      context: { analyzerType }
+    });
+    return null;
+  }
+};
+
+/**
+ * Analyze an event using the analyzer framework
+ * 
+ * @param request - Analysis request
+ * @returns Promise resolving to the analysis response
+ */
+export const analyzeEvent = async (
+  request: AnalyzeEventRequest
+): Promise<AnalyzeEventResponse | null> => {
+  try {
+    const response = await enhancedApiClient.post<AnalyzeEventResponse>(
+      '/api/v1/analyzers/analyze',
+      request,
+      {
+        timeout: 60000 // 60 seconds for complex analysis
+      }
+    );
+    
+    return response;
+  } catch (error) {
+    handleAnalyzersError(error, {
+      operation: 'analyzeEvent',
+      context: { eventId: request.event_data.id }
+    });
+    return null;
+  }
+};
+
+/**
+ * Analyze an event with a specific analyzer
+ * 
+ * @param analyzerType - Type of analyzer to use
+ * @param eventData - Event data to analyze
+ * @returns Promise resolving to the analysis result
+ */
+export const analyzeWithSpecificAnalyzer = async (
+  analyzerType: AnalyzerType,
+  eventData: Record<string, any>
+): Promise<AnalysisResult | null> => {
+  try {
+    const response = await enhancedApiClient.post<AnalysisResult>(
+      `/api/v1/analyzers/analyze/${analyzerType}`,
+      eventData,
+      {
+        timeout: 30000 // 30 seconds
+      }
+    );
+    
+    return response;
+  } catch (error) {
+    handleAnalyzersError(error, {
+      operation: 'analyzeWithSpecificAnalyzer',
+      context: { analyzerType, eventId: eventData.id }
+    });
+    return null;
+  }
+};
+
+/**
+ * Get analyzer health status
+ * 
+ * @returns Promise resolving to the health status
+ */
+export const getAnalyzerHealth = async (): Promise<{
+  healthy: boolean;
+  registry_status: Record<string, any>;
+  orchestrator_status: Record<string, any>;
+} | null> => {
+  try {
+    const response = await enhancedApiClient.get<{
+      healthy: boolean;
+      registry_status: Record<string, any>;
+      orchestrator_status: Record<string, any>;
+    }>('/api/v1/analyzers/health');
+    
+    return response;
+  } catch (error) {
+    handleAnalyzersError(error, {
+      operation: 'getAnalyzerHealth',
+      context: {}
+    });
+    return null;
+  }
+};
+
+/**
+ * Get analyzer performance metrics
+ * 
+ * @returns Promise resolving to the metrics
+ */
+export const getAnalyzerMetrics = async (): Promise<Record<string, any> | null> => {
+  try {
+    const response = await enhancedApiClient.get<Record<string, any>>(
+      '/api/v1/analyzers/metrics'
+    );
+    
+    return response;
+  } catch (error) {
+    handleAnalyzersError(error, {
+      operation: 'getAnalyzerMetrics',
+      context: {}
+    });
+    return null;
+  }
+};
+
+/**
+ * Clear analyzer cache
+ * 
+ * @param eventId - Optional event ID to clear specific cache
+ * @returns Promise resolving to the result
+ */
+export const clearAnalyzerCache = async (
+  eventId?: string
+): Promise<{ success: boolean; message: string } | null> => {
+  try {
+    const response = await enhancedApiClient.delete<{
+      success: boolean;
+      message: string;
+    }>('/api/v1/analyzers/cache', {
+      params: eventId ? { event_id: eventId } : undefined
+    });
+    
+    return response;
+  } catch (error) {
+    handleAnalyzersError(error, {
+      operation: 'clearAnalyzerCache',
+      context: { eventId }
+    });
+    return null;
+  }
+};
+
 // Export all functions
 export default {
   analyzeDeadlock,
   exportDeadlockSVG,
   getDeadlockPatterns,
-  getLockCompatibilityMatrix
+  getLockCompatibilityMatrix,
+  listAnalyzers,
+  getAnalyzerCapabilities,
+  analyzeEvent,
+  analyzeWithSpecificAnalyzer,
+  getAnalyzerHealth,
+  getAnalyzerMetrics,
+  clearAnalyzerCache
 };

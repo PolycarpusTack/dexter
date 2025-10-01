@@ -14,7 +14,7 @@ import {
   getMethod,
   validateParams,
   PathResolutionError
-} from '../pathResolver';
+} from '../apiResolver';
 import { HttpMethod } from '../types';
 
 // Test configuration

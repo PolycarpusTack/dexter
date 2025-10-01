@@ -1,0 +1,197 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitoring-configmap
+  namespace: __NAMESPACE__
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              - alertmanager:9093
+
+    rule_files:
+      - "/etc/prometheus/rules/alert_rules.yml"
+
+    scrape_configs:
+      - job_name: "prometheus"
+        static_configs:
+          - targets: ["localhost:9090"]
+
+      - job_name: "backend"
+        metrics_path: /metrics
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - __NAMESPACE__
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: dexter-backend
+            action: keep
+          - source_labels: [__address__]
+            action: replace
+            regex: (.+)
+            target_label: instance
+
+      - job_name: "cadvisor"
+        scheme: https
+        kubernetes_sd_configs:
+          - role: node
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+
+      - job_name: 'kubernetes-nodes'
+        scheme: https
+        kubernetes_sd_configs:
+          - role: node
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics
+
+  alert_rules.yml: |
+    groups:
+      - name: dexter-alerts
+        rules:
+          # Backend API alerts
+          - alert: BackendDown
+            expr: up{job="backend"} == 0
+            for: 1m
+            labels:
+              severity: critical
+              service: backend
+            annotations:
+              title: Backend API is down
+              description: Dexter backend API has been down for more than 1 minute.
+
+          - alert: HighErrorRate
+            expr: rate(http_requests_total{job="backend", status=~"5.."}[5m]) / rate(http_requests_total{job="backend"}[5m]) > 0.05
+            for: 5m
+            labels:
+              severity: warning
+              service: backend
+            annotations:
+              title: High API error rate
+              description: Dexter backend API has a high error rate (>5%) for the last 5 minutes.
+
+          - alert: SlowAPIResponse
+            expr: http_request_duration_seconds{job="backend", quantile="0.9"} > 1
+            for: 5m
+            labels:
+              severity: warning
+              service: backend
+            annotations:
+              title: Slow API response time
+              description: 90% of Dexter backend API requests are taking more than 1 second to complete.
+
+          # System alerts
+          - alert: HighCPUUsage
+            expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+            for: 5m
+            labels:
+              severity: warning
+              service: system
+            annotations:
+              title: High CPU usage
+              description: CPU usage is above 85% for the last 5 minutes.
+
+          - alert: HighMemoryUsage
+            expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 90
+            for: 5m
+            labels:
+              severity: warning
+              service: system
+            annotations:
+              title: High memory usage
+              description: Memory usage is above 90% for the last 5 minutes.
+
+          - alert: DiskSpaceRunningOut
+            expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes * 100 > 85
+            for: 5m
+            labels:
+              severity: warning
+              service: system
+            annotations:
+              title: Disk space running out
+              description: Disk usage is above 85% for the last 5 minutes.
+
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+      slack_api_url: 'https://hooks.slack.com/services/REPLACE_WITH_SLACK_WEBHOOK_URL'
+
+    route:
+      receiver: 'slack-notifications'
+      group_by: ['alertname', 'service']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+
+    receivers:
+      - name: 'slack-notifications'
+        slack_configs:
+          - channel: '#dexter-alerts'
+            send_resolved: true
+            title: |-
+              [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
+            text: >-
+              {{ range .Alerts -}}
+              *Alert:* {{ .Annotations.title }}{{ if .Labels.severity }} - `{{ .Labels.severity }}`{{ end }}
+              
+              *Description:* {{ .Annotations.description }}
+              
+              *Details:*
+                {{ range .Labels.SortedPairs }} • *{{ .Name }}:* `{{ .Value }}`
+                {{ end }}
+              {{ end }}
+
+    inhibit_rules:
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname', 'service']
+
+  grafana.ini: |
+    [server]
+    domain = grafana.__NAMESPACE__.svc.cluster.local
+    root_url = %(protocol)s://%(domain)s:%(http_port)s/
+
+    [auth]
+    disable_login_form = false
+
+    [auth.anonymous]
+    enabled = true
+    org_name = Main Org.
+    org_role = Viewer
+
+    [users]
+    allow_sign_up = false
+    auto_assign_org = true
+    auto_assign_org_role = Editor

@@ -1,10 +1,10 @@
 """Alert rules router for Sentry API integration."""
 
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator
 import logging
-import importlib
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 # Import from our common utility module
 from app.utils.pydantic_compat import pattern_field
@@ -13,23 +13,24 @@ logger = logging.getLogger(__name__)
 
 # Try to import dependencies, but don't fail if they're not available
 try:
-    from app.dependencies import get_sentry_client, get_current_user
+    from app.dependencies import get_current_user, get_sentry_client
     from app.services.sentry_client import SentryApiClient
+
     DEPENDENCIES_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Dependencies not available: {e}. Alert rules functionality will be limited.")
     DEPENDENCIES_AVAILABLE = False
-    
+
     # Create dummy dependency functions if real ones aren't available
     async def get_sentry_client():
         return None
-        
+
     async def get_current_user(*args, **kwargs):
         return {"id": "dev-user", "username": "dev", "org": "sentry", "email": "dev@example.com"}
 
 
 router = APIRouter(
-    prefix="/api/v1/projects/{project}",
+    prefix="/projects/{project}/alerts",
     tags=["alerts"],
     responses={404: {"description": "Not found"}},
 )
@@ -37,6 +38,7 @@ router = APIRouter(
 
 class AlertRuleCondition(BaseModel):
     """Alert rule condition model."""
+
     id: str
     value: Optional[Any] = None
     comparison_type: Optional[str] = None
@@ -45,6 +47,7 @@ class AlertRuleCondition(BaseModel):
 
 class AlertRuleFilter(BaseModel):
     """Alert rule filter model."""
+
     id: str
     value: Optional[Any] = None
     comparison_type: Optional[str] = None
@@ -55,6 +58,7 @@ class AlertRuleFilter(BaseModel):
 
 class AlertRuleAction(BaseModel):
     """Alert rule action model."""
+
     id: str
     targetType: Optional[str] = None
     targetIdentifier: Optional[str] = None
@@ -72,6 +76,7 @@ class AlertRuleAction(BaseModel):
 
 class IssueAlertRule(BaseModel):
     """Issue alert rule model."""
+
     name: str
     actionMatch: str = pattern_field("^(all|any|none)$")
     conditions: List[AlertRuleCondition]
@@ -85,6 +90,7 @@ class IssueAlertRule(BaseModel):
 
 class MetricAlertTrigger(BaseModel):
     """Metric alert trigger model."""
+
     label: str = pattern_field("^(critical|warning)$")
     alertThreshold: float
     actions: List[AlertRuleAction] = []
@@ -92,6 +98,7 @@ class MetricAlertTrigger(BaseModel):
 
 class MetricAlertRule(BaseModel):
     """Metric alert rule model."""
+
     name: str = Field(..., max_length=256)
     aggregate: str
     timeWindow: int = pattern_field("^(1|5|10|15|30|60|120|240|1440)$")
@@ -110,6 +117,7 @@ class MetricAlertRule(BaseModel):
 
 class AlertRuleResponse(BaseModel):
     """Alert rule response model."""
+
     id: str
     name: str
     dateCreated: str
@@ -124,49 +132,52 @@ class AlertRuleResponse(BaseModel):
 async def list_alert_rules(
     project: str,
     sentry_client: SentryApiClient = Depends(get_sentry_client),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ) -> List[AlertRuleResponse]:
     """List all alert rules for a project."""
     try:
         # Get both issue and metric alert rules
         issue_rules = await sentry_client.list_issue_alert_rules(current_user["org"], project)
         metric_rules = await sentry_client.list_metric_alert_rules(current_user["org"])
-        
+
         # Filter metric rules for the current project
         project_metric_rules = [
-            rule for rule in metric_rules.get("data", [])
-            if project in rule.get("projects", [])
+            rule for rule in metric_rules.get("data", []) if project in rule.get("projects", [])
         ]
-        
+
         # Combine and format response
         rules = []
-        
+
         # Process issue rules
         for rule in issue_rules.get("data", []):
-            rules.append(AlertRuleResponse(
-                id=rule["id"],
-                name=rule["name"],
-                dateCreated=rule.get("dateCreated", ""),
-                createdBy=rule.get("createdBy"),
-                environment=rule.get("environment"),
-                projects=[project],
-                status=rule.get("status", "enabled"),
-                type="issue"
-            ))
-        
+            rules.append(
+                AlertRuleResponse(
+                    id=rule["id"],
+                    name=rule["name"],
+                    dateCreated=rule.get("dateCreated", ""),
+                    createdBy=rule.get("createdBy"),
+                    environment=rule.get("environment"),
+                    projects=[project],
+                    status=rule.get("status", "enabled"),
+                    type="issue",
+                )
+            )
+
         # Process metric rules
         for rule in project_metric_rules:
-            rules.append(AlertRuleResponse(
-                id=rule["id"],
-                name=rule["name"],
-                dateCreated=rule.get("dateCreated", ""),
-                createdBy=rule.get("createdBy"),
-                environment=rule.get("environment"),
-                projects=rule.get("projects", []),
-                status=rule.get("status", "enabled"),
-                type="metric"
-            ))
-        
+            rules.append(
+                AlertRuleResponse(
+                    id=rule["id"],
+                    name=rule["name"],
+                    dateCreated=rule.get("dateCreated", ""),
+                    createdBy=rule.get("createdBy"),
+                    environment=rule.get("environment"),
+                    projects=rule.get("projects", []),
+                    status=rule.get("status", "enabled"),
+                    type="metric",
+                )
+            )
+
         return rules
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list alert rules: {str(e)}")
@@ -178,7 +189,7 @@ async def create_alert_rule(
     rule_type: str,
     rule_data: Dict[str, Any],
     sentry_client: SentryApiClient = Depends(get_sentry_client),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ) -> AlertRuleResponse:
     """Create a new alert rule."""
     try:
@@ -196,7 +207,7 @@ async def create_alert_rule(
             )
         else:
             raise HTTPException(status_code=400, detail="Invalid rule type")
-        
+
         return AlertRuleResponse(
             id=response["id"],
             name=response["name"],
@@ -205,7 +216,7 @@ async def create_alert_rule(
             environment=response.get("environment"),
             projects=response.get("projects", [project]),
             status=response.get("status", "enabled"),
-            type=rule_type
+            type=rule_type,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid rule data: {str(e)}")
@@ -220,7 +231,7 @@ async def update_alert_rule(
     rule_type: str,
     rule_data: Dict[str, Any],
     sentry_client: SentryApiClient = Depends(get_sentry_client),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ) -> AlertRuleResponse:
     """Update an existing alert rule."""
     try:
@@ -238,7 +249,7 @@ async def update_alert_rule(
             )
         else:
             raise HTTPException(status_code=400, detail="Invalid rule type")
-        
+
         return AlertRuleResponse(
             id=response["id"],
             name=response["name"],
@@ -247,7 +258,7 @@ async def update_alert_rule(
             environment=response.get("environment"),
             projects=response.get("projects", [project]),
             status=response.get("status", "enabled"),
-            type=rule_type
+            type=rule_type,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid rule data: {str(e)}")
@@ -261,21 +272,17 @@ async def delete_alert_rule(
     rule_id: str,
     rule_type: str,
     sentry_client: SentryApiClient = Depends(get_sentry_client),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ) -> Dict[str, str]:
     """Delete an alert rule."""
     try:
         if rule_type == "issue":
-            await sentry_client.delete_issue_alert_rule(
-                current_user["org"], project, rule_id
-            )
+            await sentry_client.delete_issue_alert_rule(current_user["org"], project, rule_id)
         elif rule_type == "metric":
-            await sentry_client.delete_metric_alert_rule(
-                current_user["org"], rule_id
-            )
+            await sentry_client.delete_metric_alert_rule(current_user["org"], rule_id)
         else:
             raise HTTPException(status_code=400, detail="Invalid rule type")
-        
+
         return {"status": "success", "message": f"Alert rule {rule_id} deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete alert rule: {str(e)}")
@@ -287,7 +294,7 @@ async def get_alert_rule(
     rule_id: str,
     rule_type: str,
     sentry_client: SentryApiClient = Depends(get_sentry_client),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Get details for a specific alert rule."""
     try:
@@ -296,12 +303,10 @@ async def get_alert_rule(
                 current_user["org"], project, rule_id
             )
         elif rule_type == "metric":
-            response = await sentry_client.get_metric_alert_rule(
-                current_user["org"], rule_id
-            )
+            response = await sentry_client.get_metric_alert_rule(current_user["org"], rule_id)
         else:
             raise HTTPException(status_code=400, detail="Invalid rule type")
-        
+
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get alert rule: {str(e)}")

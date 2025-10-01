@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as eventsApi from '../eventsApi';
 import enhancedApiClient from '../enhancedApiClient';
-import { validateParams } from '../pathResolver';
+import { validateParams } from '../apiResolver';
 
 // Mock the enhanced API client
 vi.mock('../enhancedApiClient', () => ({
@@ -15,7 +15,7 @@ vi.mock('../enhancedApiClient', () => ({
 }));
 
 // Mock the path resolver validation
-vi.mock('../pathResolver', () => ({
+vi.mock('../apiResolver', () => ({
   validateParams: vi.fn()
 }));
 

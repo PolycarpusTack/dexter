@@ -5,7 +5,7 @@ import { EventDetails } from '../types/eventDetails';
 import { createPromptBundle } from '../utils/promptEngineering';
 import { createEnhancedPromptBundle } from '../utils/enhancedPromptEngineering';
 import { analyzeErrorEnhanced, EnhancedErrorContext } from '../utils/enhancedErrorAnalytics';
-import useAppStore from '../store/appStore';
+import { useAIStore } from '../store';
 
 /**
  * Levels of context-aware prompting
@@ -75,7 +75,7 @@ export const usePromptEngineering = () => useContext(PromptEngineeringContext);
  */
 export const PromptEngineeringProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   // Get user preferences from app store
-  const { promptEngineeringPreferences, setPromptEngineeringPreferences } = useAppStore(state => ({
+  const { promptEngineeringPreferences, setPromptEngineeringPreferences } = useAIStore(state => ({
     promptEngineeringPreferences: state.promptEngineeringPreferences || {
       level: PromptEngineeringLevel.ENHANCED,
       debugMode: false

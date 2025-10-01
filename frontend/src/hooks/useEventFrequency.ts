@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/unified';
-import useAppStore from '../store/appStore';
+import { useAuthStore } from '../store';
 
 /**
  * Hook for fetching event frequency data
@@ -13,8 +13,8 @@ import useAppStore from '../store/appStore';
  */
 export function useEventFrequency(eventId: string, timeRange: string = '24h') {
   // Get organization from the store
-  const organizationSlug = useAppStore(state => state.organizationId || state.organizationSlug || 'default');
-  const projectSlug = useAppStore(state => state.projectId || state.projectSlug || 'default');
+  const organizationSlug = useAuthStore(state => state.organizationId || state.organizationSlug || 'default');
+  const projectSlug = useAuthStore(state => state.projectSlug || 'default');
 
   const {
     data,

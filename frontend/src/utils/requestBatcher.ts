@@ -10,7 +10,7 @@ interface BatchItem<T> {
   endpoint: string;
   config?: AxiosRequestConfig;
   resolve: (value: T) => void;
-  reject: (reason?: any) => void;
+  reject: (reason?: unknown) => void;
   timestamp: number;
 }
 
@@ -27,8 +27,8 @@ interface BatchOptions {
  * Request batching class to optimize API calls
  */
 export class RequestBatcher {
-  private batches: Map<string, BatchItem<any>[]> = new Map();
-  private processors: Map<string, (items: BatchItem<any>[]) => Promise<any[]>> = new Map();
+  private batches: Map<string, BatchItem<unknown>[]> = new Map();
+  private processors: Map<string, (items: BatchItem<unknown>[]) => Promise<unknown[]>> = new Map();
   private timers: Map<string, NodeJS.Timeout> = new Map();
   private options: BatchOptions;
 
@@ -46,7 +46,7 @@ export class RequestBatcher {
    */
   registerProcessor(
     endpointPattern: string,
-    processor: (items: BatchItem<any>[]) => Promise<any[]>
+    processor: (items: BatchItem<unknown>[]) => Promise<unknown[]>
   ) {
     this.processors.set(endpointPattern, processor);
   }
@@ -165,7 +165,7 @@ export class RequestBatcher {
   /**
    * Find processor for batch key
    */
-  private findProcessor(batchKey: string): ((items: BatchItem<any>[]) => Promise<any[]>) | undefined {
+  private findProcessor(batchKey: string): ((items: BatchItem<unknown>[]) => Promise<unknown[]>) | undefined {
     for (const [pattern, processor] of this.processors.entries()) {
       if (batchKey.includes(pattern) || new RegExp(pattern).test(batchKey)) {
         return processor;

@@ -22,23 +22,23 @@ import { showErrorNotification } from '../errorHandler';
 export const alertsKeys = {
   all: ['alerts'] as const,
   lists: () => [...alertsKeys.all, 'list'] as const,
-  list: (organizationSlug: string) => [...alertsKeys.lists(), organizationSlug] as const,
+  list: (projectSlug: string) => [...alertsKeys.lists(), projectSlug] as const,
   details: () => [...alertsKeys.all, 'detail'] as const,
-  detail: (organizationSlug: string, ruleId: string) => [
-    ...alertsKeys.details(), organizationSlug, ruleId
+  detail: (projectSlug: string, ruleId: string, ruleType: string) => [
+    ...alertsKeys.details(), projectSlug, ruleId, ruleType
   ] as const,
 };
 
 /**
  * Hook for fetching alert rules
- * 
- * @param organizationSlug - Organization slug
+ *
+ * @param projectSlug - Project slug
  * @returns Query result with alert rules
  */
-export const useAlertRules = (organizationSlug: string) => {
+export const useAlertRules = (projectSlug: string) => {
   return useQuery({
-    queryKey: alertsKeys.list(organizationSlug),
-    queryFn: () => getAlertRules(organizationSlug),
+    queryKey: alertsKeys.list(projectSlug),
+    queryFn: () => getAlertRules(projectSlug),
     // Keep data fresh for 5 minutes
     staleTime: 5 * 60 * 1000,
     onError: (error) => {
@@ -53,15 +53,16 @@ export const useAlertRules = (organizationSlug: string) => {
 
 /**
  * Hook for fetching a single alert rule
- * 
- * @param organizationSlug - Organization slug
+ *
+ * @param projectSlug - Project slug
  * @param ruleId - Alert rule ID
+ * @param ruleType - Rule type ('issue' | 'metric')
  * @returns Query result with alert rule
  */
-export const useAlertRule = (organizationSlug: string, ruleId: string) => {
+export const useAlertRule = (projectSlug: string, ruleId: string, ruleType: 'issue' | 'metric') => {
   return useQuery({
-    queryKey: alertsKeys.detail(organizationSlug, ruleId),
-    queryFn: () => getAlertRule(organizationSlug, ruleId),
+    queryKey: alertsKeys.detail(projectSlug, ruleId, ruleType),
+    queryFn: () => getAlertRule(projectSlug, ruleId, ruleType),
     // Don't fetch if we don't have a rule ID
     enabled: !!ruleId,
     // Keep data fresh for 1 minute
@@ -78,26 +79,28 @@ export const useAlertRule = (organizationSlug: string, ruleId: string) => {
 
 /**
  * Hook for creating an alert rule
- * 
+ *
  * @returns Mutation for creating an alert rule
  */
 export const useCreateAlertRule = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ 
-      organizationSlug, 
-      data 
-    }: { 
-      organizationSlug: string; 
-      data: AlertRuleInput; 
-    }) => createAlertRule(organizationSlug, data),
-    
-    onSuccess: (_, { organizationSlug }) => {
+    mutationFn: ({
+      projectSlug,
+      data,
+      ruleType
+    }: {
+      projectSlug: string;
+      data: AlertRuleInput;
+      ruleType: 'issue' | 'metric';
+    }) => createAlertRule(projectSlug, data, ruleType),
+
+    onSuccess: (_, { projectSlug }) => {
       // Invalidate alert rules list
-      queryClient.invalidateQueries({ queryKey: alertsKeys.list(organizationSlug) });
+      queryClient.invalidateQueries({ queryKey: alertsKeys.list(projectSlug) });
     },
-    
+
     onError: (error) => {
       showErrorNotification({
         title: 'Failed to create alert rule',
@@ -110,29 +113,31 @@ export const useCreateAlertRule = () => {
 
 /**
  * Hook for updating an alert rule
- * 
+ *
  * @returns Mutation for updating an alert rule
  */
 export const useUpdateAlertRule = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ 
-      organizationSlug, 
-      ruleId, 
-      data 
-    }: { 
-      organizationSlug: string; 
-      ruleId: string; 
-      data: Partial<AlertRuleInput>; 
-    }) => updateAlertRule(organizationSlug, ruleId, data),
-    
-    onSuccess: (_, { organizationSlug, ruleId }) => {
+    mutationFn: ({
+      projectSlug,
+      ruleId,
+      data,
+      ruleType
+    }: {
+      projectSlug: string;
+      ruleId: string;
+      data: Partial<AlertRuleInput>;
+      ruleType: 'issue' | 'metric';
+    }) => updateAlertRule(projectSlug, ruleId, data, ruleType),
+
+    onSuccess: (_, { projectSlug, ruleId, ruleType }) => {
       // Invalidate alert rule and list
-      queryClient.invalidateQueries({ queryKey: alertsKeys.detail(organizationSlug, ruleId) });
-      queryClient.invalidateQueries({ queryKey: alertsKeys.list(organizationSlug) });
+      queryClient.invalidateQueries({ queryKey: alertsKeys.detail(projectSlug, ruleId, ruleType) });
+      queryClient.invalidateQueries({ queryKey: alertsKeys.list(projectSlug) });
     },
-    
+
     onError: (error) => {
       showErrorNotification({
         title: 'Failed to update alert rule',
@@ -145,26 +150,28 @@ export const useUpdateAlertRule = () => {
 
 /**
  * Hook for deleting an alert rule
- * 
+ *
  * @returns Mutation for deleting an alert rule
  */
 export const useDeleteAlertRule = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ 
-      organizationSlug, 
-      ruleId 
-    }: { 
-      organizationSlug: string; 
-      ruleId: string; 
-    }) => deleteAlertRule(organizationSlug, ruleId),
-    
-    onSuccess: (_, { organizationSlug }) => {
+    mutationFn: ({
+      projectSlug,
+      ruleId,
+      ruleType
+    }: {
+      projectSlug: string;
+      ruleId: string;
+      ruleType: 'issue' | 'metric';
+    }) => deleteAlertRule(projectSlug, ruleId, ruleType),
+
+    onSuccess: (_, { projectSlug }) => {
       // Invalidate alert rules list
-      queryClient.invalidateQueries({ queryKey: alertsKeys.list(organizationSlug) });
+      queryClient.invalidateQueries({ queryKey: alertsKeys.list(projectSlug) });
     },
-    
+
     onError: (error) => {
       showErrorNotification({
         title: 'Failed to delete alert rule',

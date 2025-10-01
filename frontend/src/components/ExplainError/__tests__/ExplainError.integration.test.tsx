@@ -9,7 +9,7 @@ import { setupServer } from 'msw/node';
 import { rest } from 'msw';
 import ExplainError from '../ExplainError';
 import { api } from '../../../api/unified';
-import { resolveApiPath } from '../../../api/unified/pathResolver';
+import { resolveApiPath } from '../../../api/unified/apiResolver';
 import { EventDetails } from '../../../types/errorHandling';
 
 // Mock event details
@@ -58,10 +58,17 @@ const mockExplanationResponse = {
   confidence: 0.95
 };
 
-// Mock the app store
-vi.mock('../../../store/appStore', () => ({
-  default: vi.fn(() => ({
-    activeAIModel: 'llama3'
+// Mock the AI store
+import { useAIStore } from '../../../store';
+
+vi.mock('../../../store', () => ({
+  useAIStore: vi.fn(() => ({
+    activeAIModel: 'llama3',
+    setActiveAIModel: vi.fn(),
+    promptEngineeringPreferences: {
+      level: 'enhanced',
+      debugMode: false
+    }
   }))
 }));
 

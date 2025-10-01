@@ -1,0 +1,161 @@
+{
+  "todos": [
+    {
+      "file": "backend/app/models/analyzers.py",
+      "items": [
+        [
+          101,
+          "BUG",
+          "information\")"
+        ]
+      ]
+    },
+    {
+      "file": "frontend/src/utils/n1QueryMockData.ts",
+      "items": [
+        [
+          151,
+          "BUG",
+          "Toolbar in development to catch N+1 queries early\","
+        ]
+      ]
+    }
+  ],
+  "any_types": [
+    {
+      "file": "frontend/src/api/unified/n1QueryApi.ts",
+      "types": [
+        [
+          91,
+          "eventData: any,"
+        ]
+      ]
+    },
+    {
+      "file": "frontend/src/components/N1QueryModal/N1QueryModal.tsx",
+      "types": [
+        [
+          48,
+          "eventData?: any;"
+        ],
+        [
+          99,
+          "return queryPatterns.reduce((total: number, pattern: any) => {"
+        ],
+        [
+          187,
+          "{performanceImpact.optimized_time || queryPatterns.reduce((t: number, p: any) =>"
+        ],
+        [
+          235,
+          "queryPatterns.map((pattern: any, index: number) => ("
+        ],
+        [
+          386,
+          "{rawData.query_details.map((query: any, index: number) => ("
+        ],
+        [
+          417,
+          ".map((frame: any, index: number) => {"
+        ]
+      ]
+    },
+    {
+      "file": "frontend/src/api/unified/hooks/useN1Query.ts",
+      "types": [
+        [
+          41,
+          "onError: (error: any) => {"
+        ],
+        [
+          76,
+          "retry: (failureCount, error: any) => {"
+        ],
+        [
+          95,
+          "eventData: any;"
+        ],
+        [
+          100,
+          "onError: (error: any) => {"
+        ],
+        [
+          122,
+          "onError: (error: any) => {"
+        ],
+        [
+          213,
+          "onError: (error: any) => {"
+        ]
+      ]
+    },
+    {
+      "file": "frontend/src/api/unified/analyzersApi.ts",
+      "types": [
+        [
+          84,
+          "eventData?: any"
+        ],
+        [
+          138,
+          "(r: any) => r.analyzer_type === 'deadlock'"
+        ],
+        [
+          150,
+          "cycles_found: deadlockResult.findings?.filter((f: any) => f.category === 'deadlo"
+        ],
+        [
+          153,
+          "recommended_fix: deadlockResult.recommendations?.map((r: any) =>"
+        ]
+      ]
+    }
+  ],
+  "missing_files": [
+    "frontend/src/components/N1QueryModal/N1QueryDetails.tsx",
+    "frontend/src/components/N1QueryModal/N1QueryRecommendations.tsx"
+  ],
+  "console_logs": [
+    {
+      "file": "frontend/src/api/unified/analyzersApi.ts",
+      "logs": [
+        [
+          106,
+          "console.warn('Could not fetch full event data, using minimal data:', fetchError)"
+        ],
+        [
+          176,
+          "console.warn('Deadlock analysis validation failed:', validationError);"
+        ],
+        [
+          339,
+          "console.warn('SVG validation warning:', parserError.textContent);"
+        ],
+        [
+          343,
+          "console.warn('SVG validation error:', validationError);"
+        ],
+        [
+          377,
+          "console.warn('Failed to log export analytics:', logError);"
+        ],
+        [
+          386,
+          "console.error('Error exporting SVG:', error);"
+        ],
+        [
+          488,
+          "console.warn('Invalid lock compatibility matrix, using default');"
+        ]
+      ]
+    }
+  ],
+  "integration": [
+    {
+      "file": "backend/app/services/analyzer_registry.py",
+      "issue": "N1QueryAnalyzer not registered in analyzer registry"
+    }
+  ],
+  "debug_code": [],
+  "empty_catch": []
+}

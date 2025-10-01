@@ -5,7 +5,7 @@ import { EventTable } from '../components/EventTable/EventTable';
 export function EventsPage() {
   return (
     <Container size="xl" py="md">
-      <EventTable />
+      <EventTable filters={{ useIssues: false }} />
     </Container>
   );
 }

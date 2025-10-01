@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as issuesApi from '../issuesApi';
 import enhancedApiClient from '../enhancedApiClient';
-import { validateParams } from '../pathResolver';
+import { validateParams } from '../apiResolver';
 
 // Mock the API client and path resolver
 vi.mock('../enhancedApiClient', () => ({
@@ -16,7 +16,7 @@ vi.mock('../enhancedApiClient', () => ({
   }
 }));
 
-vi.mock('../pathResolver', () => ({
+vi.mock('../apiResolver', () => ({
   validateParams: vi.fn()
 }));
 

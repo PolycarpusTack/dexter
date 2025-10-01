@@ -1,0 +1,150 @@
+name: Deploy Monitoring Stack
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+  push:
+    branches:
+      - main
+    paths:
+      - 'deploy/monitoring/**'
+      - '.github/workflows/monitoring-deploy.yml'
+
+jobs:
+  test-monitoring:
+    name: Test Monitoring Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio pyyaml httpx
+
+      - name: Run configuration tests
+        run: |
+          pytest tests/monitoring/test_monitoring_config.py -v
+          
+      - name: Run Prometheus rule validation tests
+        run: |
+          pytest tests/monitoring/test_prometheus_rule_validation.py -m integration -v
+    
+  deploy-monitoring:
+    name: Deploy Monitoring Stack
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    needs: test-monitoring
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Set ECR repository URI
+        id: set-ecr-uri
+        run: |
+          echo "ECR_REPOSITORY_URI=${{ steps.login-ecr.outputs.registry }}/dexter-monitoring" >> $GITHUB_ENV
+      
+      - name: Build and push monitoring images
+        working-directory: ./deploy/monitoring
+        run: |
+          # Tag images with environment and workflow run ID for traceability
+          export TAG="${{ github.event.inputs.environment || 'staging' }}-${{ github.run_id }}"
+          export REGISTRY_URI="${{ env.ECR_REPOSITORY_URI }}"
+          
+          # Create docker-compose file with proper image tags
+          cat <<EOF > docker-compose.deploy.yml
+          version: '3.8'
+          services:
+            prometheus:
+              image: ${REGISTRY_URI}/prometheus:${TAG}
+              build:
+                context: ./prometheus
+                dockerfile: Dockerfile
+            grafana:
+              image: ${REGISTRY_URI}/grafana:${TAG}
+              build:
+                context: ./grafana
+                dockerfile: Dockerfile
+            alertmanager:
+              image: ${REGISTRY_URI}/alertmanager:${TAG}
+              build:
+                context: ./alertmanager
+                dockerfile: Dockerfile
+          EOF
+          
+          # Build and push images
+          docker-compose -f docker-compose.deploy.yml build
+          docker-compose -f docker-compose.deploy.yml push
+      
+      - name: Prepare Kubernetes manifests
+        working-directory: ./deploy/kubernetes
+        run: |
+          # Set environment-specific variables
+          export NAMESPACE="${{ github.event.inputs.environment || 'staging' }}-monitoring"
+          export TAG="${{ github.event.inputs.environment || 'staging' }}-${{ github.run_id }}"
+          export REGISTRY_URI="${{ env.ECR_REPOSITORY_URI }}"
+          
+          # Replace variables in Kubernetes manifests
+          find ./monitoring -type f -name "*.yaml" -exec sed -i "s|__NAMESPACE__|${NAMESPACE}|g" {} \;
+          find ./monitoring -type f -name "*.yaml" -exec sed -i "s|__REGISTRY_URI__|${REGISTRY_URI}|g" {} \;
+          find ./monitoring -type f -name "*.yaml" -exec sed -i "s|__TAG__|${TAG}|g" {} \;
+          
+          # Create namespace if it doesn't exist
+          kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+      
+      - name: Deploy to Kubernetes
+        working-directory: ./deploy/kubernetes
+        run: |
+          export NAMESPACE="${{ github.event.inputs.environment || 'staging' }}-monitoring"
+          
+          # Apply Kubernetes manifests
+          kubectl apply -f ./monitoring/monitoring-configmap.yaml -n ${NAMESPACE}
+          kubectl apply -f ./monitoring/monitoring-secret.yaml -n ${NAMESPACE} --server-side
+          kubectl apply -f ./monitoring/monitoring-prometheus.yaml -n ${NAMESPACE}
+          kubectl apply -f ./monitoring/monitoring-grafana.yaml -n ${NAMESPACE}
+          kubectl apply -f ./monitoring/monitoring-alertmanager.yaml -n ${NAMESPACE}
+          
+          # Verify deployment
+          kubectl rollout status deployment/prometheus -n ${NAMESPACE} --timeout=300s
+          kubectl rollout status deployment/grafana -n ${NAMESPACE} --timeout=300s
+          kubectl rollout status deployment/alertmanager -n ${NAMESPACE} --timeout=300s
+      
+      - name: Update webhook configuration
+        if: ${{ github.event.inputs.environment == 'production' }}
+        run: |
+          # Update Alertmanager webhook URL for production
+          kubectl get configmap monitoring-configmap -n production-monitoring -o yaml | \
+          sed "s|slack_api_url: .*|slack_api_url: '${{ secrets.SLACK_WEBHOOK_URL }}'|g" | \
+          kubectl apply -f - -n production-monitoring
+          
+          # Restart Alertmanager to apply new config
+          kubectl rollout restart deployment/alertmanager -n production-monitoring

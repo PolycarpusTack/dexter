@@ -11,6 +11,7 @@ import { z } from 'zod';
 import enhancedApiClient from './enhancedApiClient';
 import { createErrorHandler } from './errorHandler';
 import { validateParams } from './apiResolver';
+import { ApiCallOptions } from './types';
 
 /**
  * Error handler for Events API
@@ -28,7 +29,7 @@ export const eventSchema = z.object({
   id: z.string(),
   eventID: z.string().optional(),
   groupID: z.string().optional(),
-  projectID: z.string().optional(),
+  projectSlug: z.string().optional(),
   platform: z.string().optional(),
   message: z.string(),
   dateCreated: z.string().optional(),
@@ -42,7 +43,7 @@ export const eventSchema = z.object({
   ).optional(),
   entries: z.array(z.object({
     type: z.string(),
-    data: z.record(z.any())
+    data: z.record(z.unknown())
   })).optional(),
   user: z.object({
     id: z.string().optional(),
@@ -50,7 +51,7 @@ export const eventSchema = z.object({
     email: z.string().optional(),
     ip_address: z.string().optional()
   }).optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.unknown()).optional(),
   // Additional fields for compatibility with Issue types
   title: z.string().optional(),
   count: z.number().optional(),
@@ -98,9 +99,9 @@ export const issueSchema = z.object({
  * Response validation schema (works for both events and issues)
  */
 export const responseSchema = z.object({
-  items: z.array(eventSchema).or(z.array(issueSchema)).or(z.array(z.any())),
-  events: z.array(eventSchema).or(z.array(z.any())).optional(),
-  issues: z.array(issueSchema).or(z.array(z.any())).optional(),
+  items: z.array(eventSchema).or(z.array(issueSchema)).or(z.array(z.unknown())),
+  events: z.array(eventSchema).or(z.array(z.unknown())).optional(),
+  issues: z.array(issueSchema).or(z.array(z.unknown())).optional(),
   count: z.number().optional(),
   links: z.object({
     previous: z.object({ cursor: z.string() }).optional(),
@@ -111,7 +112,7 @@ export const responseSchema = z.object({
     previous: z.string().optional().nullable(),
     total: z.number().optional()
   }).optional(),
-  meta: z.record(z.any()).optional(),
+  meta: z.record(z.unknown()).optional(),
   hasMore: z.boolean().optional()
 });
 
@@ -119,7 +120,7 @@ export const responseSchema = z.object({
  * Event details validation schema
  */
 export const eventDetailsSchema = eventSchema.extend({
-  contexts: z.record(z.any()).optional(),
+  contexts: z.record(z.unknown()).optional(),
   packages: z.record(z.string()).optional(),
   sdk: z.object({
     name: z.string(),
@@ -129,7 +130,7 @@ export const eventDetailsSchema = eventSchema.extend({
     timestamp: z.string(),
     category: z.string().optional(),
     message: z.string().optional(),
-    data: z.record(z.any()).optional(),
+    data: z.record(z.unknown()).optional(),
     level: z.string().optional(),
     type: z.string().optional()
   })).optional(),
@@ -157,7 +158,7 @@ export const eventDetailsSchema = eventSchema.extend({
     method: z.string().optional(),
     headers: z.record(z.string()).optional(),
     env: z.record(z.string()).optional(),
-    data: z.any().optional()
+    data: z.unknown().optional()
   }).optional()
 });
 
@@ -179,8 +180,8 @@ export interface SortOptions {
 export interface FetchEventsOptions {
   /** Organization slug or ID */
   organization: string;
-  /** Project slug or ID */
-  projectId?: string;
+  /** Project slug */
+  projectSlug?: string;
   /** Search query */
   query?: string;
   /** Pagination cursor */
@@ -202,7 +203,11 @@ export interface FetchEventsOptions {
   /** Items per page */
   perPage?: number;
   /** Additional options */
-  options?: Record<string, any>;
+  options?: {
+    status?: string;
+    useIssues?: boolean;
+    [key: string]: unknown;
+  };
 }
 
 /**
@@ -214,7 +219,7 @@ export interface FetchEventsOptions {
 export const getEvents = async (options: FetchEventsOptions): Promise<EventsResponse> => {
   const { 
     organization, 
-    projectId, 
+    projectSlug, 
     query, 
     cursor, 
     limit, 
@@ -230,7 +235,7 @@ export const getEvents = async (options: FetchEventsOptions): Promise<EventsResp
   
   // Use organization as both slug or ID
   const organizationSlug = organization;
-  const projectSlug = projectId;
+  // projectSlug is already in the correct format
   
   // Validate required parameters
   const validation = validateParams(
@@ -290,9 +295,10 @@ export const getEvents = async (options: FetchEventsOptions): Promise<EventsResp
     } catch (validationError) {
       // Log validation error but return unvalidated response
       console.warn('Events response validation failed:', validationError);
+      const responseObj = response as { events?: unknown[]; items?: unknown[]; [key: string]: unknown };
       return {
-        ...response as any,
-        items: (response as any).events || (response as any).items || []
+        ...responseObj,
+        items: responseObj.events || responseObj.items || []
       };
     }
   } catch (error) {
@@ -317,7 +323,7 @@ export const getEvent = async (
   organizationSlug: string,
   projectSlug: string,
   eventId: string,
-  options?: Record<string, any>
+  options?: ApiCallOptions
 ): Promise<EventDetails> => {
   // Validate required parameters
   const validation = validateParams(
@@ -374,7 +380,7 @@ export const getEventTags = async (
   organizationSlug: string,
   projectSlug: string,
   eventId: string,
-  options?: Record<string, any>
+  options?: ApiCallOptions
 ): Promise<Array<{ key: string; value: string }>> => {
   // Validate required parameters
   const validation = validateParams(
@@ -428,7 +434,7 @@ export const getEventTags = async (
 export const getRelatedEvents = async (
   organizationSlug: string,
   issueId: string,
-  options?: Record<string, any>
+  options?: ApiCallOptions
 ): Promise<EventsResponse> => {
   // Validate required parameters
   const validation = validateParams(
@@ -470,9 +476,10 @@ export const getRelatedEvents = async (
     } catch (validationError) {
       // Log validation error but return unvalidated response
       console.warn('Related events validation failed:', validationError);
+      const responseObj = response as { events?: unknown[]; items?: unknown[]; [key: string]: unknown };
       return {
-        ...response as any,
-        items: (response as any).events || (response as any).items || []
+        ...responseObj,
+        items: responseObj.events || responseObj.items || []
       };
     }
   } catch (error) {
@@ -495,7 +502,7 @@ export const getRelatedEvents = async (
 export const getLatestEvent = async (
   organizationSlug: string,
   issueId: string,
-  options?: Record<string, any>
+  options?: ApiCallOptions
 ): Promise<EventDetails> => {
   // Validate required parameters
   const validation = validateParams(
@@ -549,7 +556,7 @@ export const getLatestEvent = async (
 export const getIssues = async (options: FetchEventsOptions): Promise<IssuesResponse> => {
   const { 
     organization, 
-    projectId, 
+    projectSlug, 
     query, 
     cursor, 
     limit, 
@@ -565,7 +572,7 @@ export const getIssues = async (options: FetchEventsOptions): Promise<IssuesResp
   
   // Use organization as both slug or ID
   const organizationSlug = organization;
-  const projectSlug = projectId;
+  // projectSlug is already in the correct format
   
   // Validate required parameters
   const validation = validateParams(
@@ -601,7 +608,7 @@ export const getIssues = async (options: FetchEventsOptions): Promise<IssuesResp
     const response = await enhancedApiClient.callEndpoint<unknown>(
       'issues',
       'list',
-      { organization_slug: organizationSlug },
+      { organization_slug: organizationSlug, project_slug: projectSlug },
       queryParams,
       null,
       apiOptions
@@ -627,9 +634,10 @@ export const getIssues = async (options: FetchEventsOptions): Promise<IssuesResp
     } catch (validationError) {
       // Log validation error but return unvalidated response
       console.warn('Issues response validation failed:', validationError);
+      const responseObj = response as { issues?: unknown[]; items?: unknown[]; [key: string]: unknown };
       return {
-        ...response as any,
-        items: (response as any).issues || (response as any).items || []
+        ...responseObj,
+        items: responseObj.issues || responseObj.items || []
       };
     }
   } catch (error) {
@@ -652,7 +660,7 @@ export const getIssues = async (options: FetchEventsOptions): Promise<IssuesResp
 export const getIssue = async (
   organizationSlug: string,
   issueId: string,
-  options?: Record<string, any>
+  options?: ApiCallOptions
 ): Promise<Issue> => {
   // Validate required parameters
   const validation = validateParams(
@@ -709,7 +717,7 @@ export const updateIssueStatus = async (
   organizationSlug: string,
   issueId: string,
   status: string,
-  options?: Record<string, any>
+  options?: ApiCallOptions
 ): Promise<Issue> => {
   // Validate required parameters
   const validation = validateParams(
@@ -766,7 +774,7 @@ export const assignIssue = async (
   organizationSlug: string,
   issueId: string,
   assigneeId: string,
-  options?: Record<string, any>
+  options?: ApiCallOptions
 ): Promise<Issue> => {
   // Validate required parameters
   const validation = validateParams(

@@ -7,9 +7,13 @@ export default defineConfig({
   plugins: [react()],
   esbuild: {
     jsx: 'automatic',
-    jsxImportSource: 'react'
+    jsxImportSource: 'react',
+    // Disable source maps for esbuild to avoid JSON parse errors
+    sourcemap: false
   },
   css: {
+    // Disable CSS source maps in dev to avoid noisy parse errors in some browsers
+    devSourcemap: false,
     postcss: {
       plugins: [
         autoprefixer({
@@ -20,13 +24,23 @@ export default defineConfig({
   },
   define: {
     'global': 'globalThis',
-    'process.env': process.env
+    // Avoid injecting the entire process.env (can crash esbuild).
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
   },
   server: {
     port: 5175,
     strictPort: false,
     open: true,
-    host: true,
+    // Bind to localhost to avoid odd WS host/IPs in some environments (WSL/Windows)
+    host: 'localhost',
+    // Help HMR connect reliably when ports/IPs are tricky
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      clientPort: process.env.HMR_CLIENT_PORT
+        ? Number(process.env.HMR_CLIENT_PORT)
+        : undefined,
+    },
     fs: {
       allow: ['..']
     }
@@ -34,8 +48,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: process.env.NODE_ENV !== 'production',
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 500, // Stricter limit to catch bloat early
     rollupOptions: {
+      onwarn(warning, warn) {
+        // Fail build on specific warnings in CI/production
+        if (process.env.CI && ['UNUSED_EXTERNAL_IMPORT', 'CIRCULAR_DEPENDENCY'].includes(warning.code || '')) {
+          throw new Error(warning.message);
+        }
+        warn(warning);
+      },
       output: {
         manualChunks: (id) => {
           if (id.includes('node_modules')) {
@@ -94,7 +115,8 @@ export default defineConfig({
   },
   optimizeDeps: {
     esbuildOptions: {
-      sourcemap: process.env.NODE_ENV !== 'production',
+      // Disable prebundle sourcemaps to avoid JSON.parse errors in DevTools when paths mismatch
+      sourcemap: false,
       format: 'esm',
       target: 'es2020',
       supported: {
@@ -109,8 +131,11 @@ export default defineConfig({
       '@mantine/hooks',
       '@mantine/notifications',
       '@mantine/charts',
-      '@tanstack/react-query'
-    ]
+      '@tanstack/react-query',
+      'recharts'
+    ],
+    // Exclude problematic packages that cause source map issues
+    exclude: ['installHook']
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'],

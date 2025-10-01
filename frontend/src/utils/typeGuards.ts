@@ -1,6 +1,6 @@
 // Type guards for Sentry events and EventType compatibility
 
-import { SentryEvent } from '../types/deadlock';
+import { SentryEvent } from '../types/api/sentry-generated';
 import { EventType, EventTag } from '../types/eventTypes';
 
 /**

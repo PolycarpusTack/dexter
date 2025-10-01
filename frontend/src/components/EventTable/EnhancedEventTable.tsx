@@ -40,7 +40,7 @@ import {
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
-import useAppStore from '../../store/appStore';
+import { useAuthStore, useSelectionStore, useFilterStore } from '../../store';
 import { api } from '../../api/unified';
 import ExportControl from '../Export/ExportControl';
 import EmptyState from '../UI/EmptyState';
@@ -64,7 +64,7 @@ import './EventTable.css';
  * Includes keyboard navigation for accessibility and power users.
  */
 const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
-  projectId,
+  projectSlug,
   timeRange = '24h',
   onEventSelect,
   showFilters = true,
@@ -86,20 +86,20 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isAllSelected, setIsAllSelected] = useState<boolean>(false);
   
-  // Get organization and project from global state
-  const organizationIdFromStore = useAppStore(state => state.organizationId || state.organizationSlug);
-  const projectIdFromStore = useAppStore(state => state.projectId || state.projectSlug);
+  // Get organization and project from auth store
+  const organizationSlugFromStore = useAuthStore(state => state.organizationSlug);
+  const projectSlugFromStore = useAuthStore(state => state.projectSlug);
   
-  // Use provided projectId prop or fall back to store value
-  const effectiveProjectId = projectId || projectIdFromStore;
-  const effectiveOrgId = organizationIdFromStore;
+  // Use provided projectSlug prop or fall back to store value
+  const effectiveProjectSlug = projectSlug || projectSlugFromStore;
+  const effectiveOrgSlug = organizationSlugFromStore;
   
   // Add debug message to help users understand the issue
   useEffect(() => {
-    if (!effectiveOrgId || !effectiveProjectId) {
+    if (!effectiveOrgSlug || !effectiveProjectSlug) {
       console.log("Organization or Project not set. Using mock data for development.");
     }
-  }, [effectiveOrgId, effectiveProjectId]);
+  }, [effectiveOrgSlug, effectiveProjectSlug]);
   
   // Fetch events/issues data using the unified API client
   const { 
@@ -108,12 +108,12 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
     error, 
     refetch 
   } = useQuery<EventsResponse, Error>({
-    queryKey: ['issues', effectiveOrgId, effectiveProjectId, page, search, levelFilter, sortBy, sortDirection, timeRange],
+    queryKey: ['issues', effectiveOrgSlug, effectiveProjectSlug, page, search, levelFilter, sortBy, sortDirection, timeRange],
     queryFn: async () => {
       // Use the getIssues method from our unified API
       return api.events.getIssues({
-        organization: effectiveOrgId || 'default',
-        projectId: effectiveProjectId || 'default',
+        organization: effectiveOrgSlug || 'default',
+        projectSlug: effectiveProjectSlug || 'default',
         timeRange,
         query: search,
         level: levelFilter,
@@ -192,7 +192,7 @@ const EnhancedEventTable = forwardRef<EventTableRef, EventTableProps>(({
   const handleEventClick = useCallback((event: EventType): void => {
     console.log("Event clicked in table:", event.id);
     // Update the application store
-    useAppStore.getState().setSelectedIssue(event.id);
+    useSelectionStore.getState().setSelectedEvent(event.id);
     // Also call the prop callback if provided
     if (onEventSelect) {
       onEventSelect(event);

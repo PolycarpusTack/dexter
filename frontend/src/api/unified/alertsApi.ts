@@ -6,18 +6,16 @@
  */
 
 import { z } from 'zod';
-import enhancedApiClient from './enhancedApiClient';
+
 import { createErrorHandler } from './errorHandler';
 import { validateParams } from './apiResolver';
+import enhancedApiClient from './enhancedApiClient';
+import { ApiCallOptions } from './types';
 
 /**
  * Error handler for Alerts API
  */
-const handleAlertsError = createErrorHandler({
-  module: 'AlertsAPI',
-  showNotifications: true,
-  logToConsole: true
-});
+const handleAlertsError = createErrorHandler('AlertsAPI');
 
 /**
  * Alert rule action validation schema
@@ -26,7 +24,7 @@ export const alertRuleActionSchema = z.object({
   type: z.string(),
   targetType: z.string().optional(),
   targetIdentifier: z.string().optional(),
-  options: z.record(z.any()).optional()
+  options: z.record(z.unknown()).optional()
 });
 
 /**
@@ -36,10 +34,21 @@ export const alertRuleSchema = z.object({
   id: z.string(),
   name: z.string(),
   organizationId: z.string().optional(),
-  projectId: z.string().optional(),
+  projectSlug: z.string().optional(),
   status: z.enum(['active', 'disabled']),
-  conditions: z.array(z.record(z.any())),
-  filters: z.array(z.record(z.any())).optional(),
+  conditions: z.array(z.object({
+    type: z.string(),
+    field: z.string().optional(),
+    operator: z.string().optional(),
+    value: z.union([z.string(), z.number()]).optional(),
+    params: z.record(z.unknown()).optional()
+  })),
+  filters: z.array(z.object({
+    type: z.string(),
+    field: z.string().optional(),
+    operator: z.string().optional(),
+    value: z.unknown().optional()
+  })).optional(),
   actions: z.array(alertRuleActionSchema),
   dateCreated: z.string(),
   dateModified: z.string().optional(),
@@ -65,8 +74,19 @@ export const alertRuleSchema = z.object({
 export const alertRuleInputSchema = z.object({
   name: z.string(),
   status: z.enum(['active', 'disabled']).optional(),
-  conditions: z.array(z.record(z.any())),
-  filters: z.array(z.record(z.any())).optional(),
+  conditions: z.array(z.object({
+    type: z.string(),
+    field: z.string().optional(),
+    operator: z.string().optional(),
+    value: z.union([z.string(), z.number()]).optional(),
+    params: z.record(z.unknown()).optional()
+  })),
+  filters: z.array(z.object({
+    type: z.string(),
+    field: z.string().optional(),
+    operator: z.string().optional(),
+    value: z.unknown().optional()
+  })).optional(),
   actions: z.array(alertRuleActionSchema),
   aggregation: z.string().optional(),
   timeWindow: z.number().optional(),
@@ -77,7 +97,7 @@ export const alertRuleInputSchema = z.object({
   query: z.string().optional(),
   includeAllProjects: z.boolean().optional(),
   owner: z.string().optional().nullable(),
-  projectIds: z.array(z.string()).optional()
+  projectSlugs: z.array(z.string()).optional()
 });
 
 // Type inferences from Zod schemas
@@ -87,35 +107,32 @@ export type AlertRuleInput = z.infer<typeof alertRuleInputSchema>;
 
 /**
  * Get a list of alert rules
- * 
- * @param organizationSlug - Organization slug
+ *
+ * @param projectSlug - Project slug
  * @param options - API call options
  * @returns Promise with alert rules
  */
 export const getAlertRules = async (
-  organizationSlug: string,
-  options?: Record<string, any>
+  projectSlug: string,
+  options?: ApiCallOptions
 ): Promise<AlertRule[]> => {
   // Validate required parameters
   const validation = validateParams(
     'alerts',
-    'listRules',
-    { organization_slug: organizationSlug }
+    'list',
+    { project: projectSlug }
   );
   
   if (!validation.isValid) {
-    handleAlertsError(
-      new Error(`Missing required parameters: ${validation.missingParams.join(', ')}`),
-      { operation: 'getAlertRules', context: { organizationSlug } }
-    );
+    throw new Error(`Missing required parameters: ${validation.missingParams.join(', ')}`);
   }
   
   try {
     // Call the API
     const response = await enhancedApiClient.callEndpoint<unknown>(
       'alerts',
-      'listRules',
-      { organization_slug: organizationSlug },
+      'list',
+      { project: projectSlug },
       {},
       null,
       options
@@ -135,10 +152,7 @@ export const getAlertRules = async (
     console.warn('Alert rules response is not an array:', response);
     return [];
   } catch (error) {
-    handleAlertsError(error, {
-      operation: 'getAlertRules',
-      context: { organizationSlug }
-    });
+    handleAlertsError(error);
     throw error;
   }
 };
@@ -146,27 +160,29 @@ export const getAlertRules = async (
 /**
  * Get a single alert rule by ID
  * 
- * @param organizationSlug - Organization slug
+ * @param projectSlug - Project slug
  * @param ruleId - Alert rule ID
+ * @param ruleType - Rule type ('issue' | 'metric')
  * @param options - API call options
  * @returns Promise with alert rule
  */
 export const getAlertRule = async (
-  organizationSlug: string,
+  projectSlug: string,
   ruleId: string,
-  options?: Record<string, any>
+  ruleType: 'issue' | 'metric',
+  options?: ApiCallOptions
 ): Promise<AlertRule> => {
   // Validate required parameters
   const validation = validateParams(
     'alerts',
-    'getRule',
-    { organization_slug: organizationSlug, rule_id: ruleId }
+    'get',
+    { id: ruleId }
   );
   
   if (!validation.isValid) {
     handleAlertsError(
       new Error(`Missing required parameters: ${validation.missingParams.join(', ')}`),
-      { operation: 'getAlertRule', context: { organizationSlug, ruleId } }
+      { operation: 'getAlertRule', context: { projectSlug, ruleId, ruleType } }
     );
   }
   
@@ -174,9 +190,9 @@ export const getAlertRule = async (
     // Call the API
     const response = await enhancedApiClient.callEndpoint<unknown>(
       'alerts',
-      'getRule',
-      { organization_slug: organizationSlug, rule_id: ruleId },
-      {},
+      'get',
+      { project: projectSlug, id: ruleId },
+      { rule_type: ruleType },
       null,
       options
     );
@@ -190,10 +206,7 @@ export const getAlertRule = async (
       return response as AlertRule;
     }
   } catch (error) {
-    handleAlertsError(error, {
-      operation: 'getAlertRule',
-      context: { organizationSlug, ruleId }
-    });
+    handleAlertsError(error);
     throw error;
   }
 };
@@ -201,27 +214,28 @@ export const getAlertRule = async (
 /**
  * Create a new alert rule
  * 
- * @param organizationSlug - Organization slug
+ * @param projectSlug - Project slug
  * @param data - Alert rule data
+ * @param ruleType - Rule type ('issue' | 'metric')
  * @param options - API call options
  * @returns Promise with created alert rule
  */
 export const createAlertRule = async (
-  organizationSlug: string,
+  projectSlug: string,
   data: AlertRuleInput,
-  options?: Record<string, any>
+  ruleType: 'issue' | 'metric',
+  options?: ApiCallOptions
 ): Promise<AlertRule> => {
   // Validate required parameters
   const validation = validateParams(
     'alerts',
-    'createRule',
-    { organization_slug: organizationSlug }
+    'create',
+    { }
   );
   
   if (!validation.isValid) {
     handleAlertsError(
       new Error(`Missing required parameters: ${validation.missingParams.join(', ')}`),
-      { operation: 'createAlertRule', context: { organizationSlug, data } }
     );
   }
   
@@ -236,9 +250,9 @@ export const createAlertRule = async (
     // Call the API
     const response = await enhancedApiClient.callEndpoint<unknown>(
       'alerts',
-      'createRule',
-      { organization_slug: organizationSlug },
-      {},
+      'create',
+      { project: projectSlug },
+      { rule_type: ruleType },
       data,
       options
     );
@@ -252,10 +266,7 @@ export const createAlertRule = async (
       return response as AlertRule;
     }
   } catch (error) {
-    handleAlertsError(error, {
-      operation: 'createAlertRule',
-      context: { organizationSlug, data }
-    });
+    handleAlertsError(error);
     throw error;
   }
 };
@@ -263,29 +274,30 @@ export const createAlertRule = async (
 /**
  * Update an existing alert rule
  * 
- * @param organizationSlug - Organization slug
+ * @param projectSlug - Project slug
  * @param ruleId - Alert rule ID
  * @param data - Alert rule data
+ * @param ruleType - Rule type ('issue' | 'metric')
  * @param options - API call options
  * @returns Promise with updated alert rule
  */
 export const updateAlertRule = async (
-  organizationSlug: string,
+  projectSlug: string,
   ruleId: string,
   data: Partial<AlertRuleInput>,
-  options?: Record<string, any>
+  ruleType: 'issue' | 'metric',
+  options?: ApiCallOptions
 ): Promise<AlertRule> => {
   // Validate required parameters
   const validation = validateParams(
     'alerts',
-    'updateRule',
-    { organization_slug: organizationSlug, rule_id: ruleId }
+    'update',
+    { id: ruleId }
   );
   
   if (!validation.isValid) {
     handleAlertsError(
       new Error(`Missing required parameters: ${validation.missingParams.join(', ')}`),
-      { operation: 'updateAlertRule', context: { organizationSlug, ruleId, data } }
     );
   }
   
@@ -293,9 +305,9 @@ export const updateAlertRule = async (
     // Call the API
     const response = await enhancedApiClient.callEndpoint<unknown>(
       'alerts',
-      'updateRule',
-      { organization_slug: organizationSlug, rule_id: ruleId },
-      {},
+      'update',
+      { project: projectSlug, id: ruleId },
+      { rule_type: ruleType },
       data,
       options
     );
@@ -309,10 +321,7 @@ export const updateAlertRule = async (
       return response as AlertRule;
     }
   } catch (error) {
-    handleAlertsError(error, {
-      operation: 'updateAlertRule',
-      context: { organizationSlug, ruleId, data }
-    });
+    handleAlertsError(error);
     throw error;
   }
 };
@@ -320,27 +329,28 @@ export const updateAlertRule = async (
 /**
  * Delete an alert rule
  * 
- * @param organizationSlug - Organization slug
+ * @param projectSlug - Project slug
  * @param ruleId - Alert rule ID
+ * @param ruleType - Rule type ('issue' | 'metric')
  * @param options - API call options
  * @returns Promise indicating success
  */
 export const deleteAlertRule = async (
-  organizationSlug: string,
+  projectSlug: string,
   ruleId: string,
-  options?: Record<string, any>
+  ruleType: 'issue' | 'metric',
+  options?: ApiCallOptions
 ): Promise<void> => {
   // Validate required parameters
   const validation = validateParams(
     'alerts',
-    'deleteRule',
-    { organization_slug: organizationSlug, rule_id: ruleId }
+    'delete',
+    { id: ruleId }
   );
   
   if (!validation.isValid) {
     handleAlertsError(
       new Error(`Missing required parameters: ${validation.missingParams.join(', ')}`),
-      { operation: 'deleteAlertRule', context: { organizationSlug, ruleId } }
     );
   }
   
@@ -348,17 +358,14 @@ export const deleteAlertRule = async (
     // Call the API
     await enhancedApiClient.callEndpoint(
       'alerts',
-      'deleteRule',
-      { organization_slug: organizationSlug, rule_id: ruleId },
-      {},
+      'delete',
+      { project: projectSlug, id: ruleId },
+      { rule_type: ruleType },
       null,
       options
     );
   } catch (error) {
-    handleAlertsError(error, {
-      operation: 'deleteAlertRule',
-      context: { organizationSlug, ruleId }
-    });
+    handleAlertsError(error);
     throw error;
   }
 };

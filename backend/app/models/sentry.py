@@ -1,22 +1,26 @@
-from pydantic import BaseModel, Field
-from typing import Dict, List, Optional, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel
 
 
 class SentryEventTag(BaseModel):
     """Represents a tag in a Sentry event."""
+
     key: str
     value: str
 
 
 class SentryEventContext(BaseModel):
     """Represents context information in a Sentry event."""
+
     type: str
     data: Dict[str, Any]
 
 
 class SentryEventFrame(BaseModel):
     """Represents a stack frame in a Sentry event."""
+
     filename: Optional[str] = None
     function: Optional[str] = None
     lineNo: Optional[int] = None
@@ -28,6 +32,7 @@ class SentryEventFrame(BaseModel):
 
 class SentryEventException(BaseModel):
     """Represents an exception in a Sentry event."""
+
     type: str
     value: str
     module: Optional[str] = None
@@ -36,6 +41,7 @@ class SentryEventException(BaseModel):
 
 class SentryEvent(BaseModel):
     """Represents a Sentry event."""
+
     id: str
     groupID: str
     eventID: str
@@ -50,13 +56,14 @@ class SentryEvent(BaseModel):
     contexts: Dict[str, SentryEventContext] = {}
     entries: List[Dict[str, Any]] = []
     metadata: Dict[str, Any] = {}
-    
+
     class Config:
         arbitrary_types_allowed = True
 
 
 class SentryIssue(BaseModel):
     """Represents a Sentry issue (group of events)."""
+
     id: str
     shortId: str
     title: str
@@ -79,6 +86,6 @@ class SentryIssue(BaseModel):
     userCount: Optional[int] = None
     firstSeen: datetime
     lastSeen: datetime
-    
+
     class Config:
         arbitrary_types_allowed = True

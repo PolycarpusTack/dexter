@@ -1,0 +1,85 @@
+id: github-sample
+name: GitHub API
+provider: github
+base_url: https://api.github.com
+description: GitHub API integration for repository access and issue management
+status: inactive
+enabled: true
+version: "v3"
+auth:
+  type: bearer
+default_timeout: 30.0
+default_headers:
+  Accept: application/vnd.github.v3+json
+  User-Agent: Dexter-App/1.0
+rate_limit:
+  policy: adaptive
+  requests_per_minute: 60
+  header_limit_remaining: X-RateLimit-Remaining
+  header_limit_reset: X-RateLimit-Reset
+retry:
+  max_retries: 3
+  initial_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+  retry_status_codes:
+    - 429
+    - 500
+    - 502
+    - 503
+    - 504
+cache:
+  enabled: true
+  ttl_success: 300
+  ttl_error: 60
+  max_size: 1000
+  cache_keys:
+    - url
+    - method
+    - params
+endpoints:
+  rate_limit:
+    path: /rate_limit
+    method: GET
+    description: Get rate limit status
+    test_endpoint: true
+    cache_ttl: 60
+  
+  user:
+    path: /user
+    method: GET
+    description: Get authenticated user
+    cache_ttl: 300
+  
+  repos:
+    path: /user/repos
+    method: GET
+    description: List user repositories
+    cache_ttl: 300
+  
+  repo_issues:
+    path: /repos/{owner}/{repo}/issues
+    method: GET
+    description: List repository issues
+    cache_ttl: 300
+  
+  create_issue:
+    path: /repos/{owner}/{repo}/issues
+    method: POST
+    description: Create an issue
+    cache_ttl: null
+  
+  repo_commits:
+    path: /repos/{owner}/{repo}/commits
+    method: GET
+    description: List repository commits
+    cache_ttl: 300
+  
+  search_code:
+    path: /search/code
+    method: GET
+    description: Search for code
+    cache_ttl: 300
+  
+created_at: 2025-05-18T10:00:00
+updated_at: 2025-05-18T10:00:00

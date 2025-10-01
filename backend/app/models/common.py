@@ -3,9 +3,10 @@
 """
 Common Pydantic models shared across different API modules.
 """
-from pydantic import BaseModel, Field, HttpUrl
-from typing import Optional, Dict, Any, List
-from datetime import datetime
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel
+
 
 class User(BaseModel):
     id: Optional[str] = None
@@ -14,15 +15,26 @@ class User(BaseModel):
     ip_address: Optional[str] = None
     name: Optional[str] = None
 
+
 class Tag(BaseModel):
     key: str
     value: str
 
+
 class BaseResponse(BaseModel):
     """Base response model used across API endpoints."""
+
     success: bool = True
     message: Optional[str] = None
-    
-    model_config = {
-        "protected_namespaces": ()
-    }
+
+    model_config = {"protected_namespaces": ()}
+
+
+class ApiResponse(BaseResponse):
+    """API response model with data, error, and status code."""
+
+    data: Optional[Any] = None
+    error: Optional[str] = None
+    status_code: int = 200
+    headers: Optional[Dict[str, str]] = None
+    cached: bool = False

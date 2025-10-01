@@ -3,12 +3,17 @@
 """
 Pydantic models related to Sentry Events (specific occurrences).
 """
-from pydantic import BaseModel, Field, HttpUrl
-from typing import Optional, List, Dict, Any
 from datetime import datetime
-from .common import User, Tag
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, Field, HttpUrl
+
+from .common import Tag, User
+
 
 class Breadcrumb(BaseModel):
+    """Represents a breadcrumb trail item in Sentry events."""
+
     timestamp: Optional[datetime] = None
     type: Optional[str] = None
     category: Optional[str] = None
@@ -16,9 +21,12 @@ class Breadcrumb(BaseModel):
     level: Optional[str] = None
     data: Optional[Dict[str, Any]] = None
 
+
 class StacktraceFrame(BaseModel):
+    """Represents a single frame in a stack trace."""
+
     filename: Optional[str] = None
-    abs_path: Optional[HttpUrl | str] = None
+    abs_path: Optional[Union[HttpUrl, str]] = None
     module: Optional[str] = None
     function: Optional[str] = None
     lineno: Optional[int] = None
@@ -29,25 +37,35 @@ class StacktraceFrame(BaseModel):
     in_app: Optional[bool] = None
     vars: Optional[Dict[str, Any]] = None
 
+
 class Stacktrace(BaseModel):
+    """Contains the complete stack trace information."""
+
     frames: Optional[List[StacktraceFrame]] = None
     frames_omitted: Optional[List[int]] = None
     has_system_frames: Optional[bool] = None
 
+
 class ExceptionValue(BaseModel):
+    """Represents exception details in an event."""
+
     type: Optional[str] = None
     value: Optional[str] = None
     module: Optional[str] = None
-    stacktrace: Optional[Stacktrace] = None # Include nested stacktrace
+    stacktrace: Optional[Stacktrace] = None  # Include nested stacktrace
+
 
 class SentryException(BaseModel):
     values: Optional[List[ExceptionValue]] = None
 
+
 class EventDetail(BaseModel):
     eventID: str
     id: str
-    projectID: Optional[int] = Field(None, alias='project')
-    issueId: Optional[str] = None # Sentry API for single event doesn't always include issue ID directly, might need resolving
+    projectID: Optional[int] = Field(None, alias="project")
+    issueId: Optional[
+        str
+    ] = None  # Sentry API for single event doesn't always include issue ID directly, might need resolving
     title: str
     culprit: Optional[str] = None
     message: Optional[str] = None
@@ -67,11 +85,13 @@ class EventDetail(BaseModel):
     exception: Optional[SentryException] = None
     breadcrumbs: Optional[List[Breadcrumb]] = None
     request: Optional[Dict[str, Any]] = None
-    stacktrace: Optional[Stacktrace] = None # Sometimes top-level exists
+    stacktrace: Optional[Stacktrace] = None  # Sometimes top-level exists
 
     # Include our custom parsed field if present
-    dexterParsedDeadlock: Optional[Dict[str, Any]] = Field(None, alias='dexterParsedDeadlock') # Placeholder for parsed data
+    dexterParsedDeadlock: Optional[Dict[str, Any]] = Field(
+        None, alias="dexterParsedDeadlock"
+    )  # Placeholder for parsed data
 
     class Config:
         from_attributes = True
-        populate_by_name = True # Allow alias mapping
+        populate_by_name = True  # Allow alias mapping

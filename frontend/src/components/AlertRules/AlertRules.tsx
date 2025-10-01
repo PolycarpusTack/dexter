@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Card,
   Button,
@@ -22,71 +22,44 @@ import {
   IconBell,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { api } from '../../api/unified';
 import { AlertRule } from '../../api/unified/alertsApi';
+import { useAlertRules, useDeleteAlertRule } from '../../api/unified/hooks/useAlerts';
 import { AlertRuleBuilder } from './AlertRuleBuilder';
 import { useParams } from 'react-router-dom';
 
 const AlertRules = () => {
   const { org, project } = useParams<{ org: string; project: string }>();
-  const [loading, setLoading] = useState(true);
-  const [rules, setRules] = useState<AlertRule[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingRule, setEditingRule] = useState<{
     rule: AlertRule;
     type: 'issue' | 'metric';
   } | null>(null);
 
-  useEffect(() => {
-    if (project) {
-      loadRules();
-    }
-  }, [project]);
+  // Use the alert rules hook
+  const {
+    data: rules = [],
+    error,
+    isLoading: loading,
+    refetch: loadRules
+  } = useAlertRules(project || '');
 
-  const loadRules = async () => {
-    if (!project) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.alerts.listAlertRules({
-        projectSlug: project,
-        organizationSlug: org || '',
-        projectId: project,
-        organizationId: org || ''
-      });
-      setRules(response);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load alert rules';
-      setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Delete mutation hook
+  const deleteRuleMutation = useDeleteAlertRule();
 
   const handleDelete = async (rule: AlertRule) => {
     if (!project) return;
-    
+
     try {
-      await api.alerts.deleteAlertRule({
+      await deleteRuleMutation.mutateAsync({
         projectSlug: project,
-        organizationSlug: org || '',
-        projectId: project,
-        organizationId: org || '',
-        ruleId: rule.id
+        ruleId: rule.id,
+        ruleType: rule.queryType === 'metric' ? 'metric' : 'issue'
       });
       notifications.show({
         title: 'Success',
         message: `Alert rule "${rule.name}" deleted`,
         color: 'green',
       });
-      loadRules();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete alert rule';
       notifications.show({
@@ -137,7 +110,7 @@ const AlertRules = () => {
 
       {error && (
         <Alert icon={<IconAlertCircle size={16} />} color="red">
-          {error}
+          {error instanceof Error ? error.message : 'Failed to load alert rules'}
         </Alert>
       )}
 

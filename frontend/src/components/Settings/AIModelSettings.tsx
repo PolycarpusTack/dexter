@@ -35,19 +35,15 @@ import {
   IconLink
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import ModelSelector from '../ModelSelector/ModelSelector';
-import EnhancedModelSelector from '../ModelSelector/EnhancedModelSelector';
+import { ModelSelector } from '../ModelSelector';
 import ProviderSettings from './ProviderSettings';
-import useAppStore from '../../store/appStore';
+import { useAIStore, useUIStore } from '../../store';
 import { validateForm, required, oneOf } from '../../utils/formValidation';
 
-// Import from the unified API client
+// Import from the unified API
 import { hooks } from '../../api/unified';
 
-// Import the hooks we need
-const { useAiModels } = hooks;
-
-// Import the AI hooks using namespace
+// Import hooks directly to avoid the destructuring error
 import useAi from '../../api/unified/hooks/useAi';
 
 // Define window interface to add our custom global function
@@ -88,10 +84,13 @@ function AIModelSettings({ compact = false }: AIModelSettingsProps): JSX.Element
   
   const { 
     activeAIModel, 
-    setActiveAIModel, 
-    enableTelemetry, 
-    setEnableTelemetry 
-  } = useAppStore();
+    setActiveAIModel
+  } = useAIStore();
+  
+  const {
+    enableTelemetry,
+    setEnableTelemetry
+  } = useUIStore();
   
   // Expose a function for external components to open these settings
   useEffect(() => {
@@ -147,7 +146,7 @@ function AIModelSettings({ compact = false }: AIModelSettingsProps): JSX.Element
   };
   
   // Fetch models using either legacy or enhanced API
-  const legacyModelsQuery = useAiModels({
+  const legacyModelsQuery = useAi.useAiModels({
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: false,
     enabled: !useEnhancedModels
@@ -391,11 +390,7 @@ function AIModelSettings({ compact = false }: AIModelSettingsProps): JSX.Element
             </Tabs.List>
             
             <Tabs.Panel value="models" pt="md">
-              {useEnhancedModels ? (
-                <EnhancedModelSelector />
-              ) : (
-                <ModelSelector />
-              )}
+              <ModelSelector />
             </Tabs.Panel>
             
             <Tabs.Panel value="settings" pt="md">
@@ -535,11 +530,11 @@ function AIModelSettings({ compact = false }: AIModelSettingsProps): JSX.Element
         size="lg"
       >
         {settingsTab === 'model' ? (
-          useEnhancedModels ? (
-            <EnhancedModelSelector onModelChange={() => setModalOpen(false)} />
-          ) : (
-            <ModelSelector onModelChange={() => setModalOpen(false)} />
-          )
+          <ModelSelector onModelChange={(modelName) => {
+            setModalOpen(false);
+            // Optionally refresh the current model display
+            refetch();
+          }} />
         ) : (
           <Stack>
             <Alert 

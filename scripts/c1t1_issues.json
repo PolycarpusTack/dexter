@@ -1,0 +1,410 @@
+{
+  "unused_imports": [
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "TokenExpiredError",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "OAuth2Credentials",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "Dict",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "Any",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "RateLimitError",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "ConnectorRegistry",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "ConnectorError",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "AuthError",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "BaseConnector",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "Union",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "List",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "AuthenticationError",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "ConnectorNotFoundError",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "ApiKeyCredentials",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "AuthManager",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "ConnectionPoolError",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "ConnectorMetrics",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "ConnectorConfig",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "ConnectorHealth",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "connector_registry",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "AuthMethod",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "ConnectorRegistryError",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "Optional",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/__init__.py",
+      "import": "AuthCredentials",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/routers/integrations.py",
+      "import": "HTTP_409_CONFLICT",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/routers/integrations.py",
+      "import": "IntegrationMetrics",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/routers/integrations.py",
+      "import": "IntegrationHealth",
+      "line": "N/A"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/routers/integrations.py",
+      "import": "ServiceSyncResult",
+      "line": "N/A"
+    }
+  ],
+  "todos_fixmes": [
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py",
+      "line": 43,
+      "type": "TODO",
+      "message": "\"\"\"TODO: Add docstring for __init__.\"\"\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py",
+      "line": 71,
+      "type": "TODO",
+      "message": "\"\"\"TODO: Add docstring for validate_max_retries.\"\"\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py",
+      "line": 85,
+      "type": "TODO",
+      "message": "\"\"\"TODO: Add docstring for validate_bucket_size.\"\"\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py",
+      "line": 92,
+      "type": "TODO",
+      "message": "\"\"\"TODO: Add docstring for validate_refill_rate.\"\"\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py",
+      "line": 108,
+      "type": "TODO",
+      "message": "\"\"\"TODO: Add docstring for validate_max_connections.\"\"\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py",
+      "line": 199,
+      "type": "TODO",
+      "message": "\"\"\"TODO: Add docstring for __init__.\"\"\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py",
+      "line": 235,
+      "type": "TODO",
+      "message": "\"\"\"TODO: Add docstring for State class.\"\"\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py",
+      "line": 241,
+      "type": "TODO",
+      "message": "\"\"\"TODO: Add docstring for __init__.\"\"\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/connector_registry.py",
+      "line": 55,
+      "type": "TODO",
+      "message": "\"\"\"TODO: Add docstring for register_connector.\"\"\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integration_service.py",
+      "line": 390,
+      "type": "TODO",
+      "message": "Add proper error handling"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integration_service.py",
+      "line": 402,
+      "type": "TODO",
+      "message": "Add proper error handling"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 435,
+      "type": "TODO",
+      "message": "Add proper error handling"
+    }
+  ],
+  "magic_values": [
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py",
+      "line": 168,
+      "type": "hardcoded number > 1000",
+      "content": "iterations=100000,"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py",
+      "line": 3,
+      "type": "hardcoded number > 1000",
+      "content": "DEFAULT_TIMEOUT_SECONDS = 3600"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/base_connector.py",
+      "line": 4,
+      "type": "hardcoded number > 1000",
+      "content": "MS_PER_SECOND = 1000"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integration_service.py",
+      "line": 213,
+      "type": "hardcoded number > 1000",
+      "content": "response_time_ms = (datetime.utcnow() - start_time).total_seconds() * 1000"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integration_service.py",
+      "line": 358,
+      "type": "hardcoded number > 1000",
+      "content": "sync_time_ms = (datetime.utcnow() - start_time).total_seconds() * 1000"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 41,
+      "type": "hardcoded URL",
+      "content": "\"base_url\": \"https://api.example.com\","
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 86,
+      "type": "hardcoded URL",
+      "content": "config={\"webhook_url\": \"https://hooks.slack.com/test\"},"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 132,
+      "type": "hardcoded URL",
+      "content": "new_config = {\"base_url\": \"https://new-api.example.com\", \"api_token\": \"new-token\"}"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 139,
+      "type": "hardcoded URL",
+      "content": "assert updated.config[\"base_url\"] == \"https://new-api.example.com\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 328,
+      "type": "hardcoded URL",
+      "content": "\"base_url\": \"https://jira.example.com\","
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 345,
+      "type": "hardcoded URL",
+      "content": "config={\"webhook_url\": \"https://hooks.slack.com/test\"}"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 635,
+      "type": "hardcoded URL",
+      "content": "\"base_url\": \"https://api.example.com\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 655,
+      "type": "hardcoded number > 1000",
+      "content": "\"token_expiry\": \"2024-12-31T23:59:59Z\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 841,
+      "type": "hardcoded URL",
+      "content": "config={\"base_url\": \"https://jira.example.com\", \"api_token\": \"token\"},"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 851,
+      "type": "hardcoded URL",
+      "content": "config={\"base_url\": \"https://new-jira.example.com\", \"api_token\": \"new-token\"}"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 854,
+      "type": "hardcoded URL",
+      "content": "assert updated.config[\"base_url\"] == \"https://new-jira.example.com\""
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 937,
+      "type": "hardcoded number > 1000",
+      "content": "long_name = \"A\" * 1000"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/tests/services/test_integration_service.py",
+      "line": 951,
+      "type": "hardcoded URL",
+      "content": "\"url\": \"https://example.com/path?query=test&foo=bar\","
+    }
+  ],
+  "empty_catch_blocks": [],
+  "missing_type_hints": [
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py",
+      "line": 118,
+      "function": "parse_expires_at",
+      "parameter": "cls",
+      "issue": "missing parameter type"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py",
+      "line": 118,
+      "function": "parse_expires_at",
+      "parameter": "v",
+      "issue": "missing parameter type"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/models/integrations.py",
+      "line": 85,
+      "function": "mask_sensitive_fields",
+      "parameter": "cls",
+      "issue": "missing parameter type"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/models/integrations.py",
+      "line": 85,
+      "function": "mask_sensitive_fields",
+      "parameter": "v",
+      "issue": "missing parameter type"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/routers/integrations.py",
+      "line": 65,
+      "function": "validate_config_fields",
+      "parameter": "cls",
+      "issue": "missing parameter type"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/routers/integrations.py",
+      "line": 65,
+      "function": "validate_config_fields",
+      "parameter": "v",
+      "issue": "missing parameter type"
+    },
+    {
+      "file": "/mnt/c/Projects/dexter/backend/app/routers/integrations.py",
+      "line": 65,
+      "function": "validate_config_fields",
+      "parameter": "values",
+      "issue": "missing parameter type"
+    }
+  ],
+  "missing_docstrings": [],
+  "no_tests": [],
+  "security_issues": [],
+  "code_duplication": [
+    {
+      "file1": "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py",
+      "file2": "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py",
+      "function": "apply_to_request",
+      "issue": "similar function signature"
+    },
+    {
+      "file1": "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py",
+      "file2": "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py",
+      "function": "apply_to_request",
+      "issue": "similar function signature"
+    },
+    {
+      "file1": "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py",
+      "file2": "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py",
+      "function": "apply_to_request",
+      "issue": "similar function signature"
+    },
+    {
+      "file1": "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py",
+      "file2": "/mnt/c/Projects/dexter/backend/app/services/integrations/auth_manager.py",
+      "function": "__init__",
+      "issue": "similar function signature"
+    }
+  ],
+  "high_complexity": []
+}

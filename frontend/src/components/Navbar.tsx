@@ -15,8 +15,6 @@ import {
   IconRobot
 } from '@tabler/icons-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import AIModelSettings from './Settings/AIModelSettings';
-import SettingsInput from './Settings/SettingsInput';
 
 interface NavSectionProps {
   title: string;
@@ -154,14 +152,6 @@ export function Navbar() {
   return (
     <>
       <Box p="md">
-        {/* Configuration section with settings components */}
-        <Box mb="md">
-          <SettingsInput />
-          <AIModelSettings />
-        </Box>
-        
-        <Divider my="md" />
-        
         {/* Main navigation sections */}
         <NavSection title="Main">
           {mainLinks.map(renderNavLink)}

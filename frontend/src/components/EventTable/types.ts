@@ -4,7 +4,7 @@ import { EventType, TimeRange } from '../../types/eventTypes';
  * EventTable component props definition
  */
 export interface EventTableProps {
-  projectId?: string;
+  projectSlug?: string;
   timeRange?: TimeRange;
   onEventSelect?: (event: EventType) => void;
   showFilters?: boolean;

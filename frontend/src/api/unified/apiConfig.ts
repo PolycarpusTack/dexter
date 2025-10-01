@@ -4,14 +4,19 @@
 
 import axios from 'axios';
 import { ApiConfig, HttpMethod } from './types';
+import { config } from '../../config/index.js';
 
-// Get the API base URL from environment or use localhost:8000
-const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+// Use centralized config for API base URL
+// If API_BASE_URL already ends with /api/v1, use it directly
+// Otherwise, append /api/v1 (for local development)
+const API_BASE_URL = config.API_BASE_URL.endsWith('/api/v1')
+  ? config.API_BASE_URL
+  : `${config.API_BASE_URL}/api/v1`;
 
 // Create base API client instance
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: config.API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -22,7 +27,7 @@ export const apiClient = axios.create({
 // Default API configuration
 const apiConfig: ApiConfig = {
   baseUrl: API_BASE_URL,
-  timeout: 30000,
+  timeout: config.API_TIMEOUT,
   defaultHeaders: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -75,35 +80,43 @@ const apiConfig: ApiConfig = {
       }
     },
     issues: {
-      base: '/issues',
+      base: '',
       endpoints: {
         list: {
-          path: '/',
+          path: '/organizations/{organization_slug}/projects/{project_slug}/issues',
           method: HttpMethod.GET
         },
         get: {
-          path: '/{id}',
+          path: '/organizations/{organization_slug}/issues/{issue_id}',
           method: HttpMethod.GET
         },
         update: {
-          path: '/{id}',
+          path: '/organizations/{organization_slug}/issues/{issue_id}',
           method: HttpMethod.PUT
         },
         bulkUpdate: {
-          path: '/bulk',
+          path: '/issues/bulk',
           method: HttpMethod.POST
         }
       }
     },
     events: {
-      base: '/events',
+      base: '',
       endpoints: {
         list: {
-          path: '/',
+          path: '/organizations/{organization_slug}/issues/{issue_id}/events',
           method: HttpMethod.GET
         },
-        get: {
-          path: '/{id}',
+        detail: {
+          path: '/organizations/{organization_slug}/projects/{project_slug}/events/{event_id}',
+          method: HttpMethod.GET
+        },
+        tags: {
+          path: '/organizations/{organization_slug}/projects/{project_slug}/events/{event_id}/tags',
+          method: HttpMethod.GET
+        },
+        latest: {
+          path: '/organizations/{organization_slug}/issues/{issue_id}/latest-event',
           method: HttpMethod.GET
         }
       }
@@ -126,7 +139,7 @@ const apiConfig: ApiConfig = {
       }
     },
     alerts: {
-      base: '/alerts',
+      base: '/projects/{project}/alerts',
       endpoints: {
         list: {
           path: '/rules',
@@ -159,6 +172,14 @@ const apiConfig: ApiConfig = {
         },
         explain: {
           path: '/explain',
+          method: HttpMethod.POST
+        },
+        pullModel: {
+          path: '/models/pull/{model_name}',
+          method: HttpMethod.POST
+        },
+        selectModel: {
+          path: '/models/select',
           method: HttpMethod.POST
         },
         explainEvent: {

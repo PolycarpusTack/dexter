@@ -3,12 +3,14 @@
 """
 Data models for analytics endpoints
 """
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel
 
 
 class AnalyticsResponse(BaseModel):
     """Response model for analytics data"""
+
     data: Dict[str, Any]
     meta: Optional[Dict[str, Any]] = None
     links: Optional[Dict[str, Any]] = None
@@ -16,6 +18,7 @@ class AnalyticsResponse(BaseModel):
 
 class ImpactData(BaseModel):
     """Impact data for an issue"""
+
     issueId: str
     userCount: int
     sessionCount: int
@@ -28,6 +31,7 @@ class ImpactData(BaseModel):
 
 class FrequencyData(BaseModel):
     """Frequency data for an issue"""
+
     issueId: str
     statsPeriod: str
     interval: Optional[str] = None
@@ -36,6 +40,7 @@ class FrequencyData(BaseModel):
 
 class TagDistribution(BaseModel):
     """Tag distribution for an issue"""
+
     issueId: str
     tags: List[Dict[str, Any]]
     tagsByCategory: Dict[str, List[Dict[str, Any]]]

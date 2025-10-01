@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.43.0
+    container_name: dexter-prometheus-dev
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./rules:/etc/prometheus/rules
+      - prometheus-dev-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - dexter-monitoring
+
+  grafana:
+    image: grafana/grafana:9.5.1
+    container_name: dexter-grafana-dev
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana-dev-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=dexter-admin-password
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    networks:
+      - dexter-monitoring
+
+  # Only include these in development for testing - not necessary for most devs
+  node-exporter:
+    image: prom/node-exporter:v1.5.0
+    container_name: dexter-node-exporter-dev
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+    networks:
+      - dexter-monitoring
+
+networks:
+  dexter-monitoring:
+    driver: bridge
+
+volumes:
+  prometheus-dev-data:
+  grafana-dev-data:

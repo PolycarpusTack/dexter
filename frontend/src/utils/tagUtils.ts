@@ -1,6 +1,7 @@
 // File: src/utils/tagUtils.ts
 
-import { SentryEvent, EventTag } from '../types/deadlock';
+import { SentryEvent } from '../types/api/sentry-generated';
+import { EventTag } from '../types/events';
 
 /**
  * Interface for tag group with label and color

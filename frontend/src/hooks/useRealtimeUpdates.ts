@@ -29,7 +29,7 @@ export interface RealtimeState {
 }
 
 const DEFAULT_CONFIG: RealtimeConfig = {
-  enabled: true,
+  enabled: false, // Disable WebSocket for now - backend doesn't have WS support
   autoReconnect: true,
   showNotifications: true,
   channels: ['issues', 'alerts'],

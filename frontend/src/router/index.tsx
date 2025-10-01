@@ -6,6 +6,7 @@ import { LoadingOverlay } from '@mantine/core';
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
 const AlertRules = lazy(() => import('../components/AlertRules/AlertRules').then(module => ({ default: module.default })));
 const AIMetricsDashboard = lazy(() => import('../components/AIMetrics/AIMetricsDashboard'));
+const DeadlockTestPage = lazy(() => import('../pages/DeadlockTestPage'));
 
 export function AppRouter() {
   return (
@@ -16,6 +17,7 @@ export function AppRouter() {
         <Route path="/organizations/:org/projects/:project/alert-rules" element={<AlertRules />} />
         <Route path="/organizations/:org/projects/:project" element={<DashboardPage />} />
         <Route path="/ai-metrics" element={<AIMetricsDashboard />} />
+        <Route path="/test/deadlock" element={<DeadlockTestPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Suspense>

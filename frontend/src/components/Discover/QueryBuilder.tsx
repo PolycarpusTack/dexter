@@ -32,7 +32,21 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { discoverApi, FieldSuggestion, QueryExample } from '../../utils/api';
+import { api } from '../../api/unified';
+
+// Type definitions
+interface FieldSuggestion {
+  field: string;
+  type: string;
+  description?: string;
+}
+
+interface QueryExample {
+  title: string;
+  description: string;
+  query: string;
+  category: string;
+}
 import { notifications } from '@mantine/notifications';
 
 interface QueryBuilderProps {
@@ -71,13 +85,13 @@ const QueryBuilder: React.FC<QueryBuilderProps> = ({ onExecute }) => {
   // Fetch field suggestions
   const { data: fieldSuggestions = [], isLoading: loadingFields } = useQuery({
     queryKey: ['fieldSuggestions'],
-    queryFn: () => discoverApi.getFieldSuggestions(),
+    queryFn: () => api.discover.getFieldSuggestions(),
   });
 
   // Fetch query examples
   const { data: queryExamples = [], isLoading: loadingExamples } = useQuery({
     queryKey: ['queryExamples'],
-    queryFn: () => discoverApi.getQueryExamples(),
+    queryFn: () => api.discover.getQueryExamples(),
   });
 
   // Load saved queries from localStorage

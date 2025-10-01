@@ -6,9 +6,9 @@ between the new architecture and the existing codebase.
 """
 import logging
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 
-from .config import AppSettings, get_settings
+from .config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -19,15 +19,15 @@ settings_instance = None
 def get_legacy_settings() -> Dict[str, Any]:
     """
     Get a dictionary of settings in the legacy format for backward compatibility.
-    
+
     Returns:
         A dictionary with legacy-style setting names
     """
     global settings_instance
-    
+
     if settings_instance is None:
         settings_instance = get_settings()
-    
+
     # Map new settings to legacy names
     return {
         "app_name": settings_instance.APP_NAME,
@@ -57,24 +57,52 @@ def get_legacy_settings() -> Dict[str, Any]:
 class LegacySettings:
     """
     Legacy settings class that mimics the original Settings class.
-    
+
     This class provides attribute-style access to settings for backward compatibility.
     """
-    
+
     def __init__(self):
         """Initialize with current settings."""
         self._settings = get_legacy_settings()
-    
+        self._app_settings = get_settings()
+
     def __getattr__(self, name: str) -> Any:
         """Get a setting by attribute name."""
+        # First check the legacy mappings
         if name in self._settings:
             return self._settings[name]
+
+        # Map common lowercase names to uppercase AppSettings attributes
+        upper_name = name.upper()
+        if hasattr(self._app_settings, upper_name):
+            return getattr(self._app_settings, upper_name)
+
+        # Handle specific legacy attribute mappings
+        legacy_mappings = {
+            "sentry_api_token": "SENTRY_TOKEN",
+            "ollama_base_url": "OLLAMA_BASE_URL",
+            "ollama_model": "OLLAMA_MODEL",
+            "ollama_timeout": "REQUEST_TIMEOUT",
+            "redis_url": "REDIS_URL",
+            "environment": "SENTRY_ENVIRONMENT",
+            "secret_key": "SECRET_KEY",
+            "csrf_secret": "CSRF_SECRET",
+            "SENTRY_ORG": "SENTRY_ORG",
+            "organization_slug": "ORGANIZATION_SLUG",
+            "project_slug": "PROJECT_SLUG",
+        }
+
+        if name in legacy_mappings:
+            attr_name = legacy_mappings[name]
+            if hasattr(self._app_settings, attr_name):
+                return getattr(self._app_settings, attr_name)
+
         raise AttributeError(f"'LegacySettings' object has no attribute '{name}'")
-    
+
     def refresh(self) -> None:
         """Refresh settings from the current state."""
         self._settings = get_legacy_settings()
-    
+
     @property
     def should_include_stack_trace(self) -> bool:
         """Determine if stack traces should be included in error responses."""
@@ -91,13 +119,13 @@ settings = LegacySettings()
 def ensure_compatibility() -> None:
     """
     Ensure compatibility with the existing codebase.
-    
+
     This function should be called early in the application startup to set up
     any necessary compatibility features.
     """
     # Set environment variables for modules that might use them directly
     _set_compat_env_vars()
-    
+
     # Log compatibility mode
     logger.info("Compatibility layer initialized")
 
@@ -105,7 +133,7 @@ def ensure_compatibility() -> None:
 def _set_compat_env_vars() -> None:
     """Set environment variables for compatibility."""
     settings_dict = get_legacy_settings()
-    
+
     # Set environment variables for modules that might use them directly
     env_mappings = {
         "DEXTER_DEBUG": str(settings_dict.get("debug", False)).lower(),
@@ -114,7 +142,7 @@ def _set_compat_env_vars() -> None:
         "DEXTER_OLLAMA_MODEL": settings_dict.get("ollama_model", "llama2"),
         # Add other environment variables as needed
     }
-    
+
     for key, value in env_mappings.items():
         if key not in os.environ:
             os.environ[key] = value

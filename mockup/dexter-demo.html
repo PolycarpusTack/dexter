@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dexter - Sentry Companion Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background-color: #1a1a1a;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: white;
+            padding: 2rem 1rem;
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .nav-item.active {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .search-bar {
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+        }
+
+        .issues-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .view-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .issue-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .issue-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .issues-list {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .issue-row {
+            display: grid;
+            grid-template-columns: 40px 1fr 150px 100px 100px 120px;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .issue-row:hover {
+            background-color: #f8f9fa;
+        }
+
+        .issue-row.header {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #666;
+            cursor: default;
+        }
+
+        .issue-row.header:hover {
+            background-color: #f8f9fa;
+        }
+
+        .issue-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge.error {
+            background-color: #fee;
+            color: #c00;
+        }
+
+        .badge.warning {
+            background-color: #ffeaa7;
+            color: #d63031;
+        }
+
+        .badge.platform {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .issue-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .issue-culprit {
+            background-color: #f5f5f5;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            word-break: break-all;
+        }
+
+        .issue-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            color: #666;
+            font-size: 0.875rem;
+        }
+
+        .explain-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: opacity 0.2s;
+        }
+
+        .explain-btn:hover {
+            opacity: 0.9;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-content {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .ai-explanation {
+            background-color: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 4px;
+        }
+
+        .ai-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .code-block {
+            background-color: #1a1a1a;
+            color: #fff;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .demo-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.5rem;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+
+        .deadlock-diagram {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .process-box {
+            display: inline-block;
+            background: white;
+            border: 2px solid #667eea;
+            padding: 1rem;
+            margin: 0.5rem;
+            border-radius: 8px;
+            min-width: 150px;
+        }
+
+        .arrow {
+            display: inline-block;
+            margin: 0 1rem;
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .recommendation-card {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 4px;
+        }
+
+        .sparkline {
+            display: inline-block;
+            width: 60px;
+            height: 20px;
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-banner">
+        Interactive Demo - Click "Explain" on any issue to see AI-powered analysis
+    </div>
+    
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M7 8l-4 4 4 4M17 8l4 4-4 4M14 4l-4 16"></path>
+                </svg>
+            </div>
+            Dexter - Sentry Companion
+        </div>
+        <div>
+            <span class="badge" style="background: rgba(255,255,255,0.2); color: white;">Demo Version</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <aside class="sidebar">
+            <nav>
+                <div class="nav-item active">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    Issues
+                </div>
+                <div class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    Alerts
+                </div>
+                <div class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                    </svg>
+                    AI Analysis
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="margin: 0;">Issues Overview</h2>
+                <div class="view-toggle">
+                    <button class="view-btn active" onclick="setView('grid')" id="gridViewBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                        Grid
+                    </button>
+                    <button class="view-btn" onclick="setView('list')" id="listViewBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        List
+                    </button>
+                </div>
+            </div>
+
+            <div class="search-bar">
+                <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input type="text" class="search-input" placeholder="Search issues..." id="searchInput">
+            </div>
+
+            <div class="issues-grid" id="issuesGrid" style="display: block;">
+                <!-- Issues will be dynamically inserted here -->
+            </div>
+
+            <div class="issues-list" id="issuesList" style="display: none;">
+                <!-- List view will be dynamically inserted here -->
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>AI Error Analysis</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-content" id="modalContent">
+                <!-- Modal content will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock data
+        const mockIssues = [
+            {
+                id: "1",
+                title: "TypeError: Cannot read property 'map' of undefined",
+                culprit: "app/components/UserList.tsx",
+                level: "error",
+                platform: "javascript",
+                count: 234,
+                userCount: 45,
+                project: "frontend-app",
+                explanation: "This TypeError occurs when trying to access a property on an undefined value. The error suggests that you're attempting to use the 'map' method on a variable that is undefined. This commonly happens when: 1) Data hasn't loaded yet from an API, 2) The expected array property doesn't exist, or 3) There's a typo in the property name. Consider adding null checks or default values."
+            },
+            {
+                id: "2",
+                title: "DatabaseError: deadlock detected",
+                culprit: "backend/services/order_service.py",
+                level: "error",
+                platform: "python",
+                count: 89,
+                userCount: 12,
+                project: "backend-api",
+                explanation: "A database deadlock occurs when two or more transactions are waiting for each other to release locks. This error indicates concurrent transactions are trying to access the same resources in different orders. Consider: 1) Acquiring locks in a consistent order, 2) Using shorter transactions, or 3) Implementing retry logic with exponential backoff.",
+                isDeadlock: true,
+                deadlockInfo: {
+                    process1: { pid: 5432, query: "UPDATE orders SET status='processing'", table: "orders", waitingFor: "inventory" },
+                    process2: { pid: 5433, query: "UPDATE inventory SET quantity=quantity-1", table: "inventory", waitingFor: "orders" }
+                }
+            },
+            {
+                id: "3",
+                title: "N+1 Query detected in ProductList",
+                culprit: "backend/views/product_views.py",
+                level: "warning",
+                platform: "python",
+                count: 1567,
+                userCount: 234,
+                project: "backend-api",
+                explanation: "An N+1 query problem occurs when your code executes 1 query to fetch a list of items, then N additional queries to fetch related data for each item. This causes severe performance issues as the number of items grows. Use eager loading with 'select_related' or 'prefetch_related' in Django, or similar techniques in your ORM to fetch all required data in a single query."
+            },
+            {
+                id: "4",
+                title: "ReferenceError: window is not defined",
+                culprit: "app/utils/analytics.js",
+                level: "error",
+                platform: "javascript",
+                count: 456,
+                userCount: 78,
+                project: "frontend-app",
+                explanation: "This error occurs when trying to access the 'window' object in a server-side rendering (SSR) environment where it doesn't exist. The 'window' object is only available in browser environments. To fix this: 1) Check if window exists before using it, 2) Move window-dependent code to useEffect or componentDidMount, or 3) Use dynamic imports with SSR disabled for browser-only components."
+            },
+            {
+                id: "5",
+                title: "MemoryError: Unable to allocate array",
+                culprit: "workers/image_processor.py",
+                level: "error",
+                platform: "python",
+                count: 23,
+                userCount: 5,
+                project: "backend-api",
+                explanation: "This MemoryError indicates that your application tried to allocate more memory than is available. This often happens when processing large datasets or images. Solutions include: 1) Process data in smaller chunks, 2) Use generators instead of loading everything into memory, 3) Increase available memory, or 4) Optimize data structures to use less memory."
+            }
+        ];
+
+        let currentIssue = null;
+        let currentView = 'grid';
+
+        function setView(view) {
+            currentView = view;
+            document.getElementById('gridViewBtn').classList.toggle('active', view === 'grid');
+            document.getElementById('listViewBtn').classList.toggle('active', view === 'list');
+            document.getElementById('issuesGrid').style.display = view === 'grid' ? 'grid' : 'none';
+            document.getElementById('issuesList').style.display = view === 'list' ? 'block' : 'none';
+            renderCurrentView();
+        }
+
+        function renderCurrentView(issues = mockIssues) {
+            if (currentView === 'grid') {
+                renderGridView(issues);
+            } else {
+                renderListView(issues);
+            }
+        }
+
+        function renderGridView(issues) {
+            const grid = document.getElementById('issuesGrid');
+            grid.innerHTML = issues.map(issue => `
+                <div class="issue-card" onclick="showIssueDetail('${issue.id}')">
+                    <div class="issue-header">
+                        <span class="badge ${issue.level}">${issue.level}</span>
+                        <span class="badge platform">${issue.platform}</span>
+                    </div>
+                    <div class="issue-title">${issue.title}</div>
+                    <div class="issue-culprit">${issue.culprit}</div>
+                    <div class="issue-stats">
+                        <span>${issue.count} events</span>
+                        <span>${issue.userCount} users</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #666; font-size: 0.875rem;">${issue.project}</span>
+                        <button class="explain-btn" onclick="event.stopPropagation(); explainError('${issue.id}')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                            </svg>
+                            Explain
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderListView(issues) {
+            const list = document.getElementById('issuesList');
+            const sparkline = '<svg class="sparkline" viewBox="0 0 60 20"><polyline fill="none" stroke="#667eea" stroke-width="2" points="0,15 10,10 20,12 30,8 40,11 50,6 60,9"/></svg>';
+            
+            list.innerHTML = `
+                <div class="issue-row header">
+                    <div></div>
+                    <div>Issue</div>
+                    <div>File</div>
+                    <div>Events</div>
+                    <div>Users</div>
+                    <div>Actions</div>
+                </div>
+                ${issues.map(issue => `
+                    <div class="issue-row" onclick="showIssueDetail('${issue.id}')">
+                        <div>
+                            <span class="badge ${issue.level}" style="font-size: 0.7rem;">${issue.level.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div>
+                            <div style="font-weight: 500;">${issue.title}</div>
+                            <div style="font-size: 0.8rem; color: #666;">${issue.project}</div>
+                        </div>
+                        <div style="font-family: monospace; font-size: 0.8rem; color: #666;">
+                            ${issue.culprit.split('/').pop()}
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            ${issue.count}
+                            ${sparkline}
+                        </div>
+                        <div>${issue.userCount}</div>
+                        <div>
+                            <button class="explain-btn" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" 
+                                    onclick="event.stopPropagation(); explainError('${issue.id}')">
+                                Analyze
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        function showIssueDetail(issueId) {
+            currentIssue = mockIssues.find(i => i.id === issueId);
+            explainError(issueId);
+        }
+
+        function explainError(issueId) {
+            const issue = mockIssues.find(i => i.id === issueId);
+            currentIssue = issue;
+            
+            const modalContent = document.getElementById('modalContent');
+            
+            // Special handling for deadlock errors
+            if (issue.isDeadlock) {
+                modalContent.innerHTML = `
+                    <div style="background-color: #fee; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <strong>${issue.title}</strong>
+                    </div>
+                    
+                    <div class="ai-explanation">
+                        <div class="ai-header">
+                            <span class="badge" style="background: #e74c3c; color: white;">Deadlock Analyzer</span>
+                            <span class="badge" style="background: #f0f0f0;">PostgreSQL Deadlock Detection</span>
+                        </div>
+                        <p>${issue.explanation}</p>
+                    </div>
+
+                    <div class="deadlock-diagram">
+                        <h4 style="margin-bottom: 1rem;">Deadlock Visualization</h4>
+                        <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap;">
+                            <div class="process-box">
+                                <strong>Process ${issue.deadlockInfo.process1.pid}</strong>
+                                <div style="font-size: 0.8rem; margin-top: 0.5rem;">
+                                    <div>Table: ${issue.deadlockInfo.process1.table}</div>
+                                    <div style="color: #666;">Waiting for: ${issue.deadlockInfo.process1.waitingFor}</div>
+                                </div>
+                            </div>
+                            <div class="arrow">⟵⟶</div>
+                            <div class="process-box">
+                                <strong>Process ${issue.deadlockInfo.process2.pid}</strong>
+                                <div style="font-size: 0.8rem; margin-top: 0.5rem;">
+                                    <div>Table: ${issue.deadlockInfo.process2.table}</div>
+                                    <div style="color: #666;">Waiting for: ${issue.deadlockInfo.process2.waitingFor}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 1.5rem 0 0.5rem;">AI-Powered Recommendations</h4>
+                    <div class="recommendation-card">
+                        <strong>1. Consistent Lock Ordering</strong>
+                        <p style="margin: 0.5rem 0 0;">Always acquire locks in the same order across all transactions. In this case, always lock 'orders' before 'inventory'.</p>
+                    </div>
+                    <div class="recommendation-card">
+                        <strong>2. Reduce Transaction Scope</strong>
+                        <p style="margin: 0.5rem 0 0;">Move non-critical operations outside the transaction block to minimize lock duration.</p>
+                    </div>
+                    <div class="recommendation-card">
+                        <strong>3. Implement Retry Logic</strong>
+                        <p style="margin: 0.5rem 0 0;">Add automatic retry with exponential backoff for deadlock exceptions.</p>
+                    </div>
+                    
+                    <div class="tabs" style="margin-top: 1.5rem;">
+                        <button class="tab active" onclick="switchTab('queries')">Conflicting Queries</button>
+                        <button class="tab" onclick="switchTab('stacktrace')">Stack Trace</button>
+                        <button class="tab" onclick="switchTab('metrics')">Deadlock Metrics</button>
+                    </div>
+                    
+                    <div id="queries" class="tab-content active">
+                        <div class="code-block">
+-- Process ${issue.deadlockInfo.process1.pid}
+${issue.deadlockInfo.process1.query}
+
+-- Process ${issue.deadlockInfo.process2.pid}
+${issue.deadlockInfo.process2.query}
+                        </div>
+                    </div>
+                    
+                    <div id="stacktrace" class="tab-content">
+                        <div class="code-block">
+Traceback (most recent call last):
+  File "${issue.culprit}", line 127, in process_order
+    with transaction.atomic():
+  File "/usr/local/lib/python3.9/site-packages/django/db/transaction.py", line 191
+psycopg2.errors.DeadlockDetected: deadlock detected
+DETAIL:  Process ${issue.deadlockInfo.process1.pid} waits for ShareLock on transaction; blocked by process ${issue.deadlockInfo.process2.pid}.
+Process ${issue.deadlockInfo.process2.pid} waits for ShareLock on transaction; blocked by process ${issue.deadlockInfo.process1.pid}.
+                        </div>
+                    </div>
+                    
+                    <div id="metrics" class="tab-content">
+                        <div style="display: grid; gap: 1rem;">
+                            <div><strong>Frequency:</strong> ${issue.count} occurrences in the last 7 days</div>
+                            <div><strong>Pattern:</strong> Peak during high-traffic hours (2-4 PM)</div>
+                            <div><strong>Impact:</strong> ${issue.userCount} users affected, ~$${(issue.userCount * 50).toLocaleString()} potential revenue impact</div>
+                            <div><strong>Similar Issues:</strong> 3 related deadlock patterns detected in the codebase</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Regular error handling
+                modalContent.innerHTML = `
+                    <div style="background-color: ${issue.level === 'error' ? '#fee' : '#ffeaa7'}; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <strong>${issue.title}</strong>
+                    </div>
+                    
+                    <div class="ai-explanation">
+                        <div class="ai-header">
+                            <span class="badge" style="background: #667eea; color: white;">AI Explanation</span>
+                            <span class="badge" style="background: #f0f0f0;">mock-llm - 85% confidence</span>
+                        </div>
+                        <p>${issue.explanation}</p>
+                    </div>
+                    
+                    <div class="tabs">
+                        <button class="tab active" onclick="switchTab('details')">Details</button>
+                        <button class="tab" onclick="switchTab('stacktrace')">Stack Trace</button>
+                        <button class="tab" onclick="switchTab('context')">Context</button>
+                    </div>
+                    
+                    <div id="details" class="tab-content active">
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>File:</strong> ${issue.culprit}</div>
+                            <div><strong>Platform:</strong> ${issue.platform}</div>
+                            <div><strong>Occurrences:</strong> ${issue.count}</div>
+                            <div><strong>Users Affected:</strong> ${issue.userCount}</div>
+                            <div><strong>Project:</strong> ${issue.project}</div>
+                        </div>
+                    </div>
+                    
+                    <div id="stacktrace" class="tab-content">
+                        <div class="code-block">
+${issue.platform === 'javascript' ? `TypeError: Cannot read property 'map' of undefined
+  at UserList (app/components/UserList.tsx:45:23)
+  at renderWithHooks (react-dom.development.js:14985:18)
+  at mountIndeterminateComponent (react-dom.development.js:17811:13)
+  at beginWork (react-dom.development.js:19049:16)` : 
+`Traceback (most recent call last):
+  File "${issue.culprit}", line 42
+    result = process_data(items)
+  File "workers/image_processor.py", line 89, in process_data
+    large_array = np.zeros((10000, 10000, 3))
+MemoryError: Unable to allocate array`}
+                        </div>
+                    </div>
+                    
+                    <div id="context" class="tab-content">
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>Browser:</strong> Chrome 120.0.0</div>
+                            <div><strong>OS:</strong> Windows 10</div>
+                            <div><strong>Environment:</strong> production</div>
+                            <div><strong>Release:</strong> v1.2.3</div>
+                            <div><strong>User:</strong> user123@example.com</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('modalOverlay').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            currentIssue = null;
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filtered = mockIssues.filter(issue => 
+                issue.title.toLowerCase().includes(searchTerm) ||
+                issue.culprit.toLowerCase().includes(searchTerm) ||
+                issue.platform.toLowerCase().includes(searchTerm) ||
+                issue.project.toLowerCase().includes(searchTerm)
+            );
+            renderCurrentView(filtered);
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('modalOverlay').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeModal();
+            }
+        });
+
+        // Initial render
+        renderCurrentView();
+    </script>
+</body>
+</html>

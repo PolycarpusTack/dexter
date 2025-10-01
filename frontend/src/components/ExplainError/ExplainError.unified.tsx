@@ -47,9 +47,9 @@ import { ErrorExplanationRequest, ErrorExplanationResponse } from '../../api/uni
 import { analyzeError, ErrorCategory } from '../../utils/errorAnalytics';
 import { createPromptBundle } from '../../utils/promptEngineering';
 import AccessibleIcon from '../UI/AccessibleIcon';
-import ModelSelector from '../ModelSelector/ModelSelector';
+import { ModelSelector } from '../ModelSelector';
 import ProgressIndicator from '../UI/ProgressIndicator';
-import useAppStore from '../../store/appStore';
+import { useAIStore } from '../../store';
 import { EventDetails } from '../../types/eventDetails';
 
 // Destructure hooks for better readability
@@ -72,7 +72,7 @@ const ExplainError: React.FC<ExplainErrorProps> = ({ eventDetails }) => {
   const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState<boolean>(false);
   
   // Get active model from app store
-  const { activeAIModel } = useAppStore(state => ({
+  const { activeAIModel } = useAIStore(state => ({
     activeAIModel: state.activeAIModel
   }));
   
@@ -748,7 +748,11 @@ function getStackTraceFromEvent(eventDetails: EventDetails): string | undefined 
   return undefined;
 }
 
-// Helper function to extract error type from event data
+/**
+ * Extract error type from event details
+ * @param eventDetails - Event details object
+ * @returns Error type string
+ */
 function extractErrorType(eventDetails: EventDetails): string {
   if (!eventDetails) return 'Unknown';
   
@@ -775,7 +779,11 @@ function extractErrorType(eventDetails: EventDetails): string {
   return eventDetails.level || 'Error';
 }
 
-// Helper function to extract error message from event data
+/**
+ * Extract error message from event details
+ * @param eventDetails - Event details object
+ * @returns Error message string
+ */
 function extractErrorMessage(eventDetails: EventDetails): string {
   if (!eventDetails) return '';
   

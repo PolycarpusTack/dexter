@@ -1,2 +1,5 @@
 # Config module initialization
-# This file should be empty to avoid circular imports
+# Export settings for other modules
+from app.core.config import get_settings
+
+settings = get_settings()

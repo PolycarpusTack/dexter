@@ -1,96 +1,106 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+
+// Common sensitive data patterns
+const DEFAULT_PATTERNS = {
+  // Email addresses
+  email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+  // UUIDs
+  uuid: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+  // IP addresses
+  ip: /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g,
+  // Phone numbers (simple pattern)
+  phone: /\b\+?[\d()-\s]{10,15}\b/g,
+  // API keys and tokens (common patterns)
+  apiKey: /\b(api[_-]?key|access[_-]?token|secret)[_-]?[=:]["']?[a-zA-Z0-9]{16,}["']?/gi,
+  // Credit card numbers
+  creditCard: /\b(?:\d{4}[ -]?){3}\d{4}\b/g,
+};
+
+// Default replacements
+const DEFAULT_REPLACEMENTS = {
+  email: '[EMAIL REDACTED]',
+  uuid: '[UUID REDACTED]',
+  ip: '[IP REDACTED]',
+  phone: '[PHONE REDACTED]',
+  apiKey: '[API KEY REDACTED]',
+  creditCard: '[CREDIT CARD REDACTED]',
+};
+
+type PatternKey = keyof typeof DEFAULT_PATTERNS;
+type Patterns = Record<string, RegExp>;
+type Replacements = Record<string, string>;
 
 interface DataMaskingOptions {
   defaultMasked?: boolean;
-  patterns?: Record<string, RegExp>;
-  replacements?: Record<string, string | ((match: string, ...groups: string[]) => string)>;
+  patterns?: Partial<Patterns>;
+  replacements?: Partial<Replacements>;
 }
 
-interface UseDataMaskingResult {
+interface UseDataMaskingReturn {
   isMasked: boolean;
+  setIsMasked: React.Dispatch<React.SetStateAction<boolean>>;
   toggleMasking: () => void;
-  maskText: (text: string | undefined) => string;
-  setMasking: (masked: boolean) => void;
+  maskText: (text: string) => string;
+  patterns: Patterns;
 }
 
 /**
- * Hook for masking sensitive data in text
- * @param options - Configuration options for data masking
- * @returns Object with masking state and functions
+ * Hook for masking sensitive data in text content
  */
-export function useDataMasking(options: DataMaskingOptions = {}): UseDataMaskingResult {
-  const { 
-    defaultMasked = false,
-    patterns = {
-      // Default patterns for common PII
-      email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
-      ipAddress: /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g,
-      creditCard: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
-      ssn: /\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/g,
-      phoneNumber: /\b(?:\+\d{1,2}\s?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
-      url: /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)/g,
-    },
-    replacements = {
-      // Default replacements
-      email: '[EMAIL]',
-      ipAddress: '[IP ADDRESS]',
-      creditCard: '[CREDIT CARD]',
-      ssn: '[SSN]',
-      phoneNumber: '[PHONE NUMBER]',
-      url: '[URL]',
-    },
+export function useDataMasking(options: DataMaskingOptions = {}): UseDataMaskingReturn {
+  const {
+    defaultMasked = true,
+    patterns = {},
+    replacements = {},
   } = options;
   
-  const [isMasked, setIsMasked] = useState<boolean>(defaultMasked);
+  const [isMasked, setIsMasked] = useState(defaultMasked);
+  
+  // Combine default patterns with custom patterns
+  const allPatterns = useMemo(() => ({
+    ...DEFAULT_PATTERNS,
+    ...patterns,
+  }), [patterns]);
+  
+  // Combine default replacements with custom replacements
+  const allReplacements = useMemo(() => ({
+    ...DEFAULT_REPLACEMENTS,
+    ...replacements,
+  }), [replacements]);
   
   /**
-   * Toggle the masking state
+   * Mask sensitive data in text
    */
-  const toggleMasking = useCallback(() => {
-    setIsMasked(prev => !prev);
-  }, []);
-  
-  /**
-   * Explicitly set masking state
-   */
-  const setMasking = useCallback((masked: boolean) => {
-    setIsMasked(masked);
-  }, []);
-  
-  /**
-   * Apply masking to text based on patterns and replacements
-   * @param text - The text to mask
-   * @returns Masked text
-   */
-  const maskText = useCallback((text: string | undefined): string => {
-    if (!text || !isMasked) {
-      return text || '';
+  const maskText = useCallback((text: string): string => {
+    if (!text || typeof text !== 'string' || !isMasked) {
+      return text;
     }
     
     let maskedText = text;
     
     // Apply each pattern and replacement
-    Object.entries(patterns).forEach(([key, pattern]) => {
-      const replacement = replacements[key];
+    Object.keys(allPatterns).forEach(patternKey => {
+      const pattern = allPatterns[patternKey];
+      const replacement = allReplacements[patternKey] || `[${patternKey.toUpperCase()} REDACTED]`;
       
-      if (replacement) {
-        if (typeof replacement === 'function') {
-          maskedText = maskedText.replace(pattern, replacement);
-        } else {
-          maskedText = maskedText.replace(pattern, replacement);
-        }
-      }
+      maskedText = maskedText.replace(pattern, replacement);
     });
     
     return maskedText;
-  }, [isMasked, patterns, replacements]);
+  }, [isMasked, allPatterns, allReplacements]);
+  
+  /**
+   * Toggle masking on/off
+   */
+  const toggleMasking = useCallback(() => {
+    setIsMasked(prev => !prev);
+  }, []);
   
   return {
     isMasked,
+    setIsMasked,
     toggleMasking,
     maskText,
-    setMasking
+    patterns: allPatterns,
   };
 }
-
-export default useDataMasking;

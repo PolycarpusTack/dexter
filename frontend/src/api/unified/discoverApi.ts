@@ -278,9 +278,75 @@ export const saveQuery = async (
   }
 };
 
+/**
+ * Get field suggestions for discover queries
+ */
+export const getFieldSuggestions = async (): Promise<any[]> => {
+  try {
+    const { response } = await enhancedApiClient.makeRequest({
+      path: '/discover/fields',
+      options: {
+        timeout: 10000,
+        showErrorNotification: false
+      }
+    });
+    return response;
+  } catch (error) {
+    return handleDiscoverError(error, {
+      fallbackMessage: 'Failed to fetch field suggestions',
+      fallbackValue: []
+    });
+  }
+};
+
+/**
+ * Get query examples
+ */
+export const getQueryExamples = async (): Promise<any[]> => {
+  try {
+    const { response } = await enhancedApiClient.makeRequest({
+      path: '/discover/examples',
+      options: {
+        timeout: 10000,
+        showErrorNotification: false
+      }
+    });
+    return response;
+  } catch (error) {
+    return handleDiscoverError(error, {
+      fallbackMessage: 'Failed to fetch query examples',
+      fallbackValue: []
+    });
+  }
+};
+
+/**
+ * Get projects for discover
+ */
+export const getProjects = async (): Promise<any[]> => {
+  try {
+    const { response } = await enhancedApiClient.makeRequest({
+      path: '/sentry/projects',
+      options: {
+        timeout: 10000,
+        showErrorNotification: false
+      }
+    });
+    return response;
+  } catch (error) {
+    return handleDiscoverError(error, {
+      fallbackMessage: 'Failed to fetch projects',
+      fallbackValue: []
+    });
+  }
+};
+
 // Export all functions
 export default {
   executeQuery,
   getSavedQueries,
-  saveQuery
+  saveQuery,
+  getFieldSuggestions,
+  getQueryExamples,
+  getProjects
 };

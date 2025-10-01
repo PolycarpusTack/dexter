@@ -13,7 +13,7 @@ import {
   Config,
   ConfigParams,
   HealthStatus
-} from '../configApiMock';
+} from '../configApi';
 
 // Query keys
 const QUERY_KEYS = {

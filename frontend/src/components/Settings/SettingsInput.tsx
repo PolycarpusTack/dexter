@@ -31,10 +31,10 @@ import {
   IconAlertCircle
 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
-import useAppStore from '../../store/appStore';
+import { useAuthStore, useAIStore } from '../../store';
 import InfoTooltip from '../UI/InfoTooltip';
 import AccessibleIcon from '../UI/AccessibleIcon';
-import ModelSelector from '../ModelSelector/ModelSelector';
+import { ModelSelector } from '../ModelSelector';
 import { 
   validateForm, 
   required,
@@ -85,7 +85,7 @@ function SettingsInput(): JSX.Element {
   const theme = useMantineTheme();
   
   // Get state from global store
-  const { organizationSlug, projectSlug, setOrgProject } = useAppStore(
+  const { organizationSlug, projectSlug, setOrgProject } = useAuthStore(
     (state) => ({
       organizationSlug: state.organizationSlug,
       projectSlug: state.projectSlug,

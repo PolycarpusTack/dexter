@@ -2,11 +2,17 @@
 
 """
 Configuration management for the Dexter backend API.
-Re-exports settings from the core.settings module.
+Re-exports settings from the core configuration modules.
 """
 
-# Re-export settings for backward compatibility
-from app.core.settings import settings
+# Import the main app settings
+from app.core.config import AppSettings, get_settings
 
-# Keep the Settings class definition here for backward compatibility
-from app.core.settings import Settings
+# Create the global settings instance
+settings = get_settings()
+
+# Re-export for backward compatibility
+Settings = AppSettings
+
+# Export the imports explicitly
+__all__ = ["settings", "Settings", "AppSettings"]

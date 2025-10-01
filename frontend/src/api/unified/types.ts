@@ -3,6 +3,21 @@
  */
 
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
+import {
+  AlertCondition,
+  AlertAction,
+  EventEntry,
+  EventUser,
+  EventContext,
+  BreadcrumbData,
+  ProgressEvent,
+  ApiMetadata,
+  ApiErrorDetails,
+  UISettings,
+  ProviderSettings,
+  ErrorContext,
+  ModelMetrics
+} from './interfaces';
 
 // HTTP Method enum
 export enum HttpMethod {
@@ -68,10 +83,7 @@ export interface Model {
   size: ModelSize;
   size_mb?: number;
   capabilities: ModelCapability[];  // Keep it required but ensure defaults are provided
-  metrics?: {
-    avg_response_time?: number;
-    tokens_per_second?: number;
-  };
+  metrics?: ModelMetrics;
   error?: string;
 }
 
@@ -90,12 +102,12 @@ export interface FallbackChain {
 
 // API Client interface
 export interface ApiClient {
-  request<T = any>(config: ApiCallOptions): Promise<ApiResponse<T>>;
-  get<T = any>(path: string, options?: Omit<ApiCallOptions, 'method'>): Promise<ApiResponse<T>>;
-  post<T = any>(path: string, data?: any, options?: Omit<ApiCallOptions, 'method' | 'data'>): Promise<ApiResponse<T>>;
-  put<T = any>(path: string, data?: any, options?: Omit<ApiCallOptions, 'method' | 'data'>): Promise<ApiResponse<T>>;
-  patch<T = any>(path: string, data?: any, options?: Omit<ApiCallOptions, 'method' | 'data'>): Promise<ApiResponse<T>>;
-  delete<T = any>(path: string, options?: Omit<ApiCallOptions, 'method'>): Promise<ApiResponse<T>>;
+  request<T = unknown>(config: ApiCallOptions): Promise<ApiResponse<T>>;
+  get<T = unknown>(path: string, options?: Omit<ApiCallOptions, 'method'>): Promise<ApiResponse<T>>;
+  post<T = unknown>(path: string, data?: unknown, options?: Omit<ApiCallOptions, 'method' | 'data'>): Promise<ApiResponse<T>>;
+  put<T = unknown>(path: string, data?: unknown, options?: Omit<ApiCallOptions, 'method' | 'data'>): Promise<ApiResponse<T>>;
+  patch<T = unknown>(path: string, data?: unknown, options?: Omit<ApiCallOptions, 'method' | 'data'>): Promise<ApiResponse<T>>;
+  delete<T = unknown>(path: string, options?: Omit<ApiCallOptions, 'method'>): Promise<ApiResponse<T>>;
 }
 
 // API Configuration
@@ -129,7 +141,7 @@ export interface ApiCallOptions {
   method?: HttpMethod;
   path?: string;
   url?: string;
-  data?: any;
+  data?: unknown;
   params?: QueryParams;
   pathParams?: PathParams;
   headers?: Record<string, string>;
@@ -143,8 +155,8 @@ export interface ApiCallOptions {
   retryCount?: number;
   retryDelay?: number;
   validateStatus?: (status: number) => boolean;
-  onUploadProgress?: (progressEvent: any) => void;
-  onDownloadProgress?: (progressEvent: any) => void;
+  onUploadProgress?: (progressEvent: ProgressEvent) => void;
+  onDownloadProgress?: (progressEvent: ProgressEvent) => void;
   requestId?: string;
 }
 
@@ -155,22 +167,23 @@ export interface ApiError {
   code?: string;
   category: ErrorCategory;
   requestId?: string;
-  details?: any;
+  details?: ApiErrorDetails;
   originalError?: Error;
   isRetryable: boolean;
   suppressNotifications?: boolean;  // Whether to suppress UI notifications for this error
 }
 
 // API Response interface
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   status: number;
   headers: Record<string, string>;
   requestId?: string;
+  metadata?: ApiMetadata;
 }
 
 // Paginated Response interface
-export interface PaginatedResponse<T = any> {
+export interface PaginatedResponse<T = unknown> {
   data: T[];
   pagination: {
     next?: string;
@@ -197,7 +210,7 @@ export interface Issue {
 
 export interface Event {
   id: string;
-  projectId: string;
+  projectSlug: string;
   timestamp: string;
   type: string;
 }
@@ -205,14 +218,22 @@ export interface Event {
 export interface AlertRule {
   id: string;
   name: string;
-  conditions: any[];
-  actions: any[];
+  conditions: AlertCondition[];
+  actions: AlertAction[];
 }
 
 // AI Model request and response types
 export interface ModelRequest {
   model_id: string;
-  options?: Record<string, any>;
+  options?: {
+    temperature?: number;
+    max_tokens?: number;
+    top_p?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+    stop?: string[];
+    [key: string]: unknown;
+  };
 }
 
 export interface ModelResponse {
@@ -234,11 +255,8 @@ export interface ModelsResponse {
 export interface ModelPreferences {
   default_model_id?: string;
   default_fallback_chain?: string;
-  provider_settings?: Record<string, any>;
-  ui_settings?: {
-    compact_view?: boolean;
-    advanced_mode?: boolean;
-  };
+  provider_settings?: ProviderSettings;
+  ui_settings?: UISettings;
 }
 
 export interface AiModel {
@@ -252,12 +270,17 @@ export interface ErrorExplanationRequest {
   type: 'event' | 'issue' | 'text';
   id?: string;
   content?: string;
-  context?: Record<string, any>;
+  context?: ErrorContext;
 }
 
 export interface ErrorExplanationResponse {
   explanation: string;
   model?: string;
   processing_time?: number;
-  debug?: Record<string, any>;
+  debug?: {
+    prompt?: string;
+    tokens_used?: number;
+    raw_response?: string;
+    [key: string]: unknown;
+  };
 }

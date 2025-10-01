@@ -8,10 +8,11 @@ import logging
 from typing import Optional, Dict, Any
 import httpx
 
-from ..models.config import DexterConfigUpdate # Import needed model
+from ..models.config import DexterConfigUpdate  # Import needed model
 from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
+
 
 class ConfigService:
     def __init__(self):
@@ -31,8 +32,15 @@ class ConfigService:
             logger.info(f"Config updated: project_slug='{self._project_slug}'")
         return self.get_config()
 
+    def get_sentry_auth_token(self) -> Optional[str]:
+        """Return the configured Sentry API token from settings or internal state."""
+        # Use the centralized token getter with fallback logic
+        return settings.get_sentry_token()
+
     async def check_status(self) -> Dict[str, Any]:
-        sentry_ok = bool(settings.sentry_api_token and settings.sentry_api_token != "YOUR_SENTRY_API_TOKEN")
+        sentry_ok = bool(
+            self.get_sentry_auth_token() and self.get_sentry_auth_token() != "YOUR_SENTRY_API_TOKEN"
+        )
         ollama_status = "Not Configured"
         ollama_model = None
         if settings.ollama_base_url:
@@ -50,8 +58,10 @@ class ConfigService:
                 ollama_status = "Configured (Offline)"
                 logger.warning(f"Ollama connection check failed: {e}")
             except Exception as e:
-                 ollama_status = f"Error ({type(e).__name__})"
-                 logger.error(f"Unexpected error during Ollama status check: {e}", exc_info=False) # Don't log full trace usually
+                ollama_status = f"Error ({type(e).__name__})"
+                logger.error(
+                    f"Unexpected error during Ollama status check: {e}", exc_info=False
+                )  # Don't log full trace usually
 
         return {
             "sentry_api_token_configured": sentry_ok,
@@ -59,6 +69,9 @@ class ConfigService:
             "ollama_model_configured": ollama_model,
         }
 
+
 config_service_instance = ConfigService()
+
+
 def get_config_service() -> ConfigService:
     return config_service_instance

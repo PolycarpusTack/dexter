@@ -21,6 +21,8 @@ import analyzersApi from './analyzersApi';
 import configApi from './configApi';
 import templateApi from './templateApi';
 import metricsApi from './metricsApi';
+import n1QueryApi from './n1QueryApi';
+import memoryLeakApi from './memoryLeakApi';
 
 // API hooks
 import { 
@@ -91,6 +93,26 @@ import {
   useOverallMetrics,
   useRecordUsage
 } from './hooks/useMetrics';
+
+import {
+  useAnalyzeN1Query,
+  useN1QueryAnalysis,
+  useN1QueryDataAnalysis,
+  useExportN1QuerySVG,
+  useN1QueryWorkflow,
+  useBatchN1QueryAnalysis
+} from './hooks/useN1Query';
+
+import {
+  useAnalyzeMemoryLeak,
+  useMemoryLeakAnalysis,
+  useMemoryLeakDataAnalysis,
+  useUploadHeapSnapshot,
+  useMemoryLeakCapabilities,
+  useReanalyzeMemoryLeak,
+  useExportMemoryLeakSVG,
+  useMemoryLeakWorkflow
+} from './hooks/useMemoryLeak';
 
 // Types
 import {
@@ -163,7 +185,9 @@ export const api = {
   analyzers: analyzersApi,
   config: configApi,
   templates: templateApi,
-  metrics: metricsApi
+  metrics: metricsApi,
+  n1Query: n1QueryApi,
+  memoryLeak: memoryLeakApi
 };
 
 // Export all API hooks
@@ -227,7 +251,25 @@ export const hooks = {
   useProviderMetrics,
   useModelComparison,
   useOverallMetrics,
-  useRecordUsage
+  useRecordUsage,
+  
+  // N+1 Query hooks
+  useAnalyzeN1Query,
+  useN1QueryAnalysis,
+  useN1QueryDataAnalysis,
+  useExportN1QuerySVG,
+  useN1QueryWorkflow,
+  useBatchN1QueryAnalysis,
+  
+  // Memory Leak hooks
+  useAnalyzeMemoryLeak,
+  useMemoryLeakAnalysis,
+  useMemoryLeakDataAnalysis,
+  useUploadHeapSnapshot,
+  useMemoryLeakCapabilities,
+  useReanalyzeMemoryLeak,
+  useExportMemoryLeakSVG,
+  useMemoryLeakWorkflow
 };
 
 // Export utilities
@@ -355,6 +397,14 @@ export {
 
 // Export config
 export { apiConfig };
+
+// Define PathResolutionError if not imported
+class PathResolutionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PathResolutionError';
+  }
+}
 
 // Export classes
 export { EnhancedApiClient, PathResolutionError };

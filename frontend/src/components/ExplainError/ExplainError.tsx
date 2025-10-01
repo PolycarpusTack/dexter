@@ -58,7 +58,7 @@ import AccessibleIcon from '../UI/AccessibleIcon';
 import ModelSelector from '../ModelSelector/ModelSelector';
 import ProgressIndicator from '../UI/ProgressIndicator';
 import ErrorContext from './ErrorContext';
-import useAppStore from '../../store/appStore';
+import { useAIStore } from '../../store';
 import { EventDetails } from '../../types/errorHandling';
 
 // Destructure hooks for better readability
@@ -81,7 +81,7 @@ const ExplainError: React.FC<ExplainErrorProps> = ({ eventDetails }) => {
   const [errorContextVisible, setErrorContextVisible] = useState<boolean>(false);
   
   // Get active model from app store
-  const { activeAIModel } = useAppStore(state => ({
+  const { activeAIModel } = useAIStore(state => ({
     activeAIModel: state.activeAIModel
   }));
   

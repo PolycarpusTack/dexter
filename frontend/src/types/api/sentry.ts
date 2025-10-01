@@ -2,14 +2,9 @@
 // This file contains custom type definitions that override or extend
 // the auto-generated types in sentry-generated.ts
 
-// Re-export types from deadlock.ts that are actually Sentry types
-export type { 
-  SentryEvent, 
-  EventTag, 
-  EventException, 
-  EventEntry, 
-  EventContext 
-} from '../deadlock';
+// Re-export types from the correct sources
+export type { SentryEvent } from './sentry-generated';
+export type { EventTag, EventContexts as EventContext } from '../events';
 
 // Custom overrides for specific Sentry types that need extra properties
 export interface SentryCustomEvent extends Omit<import('./sentry-generated').SentryEvent, 'metadata'> {

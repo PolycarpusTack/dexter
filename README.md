@@ -1,8 +1,9 @@
 # Dexter - Sentry Observability Companion
 
-[![Backend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=backend)](https://codecov.io/gh/your-org/dexter)
-[![Frontend Coverage](https://codecov.io/gh/your-org/dexter/branch/main/graph/badge.svg?flag=frontend)](https://codecov.io/gh/your-org/dexter)
-[![CI Tests](https://github.com/your-org/dexter/actions/workflows/test.yml/badge.svg)](https://github.com/your-org/dexter/actions/workflows/test.yml)
+[![Docker Build](https://img.shields.io/badge/docker-ready-blue?logo=docker)](docker-compose.yml)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-green?logo=fastapi)](backend/pyproject.toml)
+[![React](https://img.shields.io/badge/React-18.3+-blue?logo=react)](frontend/package.json)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Dexter is an intelligent companion tool designed to enhance your Sentry.io experience. It provides a user-friendly interface to explore Sentry issues, leverage AI for error explanations, and perform enhanced error analysis, making observability more accessible and actionable across different roles.
 
@@ -203,12 +204,46 @@ You need to have three main components running simultaneously: Ollama, the Dexte
         ```bash
         npm run dev
         ```
-    * Vite will compile the frontend and start a dev server, usually on `http://localhost:5173`. It will show the URL in the terminal.
+    * Vite will compile the frontend and start a dev server, usually on `http://localhost:5175`. It will show the URL in the terminal.
     * Keep this terminal window open.
 
 4.  **Access Dexter:**
     * Open your web browser (e.g., Chrome, Firefox, Edge).
-    * Navigate to the frontend URL (usually `http://localhost:5173`).
+    * Navigate to the frontend URL (usually `http://localhost:5175`).
+
+## 🐳 Docker Deployment
+
+For a simpler setup or production deployment, use Docker:
+
+1. **Quick start with Docker:**
+   ```bash
+   cp backend/.env.example backend/.env
+   # Edit backend/.env with your Sentry API token and other settings
+   docker-compose up --build
+   ```
+
+2. **Access the application:**
+   - Frontend: http://localhost
+   - Backend API: http://localhost:8000
+   - API docs: http://localhost:8000/docs
+
+For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
+
+## 🧪 Testing
+
+### Backend Tests
+```bash
+cd backend
+poetry run pytest -v
+```
+
+### Frontend Tests
+```bash
+cd frontend
+npm test
+```
+
+**Note**: Backend tests require Poetry. If you get import errors, use `poetry run pytest -v`.
 
 ## 📖 Basic Usage Guide
 

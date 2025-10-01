@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../api/apiClient';
+import { apiClient } from '../api';
 import { showSuccessNotification, showErrorNotification } from '../utils/errorHandling';
 import { useAuditLog } from './useAuditLog';
 

@@ -51,7 +51,32 @@ export const useOllamaModels = (
 ) => {
   return useQuery({
     queryKey: aiKeys.ollamaModels(),
-    queryFn: fetchModelsList,
+    queryFn: async () => {
+      try {
+        const models = await fetchModelsList();
+        // Return the expected format with models array
+        return {
+          models: Array.isArray(models) ? models : [],
+          groups: [],
+          fallback_chains: [],
+          providers: [],
+          status: {},
+          current_model: '',
+          current_fallback_chain: ''
+        } as ModelsResponse;
+      } catch (error) {
+        console.error('Error fetching models:', error);
+        return {
+          models: [],
+          groups: [],
+          fallback_chains: [],
+          providers: [],
+          status: {},
+          current_model: '',
+          current_fallback_chain: ''
+        } as ModelsResponse;
+      }
+    },
     // Refresh every 30 seconds to update download status by default
     refetchInterval: options?.refetchInterval ?? 30000,
     // Consider stale after 15 seconds by default

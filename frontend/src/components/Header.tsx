@@ -10,19 +10,19 @@ import {
   IconHelpCircle, 
   IconMoon,
   IconBell,
-  IconTerminal
+  IconTerminal,
+  IconRocket
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import useAppStore from '../store/appStore';
+import { useAIStore } from '../store';
+import { ConfigStatusIndicator } from './ConfigStatusIndicator';
 
 export function Header() {
   const navigate = useNavigate();
-  const { activeAIModel } = useAppStore();
+  const { activeAIModel } = useAIStore();
   
   const openSettings = () => {
-    if (window.openSentrySettings) {
-      window.openSentrySettings();
-    }
+    navigate('/config');
   };
   
   const handleKeyboardHelp = () => {
@@ -69,6 +69,9 @@ export function Header() {
         
         {/* Right-side actions */}
         <Group gap="xs">
+          {/* Configuration status indicator */}
+          <ConfigStatusIndicator showDetails={true} />
+          
           {/* AI Model status indicator */}
           {activeAIModel && (
             <Tooltip label="Current AI model" position="bottom">
@@ -130,11 +133,7 @@ export function Header() {
               
               <Menu.Item 
                 leftSection={<IconBrain size={16} />}
-                onClick={() => {
-                  if (window.openAIModelSettings) {
-                    window.openAIModelSettings();
-                  }
-                }}
+                onClick={() => navigate('/config?tab=ai')}
               >
                 AI Model Settings
               </Menu.Item>
@@ -148,6 +147,19 @@ export function Header() {
                 onClick={() => navigate('/docs')}
               >
                 Help & Documentation
+              </Menu.Item>
+              
+              <Menu.Item
+                leftSection={<IconRocket size={16} />}
+                onClick={() => {
+                  // Trigger onboarding reset
+                  localStorage.removeItem('dexter_onboarding_completed');
+                  localStorage.removeItem('dexter_onboarding_dismissed');
+                  localStorage.removeItem('dexter_onboarding_state');
+                  window.location.reload();
+                }}
+              >
+                Restart Onboarding
               </Menu.Item>
               
               <Menu.Item
