@@ -10,6 +10,7 @@ import httpx
 
 from ..models.config import DexterConfigUpdate  # Import needed model
 from app.core.settings import settings
+from app.constants import OLLAMA_STATUS_CHECK_TIMEOUT, HTTP_BAD_REQUEST
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +46,10 @@ class ConfigService:
         ollama_model = None
         if settings.ollama_base_url:
             try:
-                async with httpx.AsyncClient(timeout=5.0) as client:
+                async with httpx.AsyncClient(timeout=OLLAMA_STATUS_CHECK_TIMEOUT) as client:
                     # Check Ollama root or /api/tags to verify model presence later?
                     response = await client.get(settings.ollama_base_url)
-                    if response.status_code < 400:
+                    if response.status_code < HTTP_BAD_REQUEST:
                         ollama_status = "OK"
                         ollama_model = settings.ollama_model
                     else:

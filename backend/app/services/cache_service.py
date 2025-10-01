@@ -12,7 +12,7 @@ import logging
 from fastapi import Request, Response
 from starlette.responses import JSONResponse
 
-from fastapi import Request
+from app.constants import REDIS_CONNECT_TIMEOUT, REDIS_SOCKET_TIMEOUT, REDIS_HEALTH_CHECK_INTERVAL
 
 logger = logging.getLogger(__name__)
 
@@ -85,10 +85,10 @@ class CacheService:
                 self.redis_client = redis.Redis.from_url(
                     redis_url,
                     decode_responses=True,
-                    socket_connect_timeout=5,
-                    socket_timeout=5,
+                    socket_connect_timeout=REDIS_CONNECT_TIMEOUT,
+                    socket_timeout=REDIS_SOCKET_TIMEOUT,
                     retry_on_timeout=True,
-                    health_check_interval=30,
+                    health_check_interval=REDIS_HEALTH_CHECK_INTERVAL,
                 )
                 # Test connection
                 self.redis_client.ping()

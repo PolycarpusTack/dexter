@@ -5,6 +5,7 @@ import { useAuthStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 import { hooks } from '../api/unified';
 import { useRealtimeUpdates } from '../hooks/useRealtimeUpdates';
+import { AUTOSAVE_INTERVAL_5_MINUTES } from '../constants/timing';
 
 const { useCheckConfig } = hooks;
 
@@ -50,7 +51,7 @@ export function ConfigStatusIndicator({ showDetails = true }: ConfigStatusIndica
       if (organizationSlug && projectSlug) {
         checkConnection();
       }
-    }, 5 * 60 * 1000); // 5 minutes
+    }, AUTOSAVE_INTERVAL_5_MINUTES);
     
     return () => clearInterval(interval);
   }, [organizationSlug, projectSlug]);
