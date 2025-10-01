@@ -69,3 +69,28 @@ MAX_BATCH_SIZE = 100
 # Monitoring
 METRICS_COLLECTION_INTERVAL = 60  # seconds
 HEALTH_CHECK_INTERVAL = 30  # seconds
+
+# Confidence Thresholds (0.0 - 1.0)
+CONFIDENCE_HIGH = 0.9  # High confidence threshold
+CONFIDENCE_MEDIUM_HIGH = 0.7  # Medium-high confidence threshold
+CONFIDENCE_MEDIUM = 0.5  # Medium confidence threshold
+CONFIDENCE_LOW = 0.3  # Low confidence threshold
+
+# Confidence Increments (for scoring)
+CONFIDENCE_INCREMENT_HIGH = 0.2
+CONFIDENCE_INCREMENT_MEDIUM = 0.1
+CONFIDENCE_INCREMENT_LOW = 0.05
+
+# Analysis Thresholds
+ASYNC_INDICATOR_THRESHOLD = 3  # Minimum async operations to trigger analysis
+ERROR_RATE_THRESHOLD = 0.1  # 10% error rate threshold
+GROWTH_RATE_HIGH_CONFIDENCE = 100  # Objects per minute for high confidence leak detection
+DURATION_HIGH_CONFIDENCE = 30  # Minutes for high confidence leak detection
+DATA_VOLUME_CONFIDENCE_BASELINE = 1000  # Sample size for high confidence statistics
+
+# Cache Limits
+MAX_CACHE_SIZE = 1000  # Maximum number of cache entries
+MAX_USER_PRESENCE = 1000  # Maximum user presence entries
+
+# Test Timeout
+QUICK_TEST_TIMEOUT = 10.0  # Quick timeout for connection tests (seconds)
