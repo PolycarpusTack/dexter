@@ -1,14 +1,16 @@
 """Debug router for development"""
 
+from typing import Any, Dict, List
+
 from fastapi import APIRouter, Request
 
 router = APIRouter()
 
 
 @router.get("/routes")
-async def list_routes(request: Request):
+async def list_routes(request: Request) -> Dict[str, List[Dict[str, Any]]]:
     """List all registered routes"""
-    routes = []
+    routes: List[Dict[str, Any]] = []
     for route in request.app.routes:
         if hasattr(route, "path") and hasattr(route, "methods"):
             routes.append(

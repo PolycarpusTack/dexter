@@ -24,7 +24,7 @@ def add_cors_headers(response: JSONResponse) -> JSONResponse:
 
 
 @router.options("/config")
-async def options_config():
+async def options_config() -> JSONResponse:
     """Handle CORS preflight requests for config endpoint"""
     response = JSONResponse(content={"detail": "CORS preflight request handled"})
     return add_cors_headers(response)
@@ -33,7 +33,7 @@ async def options_config():
 @router.get("/config", response_model=DexterConfigResponse)
 async def get_current_config(
     request: Request, config_service: ConfigService = Depends(get_config_service)
-):
+) -> DexterConfigResponse:
     """Get current Dexter configuration"""
     result = config_service.get_config()
     return result
@@ -44,14 +44,14 @@ async def update_dexter_config(
     request: Request,
     config_update: DexterConfigUpdate,
     config_service: ConfigService = Depends(get_config_service),
-):
+) -> DexterConfigResponse:
     """Update Dexter configuration"""
     result = config_service.update_config(config_update)
     return result
 
 
 @router.options("/status")
-async def options_status():
+async def options_status() -> JSONResponse:
     """Handle CORS preflight requests for status endpoint"""
     response = JSONResponse(content={"detail": "CORS preflight request handled"})
     return add_cors_headers(response)
@@ -60,7 +60,7 @@ async def options_status():
 @router.get("/status", response_model=DexterStatusResponse)
 async def get_backend_status(
     request: Request, config_service: ConfigService = Depends(get_config_service)
-):
+) -> DexterStatusResponse:
     """Get Dexter backend status"""
     result = await config_service.check_status()
     return result
