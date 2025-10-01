@@ -157,8 +157,15 @@ class AppSettings(BaseSettings):
         return v
 
     @field_validator("CORS_ORIGINS", mode="before")
-    def parse_cors_origins(cls, v):
-        """Parse CORS origins from various formats."""
+    def parse_cors_origins(cls, v: Union[str, List[str]]) -> Union[str, List[str]]:
+        """Parse CORS origins from various formats.
+
+        Args:
+            v: CORS origins as string or list
+
+        Returns:
+            Parsed CORS origins
+        """
         if isinstance(v, str):
             # Try to parse as JSON array first
             if v.startswith("[") and v.endswith("]"):
@@ -173,8 +180,16 @@ class AppSettings(BaseSettings):
         return v
 
     @field_validator("CORS_ORIGINS")
-    def validate_cors_origins(cls, v: List[str], info_or_values) -> List[str]:
-        """Warn about wildcard CORS in production."""
+    def validate_cors_origins(cls, v: List[str], info_or_values: Any) -> List[str]:
+        """Warn about wildcard CORS in production.
+
+        Args:
+            v: List of CORS origins
+            info_or_values: Pydantic validation context
+
+        Returns:
+            Validated CORS origins
+        """
         # Handle different parameter structure between Pydantic v1 and v2
         if PYDANTIC_V2:
             debug = info_or_values.data.get("DEBUG", False)

@@ -1,9 +1,9 @@
 import traceback
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -129,8 +129,17 @@ class ErrorHandler:
 
     def format_error_response(
         self, error: Exception, request: Request, include_stack: bool = False
-    ) -> Dict[str, Any]:
-        """Format error into a consistent response structure."""
+    ) -> Tuple[Dict[str, Any], int]:
+        """Format error into a consistent response structure.
+
+        Args:
+            error: Exception to format
+            request: FastAPI request object
+            include_stack: Whether to include stack trace in response
+
+        Returns:
+            Tuple of (error response dict, status code)
+        """
         category = self.categorize_error(error)
         error_code = self.get_error_code(error)
 
@@ -194,8 +203,14 @@ class ErrorHandler:
         # Default message for unknown errors
         return "An unexpected error occurred. Please try again later."
 
-    def log_error(self, error: Exception, request: Request, status_code: int):
-        """Log error with context for debugging using a persistent logger."""
+    def log_error(self, error: Exception, request: Request, status_code: int) -> None:
+        """Log error with context for debugging using a persistent logger.
+
+        Args:
+            error: Exception to log
+            request: FastAPI request object
+            status_code: HTTP status code
+        """
         # Create structured error data
         error_data = {
             "timestamp": datetime.utcnow().isoformat(),
@@ -258,7 +273,7 @@ class ErrorHandler:
             :limit
         ]
 
-    def clear_recent_errors(self):
+    def clear_recent_errors(self) -> None:
         """Clear the in-memory error cache."""
         self.recent_errors = []
 
@@ -269,8 +284,16 @@ error_handler = ErrorHandler()
 # Middleware function
 
 
-async def error_handling_middleware(request: Request, call_next):
-    """Middleware to catch and handle all errors."""
+async def error_handling_middleware(request: Request, call_next: Callable) -> Response:
+    """Middleware to catch and handle all errors.
+
+    Args:
+        request: FastAPI request object
+        call_next: Next middleware in chain
+
+    Returns:
+        Response object
+    """
     try:
         response = await call_next(request)
         return response
@@ -283,18 +306,42 @@ async def error_handling_middleware(request: Request, call_next):
 # Exception handlers for FastAPI
 
 
-async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handle HTTPException."""
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Handle HTTPException.
+
+    Args:
+        request: FastAPI request object
+        exc: HTTP exception
+
+    Returns:
+        JSON response
+    """
     return await error_handler.handle_error(request, exc)
 
 
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle RequestValidationError."""
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Handle RequestValidationError.
+
+    Args:
+        request: FastAPI request object
+        exc: Validation exception
+
+    Returns:
+        JSON response
+    """
     return await error_handler.handle_error(request, exc)
 
 
-async def generic_exception_handler(request: Request, exc: Exception):
-    """Handle all other exceptions."""
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Handle all other exceptions.
+
+    Args:
+        request: FastAPI request object
+        exc: Exception
+
+    Returns:
+        JSON response
+    """
     return await error_handler.handle_error(request, exc)
 
 
@@ -323,8 +370,16 @@ def create_api_error(
 # Common error creators
 
 
-def not_found_error(resource: str, identifier: str = None) -> APIError:
-    """Create a not found error."""
+def not_found_error(resource: str, identifier: Optional[str] = None) -> APIError:
+    """Create a not found error.
+
+    Args:
+        resource: Resource type that was not found
+        identifier: Optional resource identifier
+
+    Returns:
+        APIError instance
+    """
     message = f"{resource} not found"
     if identifier:
         message = f"{resource} with ID '{identifier}' not found"
@@ -339,7 +394,15 @@ def not_found_error(resource: str, identifier: str = None) -> APIError:
 
 
 def validation_error(field: str, message: str) -> APIError:
-    """Create a validation error."""
+    """Create a validation error.
+
+    Args:
+        field: Field that failed validation
+        message: Validation error message
+
+    Returns:
+        APIError instance
+    """
     return create_api_error(
         message=f"Validation error: {message}",
         status_code=422,
@@ -350,7 +413,15 @@ def validation_error(field: str, message: str) -> APIError:
 
 
 def permission_error(action: str, resource: str) -> APIError:
-    """Create a permission error."""
+    """Create a permission error.
+
+    Args:
+        action: Action that was attempted
+        resource: Resource that access was denied to
+
+    Returns:
+        APIError instance
+    """
     return create_api_error(
         message=f"You don't have permission to {action} {resource}",
         status_code=403,
@@ -361,7 +432,14 @@ def permission_error(action: str, resource: str) -> APIError:
 
 
 def authentication_error(message: str = "Authentication failed") -> APIError:
-    """Create an authentication error."""
+    """Create an authentication error.
+
+    Args:
+        message: Error message
+
+    Returns:
+        APIError instance
+    """
     return create_api_error(
         message=message,
         status_code=401,
@@ -370,8 +448,16 @@ def authentication_error(message: str = "Authentication failed") -> APIError:
     )
 
 
-def server_error(message: str = None, retryable: bool = True) -> APIError:
-    """Create a server error."""
+def server_error(message: Optional[str] = None, retryable: bool = True) -> APIError:
+    """Create a server error.
+
+    Args:
+        message: Optional error message
+        retryable: Whether the error is retryable
+
+    Returns:
+        APIError instance
+    """
     return create_api_error(
         message=message or "An internal server error occurred",
         status_code=500,

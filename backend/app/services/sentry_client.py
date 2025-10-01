@@ -1,6 +1,6 @@
 import httpx
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 from ..utils.path_resolver import get_full_url
 from ..core.settings import settings
 from ..models.sentry import SentryIssue, SentryEvent
@@ -8,10 +8,10 @@ from ..models.sentry import SentryIssue, SentryEvent
 logger = logging.getLogger(__name__)
 
 # Global client instance
-_sentry_client = None
+_sentry_client: Optional["SentryApiClient"] = None
 
 
-def get_sentry_client():
+def get_sentry_client() -> "SentryApiClient":
     """Get the global SentryApiClient instance.
 
     Returns:
@@ -97,7 +97,9 @@ class SentryApiClient:
 
     # Issue-related methods
 
-    async def get_issues(self, org_slug: str, project_slug: str, **params) -> List[SentryIssue]:
+    async def get_issues(
+        self, org_slug: str, project_slug: str, **params: Any
+    ) -> List[SentryIssue]:
         """Get issues for a project.
 
         Args:
@@ -140,7 +142,7 @@ class SentryApiClient:
         assignedTo: Optional[str] = None,
         hasSeen: Optional[bool] = None,
         isBookmarked: Optional[bool] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> SentryIssue:
         """Update an issue.
 
@@ -174,7 +176,7 @@ class SentryApiClient:
         return SentryIssue(**response)
 
     async def bulk_update_issues(
-        self, issue_ids: List[str], org_slug: str, **update_params
+        self, issue_ids: List[str], org_slug: str, **update_params: Any
     ) -> Dict[str, Any]:
         """Bulk update multiple issues.
 
@@ -196,7 +198,7 @@ class SentryApiClient:
 
     # Event-related methods
 
-    async def get_issue_events(self, issue_id: str, **params) -> List[Dict[str, Any]]:
+    async def get_issue_events(self, issue_id: str, **params: Any) -> List[Dict[str, Any]]:
         """Get events for a specific issue.
 
         Args:
@@ -734,6 +736,6 @@ class SentryApiClient:
 
         return await self._request("POST", url, data=query_data)
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the HTTP client."""
         await self.client.aclose()

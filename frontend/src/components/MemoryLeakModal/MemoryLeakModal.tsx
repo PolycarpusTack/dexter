@@ -435,3 +435,4 @@ export const MemoryLeakModal: React.FC<MemoryLeakModalProps> = ({
       )}
     </Modal>
   );
+};

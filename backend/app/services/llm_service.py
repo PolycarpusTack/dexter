@@ -1,7 +1,7 @@
 import httpx
 from fastapi import HTTPException, status
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 import json
 from app.core.settings import settings
 from ..models.ai import ModelStatus, OllamaModel
@@ -26,7 +26,14 @@ RECOMMENDED_MODELS = [
 
 
 class LLMService:
-    def __init__(self, client: httpx.AsyncClient):
+    """LLM service for interacting with Ollama API."""
+
+    def __init__(self, client: httpx.AsyncClient) -> None:
+        """Initialize the LLM service.
+
+        Args:
+            client: Async HTTP client
+        """
         self.client = client
         self.base_url = settings.ollama_base_url.rstrip("/")
         self.model = settings.ollama_model
@@ -168,7 +175,14 @@ class LLMService:
             }
 
     def _estimate_download_time(self, model_name: str) -> str:
-        """Provide a rough estimate of download time based on model name."""
+        """Provide a rough estimate of download time based on model name.
+
+        Args:
+            model_name: Name of the model
+
+        Returns:
+            Estimated download time as string
+        """
         # These are very rough estimates and will vary greatly by connection speed
         if "mixtral" in model_name:
             return "30-60 minutes"
@@ -182,11 +196,16 @@ class LLMService:
             return "10-60 minutes"
 
     async def set_active_model(self, model_name: str) -> Dict[str, Any]:
-        """
-        Change the active model for explanations.
+        """Change the active model for explanations.
 
         In a real production app, this would update a database setting.
         For this MVP, we're just updating the in-memory value.
+
+        Args:
+            model_name: Name of the model to set as active
+
+        Returns:
+            Dictionary with status and model information
         """
         logger.info(f"Changing active model from {self.model} to {model_name}")
         self.model = model_name
@@ -197,7 +216,14 @@ class LLMService:
         }
 
     def _extract_error_context(self, event_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract relevant error context from the event data"""
+        """Extract relevant error context from the event data.
+
+        Args:
+            event_data: Event data from Sentry
+
+        Returns:
+            Dictionary with extracted error context
+        """
         context = {
             "title": event_data.get("title", "Unknown Error"),
             "level": event_data.get("level", "error"),
@@ -356,7 +382,14 @@ class LLMService:
         return context
 
     def _create_prompt(self, event_data: Dict[str, Any]) -> str:
-        """Create a more detailed and structured prompt for the LLM"""
+        """Create a more detailed and structured prompt for the LLM.
+
+        Args:
+            event_data: Event data from Sentry
+
+        Returns:
+            Formatted prompt string
+        """
         context = self._extract_error_context(event_data)
 
         # Create a structured prompt
@@ -452,7 +485,18 @@ class LLMService:
     async def get_explanation(
         self, event_data: Dict[str, Any], override_model: Optional[str] = None
     ) -> str:
-        """Sends event data to the LLM via Ollama API and returns the explanation."""
+        """Sends event data to the LLM via Ollama API and returns the explanation.
+
+        Args:
+            event_data: Event data from Sentry
+            override_model: Optional model name to override the default
+
+        Returns:
+            Explanation text from the LLM
+
+        Raises:
+            HTTPException: If the LLM request fails
+        """
         # Use override model if provided
         model_to_use = override_model if override_model else self.model
 
@@ -575,7 +619,15 @@ class LLMService:
             )
 
     async def get_fallback_explanation(self, error_type: str, error_message: str) -> str:
-        """Provides a generic explanation when Ollama is unavailable"""
+        """Provides a generic explanation when Ollama is unavailable.
+
+        Args:
+            error_type: Type of error
+            error_message: Error message
+
+        Returns:
+            Generic explanation text
+        """
         # Dictionary of common error types and generic explanations
         common_errors = {
             "SyntaxError": "This is a syntax error, which means there's a mistake in the code structure like a missing bracket, comma, or incorrect indentation. These errors happen before the code runs and need to be fixed by correcting the syntax.",

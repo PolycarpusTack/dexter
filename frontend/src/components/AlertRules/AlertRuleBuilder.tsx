@@ -280,13 +280,6 @@ export function AlertRuleBuilder({
         message,
         color: 'red',
       });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save alert rule';
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
     }
   };
 

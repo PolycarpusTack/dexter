@@ -4,13 +4,13 @@ Provides common dependencies for use with FastAPI's dependency injection system.
 """
 
 import logging
-from typing import Optional
+from typing import AsyncGenerator, Dict, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.settings import settings
-from app.services.cache_service import get_cache_service as _get_cache_service
+from app.services.cache_service import CacheService, get_cache_service as _get_cache_service
 from app.services.sentry_client import SentryApiClient
 
 # Configure logging
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 
-async def get_sentry_client():
+async def get_sentry_client() -> AsyncGenerator[SentryApiClient, None]:
     """Dependency to get a Sentry API client."""
     from app.core.settings import settings
 
@@ -78,5 +78,13 @@ async def get_current_user(
 
 
 # Re-export cache service dependency for tests/integration
-def get_cache_service(request: Request):
+def get_cache_service(request: Request) -> CacheService:
+    """Get the cache service dependency.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        CacheService instance
+    """
     return _get_cache_service(request)
