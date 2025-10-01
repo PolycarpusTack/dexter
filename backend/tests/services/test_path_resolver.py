@@ -1,7 +1,8 @@
 # Tests for path resolver service
 import pytest
 from app.services.path_resolver_service import PathResolverService, path_resolver
-from app.config.api.path_mappings import ApiEndpoint, HttpMethod
+from app.config.api.path_mappings import ApiEndpoint
+from app.config.api.models import HttpMethod
 
 
 class TestPathResolverService:

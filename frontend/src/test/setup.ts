@@ -1,18 +1,53 @@
-// Test setup file
-import '@testing-library/jest-dom'
-import { beforeAll, afterEach, afterAll } from 'vitest'
-import { cleanup } from '@testing-library/react'
-import { server } from './mocks/server'
+// File: frontend/src/test/setup.ts
 
-// Establish API mocking before all tests.
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+/**
+ * Global test setup for Vitest
+ *
+ * This file runs before all tests and sets up:
+ * - Testing Library matchers
+ * - Mock Service Worker (MSW) for API mocking
+ * - Global test utilities
+ */
 
-// Reset any request handlers that we may add during the tests,
-// so they don't affect other tests.
+import { expect, afterEach, beforeAll, afterAll } from 'vitest';
+import { cleanup } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+
+// Cleanup after each test case (e.g., clearing jsdom)
 afterEach(() => {
-  cleanup()
-  server.resetHandlers()
-})
+  cleanup();
+});
 
-// Clean up after the tests are finished.
-afterAll(() => server.close())
+// Mock window.matchMedia (required for many UI libraries)
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {}, // deprecated
+    removeListener: () => {}, // deprecated
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => true,
+  }),
+});
+
+// Mock IntersectionObserver (required for virtualized lists)
+global.IntersectionObserver = class IntersectionObserver {
+  constructor() {}
+  disconnect() {}
+  observe() {}
+  takeRecords() {
+    return [];
+  }
+  unobserve() {}
+} as any;
+
+// Mock ResizeObserver (required for responsive components)
+global.ResizeObserver = class ResizeObserver {
+  constructor() {}
+  disconnect() {}
+  observe() {}
+  unobserve() {}
+} as any;

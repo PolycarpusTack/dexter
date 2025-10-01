@@ -283,3 +283,77 @@ def parse_promise_rejection(event_data: Dict[str, Any]) -> Optional[PromiseRejec
     parser = PromiseRejectionParser()
     return parser.parse(event_data)
 
+
+def extract_promise_patterns(event_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extract promise rejection patterns from event data.
+
+    This function analyzes promise rejection events to identify common patterns
+    and anti-patterns in promise usage.
+
+    Args:
+        event_data: Raw Sentry event data
+
+    Returns:
+        Dictionary containing identified patterns and metadata
+    """
+    rejection_info = parse_promise_rejection(event_data)
+
+    if not rejection_info:
+        return {
+            "has_rejection": False,
+            "patterns": [],
+            "anti_patterns": []
+        }
+
+    patterns = []
+    anti_patterns = []
+
+    # Check for common patterns
+    if rejection_info.async_chain and len(rejection_info.async_chain) > 3:
+        patterns.append({
+            "name": "deep_async_chain",
+            "description": "Deep async/await chain detected",
+            "severity": "medium",
+            "chain_depth": len(rejection_info.async_chain)
+        })
+
+    # Check for anti-patterns
+    if rejection_info.rejection_type == "unhandled":
+        anti_patterns.append({
+            "name": "unhandled_rejection",
+            "description": "Promise rejection was not caught",
+            "severity": "high"
+        })
+
+    if rejection_info.rejection_type == "handled_late":
+        anti_patterns.append({
+            "name": "late_error_handling",
+            "description": "Promise rejection was caught after initial rejection",
+            "severity": "medium"
+        })
+
+    # Analyze async context
+    if rejection_info.async_context:
+        if rejection_info.async_context.get("promise_chain_depth", 0) > 5:
+            anti_patterns.append({
+                "name": "deep_promise_chain",
+                "description": "Excessive promise chaining detected",
+                "severity": "low",
+                "depth": rejection_info.async_context["promise_chain_depth"]
+            })
+
+    return {
+        "has_rejection": True,
+        "rejection_type": rejection_info.rejection_type,
+        "error_type": rejection_info.error_type,
+        "framework": rejection_info.framework,
+        "component": rejection_info.component,
+        "patterns": patterns,
+        "anti_patterns": anti_patterns,
+        "file_path": rejection_info.file_path,
+        "line_number": rejection_info.line_number,
+        "async_chain": rejection_info.async_chain or [],
+        "async_context": rejection_info.async_context or {}
+    }
+
