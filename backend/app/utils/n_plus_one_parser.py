@@ -5,7 +5,6 @@ This module extracts query information from Sentry events to identify and analyz
 N+1 query patterns, calculate performance impact, and suggest optimizations.
 """
 
-import re
 import time
 import logging
 from typing import Dict, List, Any, Optional

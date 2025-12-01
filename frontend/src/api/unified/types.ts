@@ -2,14 +2,9 @@
  * Types for the unified API client
  */
 
-import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import {
   AlertCondition,
   AlertAction,
-  EventEntry,
-  EventUser,
-  EventContext,
-  BreadcrumbData,
   ProgressEvent,
   ApiMetadata,
   ApiErrorDetails,
@@ -151,7 +146,8 @@ export interface ApiCallOptions {
   signal?: AbortSignal;
   cache?: boolean;
   cacheTime?: number;
-  retry?: boolean;
+  bypassCache?: boolean;
+  retry?: boolean | { maxRetries?: number; retryDelay?: number };
   retryCount?: number;
   retryDelay?: number;
   validateStatus?: (status: number) => boolean;

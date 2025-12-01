@@ -52,7 +52,10 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+**/.pytest_cache/
 cover/
+pytest.ini
+temp_pytest.ini
 
 # Translations
 *.mo
@@ -64,6 +67,13 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media/ # Typically user uploaded files
+
+# Application logs (comprehensive)
+logs/
+**/logs/
+backend/logs/
+*.log
+*.log.*
 
 # Flask stuff:
 instance/
@@ -112,6 +122,10 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Database migration configs (use .example versions)
+alembic.ini
+!alembic.ini.example
 
 # Spyder project settings
 .spyderproject
@@ -173,3 +187,49 @@ build/ # Sometimes used by CRA
 !.env.example
 
 **/.claude/settings.local.json
+
+# =====================================
+# Project-Specific (Dexter)
+# =====================================
+
+# Historical documentation (use docs/archive/)
+*_BACKLOG.md
+*_COMPLETE.md
+*_SUMMARY.md
+*_STATUS*.md
+*_REPORT.md
+*_PROGRESS.md
+*_GUIDE.md
+*_PLAN.md
+*_INDEX.md
+*_ANALYSIS.md
+*_ANNOUNCEMENT.md
+*_CHECKLIST.md
+*_EVALUATION*.md
+*_FIX*.md
+*_INSTRUCTIONS.md
+*_MIGRATION*.md
+*EPIC_*.md
+*PHASE*.md
+*DEBT*.md
+*TECHNICAL_DEBT*.md
+
+# Legacy cleanup scripts
+cleanup*.sh
+cleanup*.bat
+cleanup*.ps1
+fix_*.py
+fix_*.sh
+fix_*.bat
+archive-duplicates.sh
+cleanup-project.sh
+
+# Test artifacts
+test_results*.txt
+test_*.log
+
+# Archive directory (already archived)
+archive/
+
+# External repos (reference only, not part of codebase)
+external/

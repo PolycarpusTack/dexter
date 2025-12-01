@@ -7,6 +7,7 @@ including correlation analysis, impact assessment, and mitigation strategies.
 
 import logging
 import statistics
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set, Tuple

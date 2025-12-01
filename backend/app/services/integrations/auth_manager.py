@@ -179,7 +179,7 @@ class CredentialStore:
                     algorithm=hashes.SHA256(),
                     length=32,
                     salt=b"dexter-auth-salt",  # Fixed salt for deterministic key
-                    iterations=MS_PER_SECOND00,
+                    iterations=100000,  # Standard PBKDF2 iteration count
                 )
                 key = base64.urlsafe_b64encode(kdf.derive(key_source))
                 self.fernet = Fernet(key)

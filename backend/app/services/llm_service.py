@@ -1,7 +1,7 @@
 import httpx
 from fastapi import HTTPException, status
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 import json
 from app.core.settings import settings
 from ..models.ai import ModelStatus, OllamaModel

@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 import traceback
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 
 # File: backend/app/utils/error_handling.py
 

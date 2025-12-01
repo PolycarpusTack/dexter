@@ -737,5 +737,15 @@ class SentryApiClient:
         return await self._request("POST", url, data=query_data)
 
     async def close(self) -> None:
-        """Close the HTTP client."""
-        await self.client.aclose()
+        """Close the HTTP client connection pool."""
+        if self.client:
+            await self.client.aclose()
+            logger.info("Sentry API client closed")
+
+    async def __aenter__(self):
+        """Context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - close client."""
+        await self.close()

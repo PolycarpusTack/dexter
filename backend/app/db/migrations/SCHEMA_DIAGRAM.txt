@@ -1,0 +1,311 @@
+================================================================================
+EPIC B: ENRICHMENT SCHEMA EXTENSION - VISUAL DIAGRAM
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          SENTRY_ISSUES TABLE (Extended)                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ EXISTING COLUMNS (from 001_initial migration)                               │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ id                        INTEGER PRIMARY KEY                           │ │
+│ │ sentry_issue_id           VARCHAR(64) UNIQUE                           │ │
+│ │ sentry_event_id           VARCHAR(64) UNIQUE                           │ │
+│ │ error_type                VARCHAR(255) INDEXED                         │ │
+│ │ error_message             TEXT                                         │ │
+│ │ platform                  VARCHAR(64)                                  │ │
+│ │ level                     VARCHAR(32) DEFAULT 'error'                  │ │
+│ │ cleaned_stack             JSONB                                        │ │
+│ │ context_tags              JSONB                                        │ │
+│ │ ai_explanation            TEXT                                         │ │
+│ │ ai_suggested_fix          TEXT                                         │ │
+│ │ human_solution            TEXT                                         │ │
+│ │ is_useful                 BOOLEAN DEFAULT false                        │ │
+│ │ confidence_score          FLOAT                                        │ │
+│ │ feedback_count            INTEGER DEFAULT 0                            │ │
+│ │ embedding                 VECTOR(768)                                  │ │
+│ │ processing_status         VARCHAR(32) DEFAULT 'completed'              │ │
+│ │ sentry_timestamp          TIMESTAMP WITH TIME ZONE                     │ │
+│ │ created_at                TIMESTAMP WITH TIME ZONE DEFAULT now()       │ │
+│ │ updated_at                TIMESTAMP WITH TIME ZONE DEFAULT now()       │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+│ NEW COLUMNS (from 002_enrichment migration) ✨                               │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ ╔═══════════════════════════════════════════════════════════════════╗ │ │
+│ │ ║         11 JSONB ENRICHMENT COLUMNS (All Nullable)                ║ │ │
+│ │ ╚═══════════════════════════════════════════════════════════════════╝ │ │
+│ │                                                                         │ │
+│ │ release_context           JSONB  [GIN indexed]                         │ │
+│ │   └─ Releases, suspect commits, deployment info                        │ │
+│ │                                                                         │ │
+│ │ performance_data          JSONB  [GIN indexed on problem_spans]        │ │
+│ │   └─ Spans, transactions, problem spans                                │ │
+│ │                                                                         │ │
+│ │ profiling_data            JSONB                                         │ │
+│ │   └─ Function hotspots, top frames                                     │ │
+│ │                                                                         │ │
+│ │ session_data              JSONB                                         │ │
+│ │   └─ Session counts, replay metadata, crash-free rate                  │ │
+│ │                                                                         │ │
+│ │ breadcrumbs               JSONB                                         │ │
+│ │   └─ User action timeline                                              │ │
+│ │                                                                         │ │
+│ │ alert_context             JSONB  [GIN indexed on incidents]            │ │
+│ │   └─ Alert history, incident correlation                               │ │
+│ │                                                                         │ │
+│ │ attachments_meta          JSONB                                         │ │
+│ │   └─ Attachment summaries (filenames, sizes - NOT content)             │ │
+│ │                                                                         │ │
+│ │ tag_distributions         JSONB  [GIN indexed]                          │ │
+│ │   └─ Top tag values, env/device/browser breakdowns                     │ │
+│ │                                                                         │ │
+│ │ ownership                 JSONB  [GIN indexed on teams]                │ │
+│ │   └─ Teams, code owners, assignment rules                              │ │
+│ │                                                                         │ │
+│ │ measurements              JSONB                                         │ │
+│ │   └─ Web vitals (LCP, FID, CLS), custom measurements                   │ │
+│ │                                                                         │ │
+│ │ grouping_insights         JSONB                                         │ │
+│ │   └─ Fingerprint variants, similar issues                              │ │
+│ │                                                                         │ │
+│ │ ─────────────────────────────────────────────────────────────────────  │ │
+│ │                                                                         │ │
+│ │ ╔═══════════════════════════════════════════════════════════════════╗ │ │
+│ │ ║              ENRICHMENT METADATA TRACKING                         ║ │ │
+│ │ ╚═══════════════════════════════════════════════════════════════════╝ │ │
+│ │                                                                         │ │
+│ │ enrichment_status         JSONB NOT NULL DEFAULT '{}'                  │ │
+│ │   └─ Per-source status: {source: {last_fetched, error, enabled}}       │ │
+│ │                                                                         │ │
+│ │ last_enriched_at          TIMESTAMP WITH TIME ZONE                     │ │
+│ │   └─ Last successful enrichment timestamp                              │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+│ RELATIONSHIPS:                                                                │
+│   • feedback_entries      → feedback_log (one-to-many, CASCADE)              │
+│   • signals               → enrichment_signals (one-to-one, CASCADE) ✨      │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       │ Foreign Key (issue_id)
+                                       │ ON DELETE CASCADE
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       ENRICHMENT_SIGNALS TABLE (New) ✨                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ ╔═══════════════════════════════════════════════════════════════════════╗   │
+│ ║         PRE-COMPUTED RANKING SIGNALS (0.0 to 1.0 range)               ║   │
+│ ╚═══════════════════════════════════════════════════════════════════════╝   │
+│                                                                               │
+│ id                          INTEGER PRIMARY KEY AUTO_INCREMENT               │
+│ issue_id                    INTEGER UNIQUE INDEXED → sentry_issues.id        │
+│                                                                               │
+│ ┌───────────────────────────────────────────────────────────────────────┐   │
+│ │ INDIVIDUAL SIGNAL SCORES (all FLOAT, default 0.0)                     │   │
+│ │                                                                        │   │
+│ │ release_recency_score     FLOAT  [INDEXED DESC]                       │   │
+│ │   └─ 1.0 = deployed in last hour, exponential decay                   │   │
+│ │                                                                        │   │
+│ │ alert_frequency_score     FLOAT  [INDEXED DESC]                       │   │
+│ │   └─ 1.0 = >10 alerts/hour, normalized by time window                 │   │
+│ │                                                                        │   │
+│ │ replay_impact_score       FLOAT  [INDEXED DESC]                       │   │
+│ │   └─ 1.0 = affects 100% of sessions, from crash-free rate             │   │
+│ │                                                                        │   │
+│ │ tag_overlap_score         FLOAT                                       │   │
+│ │   └─ 1.0 = exact tag match with query context                         │   │
+│ │                                                                        │   │
+│ │ ownership_match_score     FLOAT                                       │   │
+│ │   └─ 1.0 = owned by user's team, 0.5 = related team                   │   │
+│ └────────────────────────────────────────────────────────────────────────   │
+│                                                                               │
+│ ┌───────────────────────────────────────────────────────────────────────┐   │
+│ │ COMPOSITE SCORE (pre-computed weighted average)                       │   │
+│ │                                                                        │   │
+│ │ composite_score           FLOAT  [INDEXED DESC] ⭐                     │   │
+│ │   └─ Formula:                                                          │   │
+│ │       vector_similarity * 0.40 +      (from pgvector query)           │   │
+│ │       release_recency * 0.15 +                                        │   │
+│ │       ownership_match * 0.15 +                                        │   │
+│ │       alert_frequency * 0.10 +                                        │   │
+│ │       replay_impact * 0.10 +                                          │   │
+│ │       tag_overlap * 0.10                                              │   │
+│ └────────────────────────────────────────────────────────────────────────   │
+│                                                                               │
+│ updated_at                  TIMESTAMP WITH TIME ZONE DEFAULT now()           │
+│   └─ Last time signals were recomputed                                       │
+│                                                                               │
+│ RELATIONSHIP:                                                                 │
+│   • issue                   → sentry_issues (many-to-one)                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+INDEXES SUMMARY
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ GIN INDEXES (on sentry_issues for JSONB containment queries)                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│ ✓ idx_issues_release_version     → (release_context->'releases')            │
+│   USE: WHERE release_context @> '{"releases": [{"version": "1.2.3"}]}'      │
+│                                                                               │
+│ ✓ idx_issues_ownership_teams      → (ownership->'teams')                    │
+│   USE: WHERE ownership @> '{"teams": ["backend"]}'                          │
+│                                                                               │
+│ ✓ idx_issues_tag_distributions    → (tag_distributions)                     │
+│   USE: WHERE tag_distributions @> '{"environment": {"production": ...}}'    │
+│                                                                               │
+│ ✓ idx_issues_problem_spans        → (performance_data->'problem_spans')     │
+│   USE: WHERE performance_data->'problem_spans' IS NOT NULL                  │
+│                                                                               │
+│ ✓ idx_issues_alert_context        → (alert_context->'incidents')            │
+│   USE: WHERE alert_context @> '{"incidents": [{"status": "critical"}]}'     │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ B-TREE INDEXES (on enrichment_signals for ranking/sorting)                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│ ✓ idx_signals_issue_id            → (issue_id)                              │
+│   USE: Foreign key lookups                                                  │
+│                                                                               │
+│ ✓ idx_signals_composite_desc ⭐   → (composite_score DESC)                  │
+│   USE: ORDER BY composite_score DESC (multi-signal ranking)                 │
+│                                                                               │
+│ ✓ idx_signals_release_recency     → (release_recency_score DESC)            │
+│   USE: ORDER BY release_recency_score DESC                                  │
+│                                                                               │
+│ ✓ idx_signals_alert_frequency     → (alert_frequency_score DESC)            │
+│   USE: ORDER BY alert_frequency_score DESC                                  │
+│                                                                               │
+│ ✓ idx_signals_replay_impact       → (replay_impact_score DESC)              │
+│   USE: ORDER BY replay_impact_score DESC                                    │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+QUERY FLOW: MULTI-SIGNAL RAG RETRIEVAL
+================================================================================
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ STEP 1: Vector Similarity Search (pgvector)                               │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│   SELECT id, error_type, error_message,                                   │
+│          1 - (embedding <=> :query_embedding) AS vector_similarity        │
+│   FROM sentry_issues                                                       │
+│   WHERE embedding IS NOT NULL                                              │
+│   ORDER BY embedding <=> :query_embedding                                  │
+│   LIMIT 50;                    -- Candidate set                            │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ STEP 2: Enrich with Metadata Signals                                      │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│   SELECT vm.id, vm.error_type, vm.vector_similarity,                      │
+│          es.release_recency_score,                                         │
+│          es.ownership_match_score,                                         │
+│          es.alert_frequency_score,                                         │
+│          es.replay_impact_score,                                           │
+│          es.tag_overlap_score,                                             │
+│          -- Final composite score                                          │
+│          (vm.vector_similarity * 0.40 +                                    │
+│           es.release_recency_score * 0.15 +                                │
+│           es.ownership_match_score * 0.15 +                                │
+│           es.alert_frequency_score * 0.10 +                                │
+│           es.replay_impact_score * 0.10 +                                  │
+│           es.tag_overlap_score * 0.10) AS final_score                      │
+│   FROM vector_matches vm                                                   │
+│   LEFT JOIN enrichment_signals es ON vm.id = es.issue_id                  │
+│   ORDER BY final_score DESC                                                │
+│   LIMIT 10;                    -- Top results                              │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ STEP 3: Return Ranked Results to LLM                                      │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│   • Top 10 issues sorted by final_score                                   │
+│   • Includes enrichment context:                                          │
+│     - Release info (suspect commits)                                      │
+│     - Performance data (problem spans)                                    │
+│     - Ownership (team assignments)                                        │
+│     - Alert history                                                       │
+│     - Session impact                                                      │
+│                                                                            │
+│   LLM uses this rich context for better analysis!                         │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+DATA FLOW: ENRICHMENT PIPELINE (To Be Implemented)
+================================================================================
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 1. WEBHOOK: New Sentry Event                                              │
+└───────────────────────────────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 2. INGESTION: Store Basic Issue + Generate Embedding                      │
+│    → Insert into sentry_issues (core columns)                             │
+│    → Generate Jina embedding                                              │
+└───────────────────────────────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 3. ENRICHMENT: Fetch 11 Data Sources from Sentry API                      │
+│    ✓ Releases API              → release_context                          │
+│    ✓ Performance Events API    → performance_data                         │
+│    ✓ Profiling API             → profiling_data                           │
+│    ✓ Sessions API              → session_data                             │
+│    ✓ Events API (breadcrumbs)  → breadcrumbs                              │
+│    ✓ Alerts API                → alert_context                            │
+│    ✓ Attachments API           → attachments_meta                         │
+│    ✓ Tags API                  → tag_distributions                        │
+│    ✓ Ownership Rules API       → ownership                                │
+│    ✓ Measurements API          → measurements                             │
+│    ✓ Issue Details API         → grouping_insights                        │
+│                                                                            │
+│    → Update enrichment_status and last_enriched_at                        │
+└───────────────────────────────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 4. SIGNAL COMPUTATION: Calculate Ranking Scores                           │
+│    • Compute release_recency_score (time since deployment)                │
+│    • Compute alert_frequency_score (alerts/hour)                          │
+│    • Compute replay_impact_score (crash-free rate)                        │
+│    • Compute tag_overlap_score (similarity to query)                      │
+│    • Compute ownership_match_score (team relevance)                       │
+│    • Compute composite_score (weighted average)                           │
+│                                                                            │
+│    → Upsert into enrichment_signals                                       │
+└───────────────────────────────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 5. READY: Issue enriched and ready for RAG retrieval                      │
+└───────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+LEGEND
+================================================================================
+
+✨  New in migration 002_enrichment
+⭐  Most important index for ranking
+→   Relationship/reference
+▼   Data flow direction
+✓   Completed/exists
+
+================================================================================

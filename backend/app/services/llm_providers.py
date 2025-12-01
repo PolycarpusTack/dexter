@@ -9,6 +9,8 @@ from typing import List, Dict, Any, Optional
 import time
 
 from app.core.config import get_settings
+from app.config.providers.anthropic import get_anthropic_config
+from app.config.providers.openai import get_openai_config
 from app.models.ai_models import (
     Model,
     ModelProvider,
@@ -18,6 +20,7 @@ from app.models.ai_models import (
     ProviderSettings,
     ModelSize,
 )
+from app.services.model_registry_service import get_model_registry
 
 logger = logging.getLogger(__name__)
 

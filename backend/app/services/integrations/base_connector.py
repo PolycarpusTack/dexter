@@ -15,7 +15,10 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+if TYPE_CHECKING:
+    from app.services.integrations.auth_manager import AuthManager
 from enum import Enum
 import httpx
 from pydantic import BaseModel, Field, validator

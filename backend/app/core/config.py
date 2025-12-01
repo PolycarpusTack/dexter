@@ -100,6 +100,28 @@ class AppSettings(BaseSettings):
     ANTHROPIC_TIMEOUT: Optional[float] = None
     ANTHROPIC_MAX_RETRIES: Optional[int] = None
 
+    # Database settings (PostgreSQL + pgvector)
+    DATABASE_URL: str = "postgresql+asyncpg://dexter:dexter_dev@localhost:5432/dexter"
+    DATABASE_ECHO: bool = False  # Echo SQL statements (debug)
+
+    # Embeddings settings (Jina v2 Code)
+    EMBEDDING_MODEL: str = "jinaai/jina-embeddings-v2-base-code"
+    EMBEDDING_DIMENSION: int = 768
+    EMBEDDING_CACHE_SIZE: int = 1000  # LRU cache entries
+    EMBEDDING_DEVICE: Optional[str] = None  # 'cpu', 'cuda', or None for auto
+
+    # PII Settings
+    PII_HASH_SALT: str = ""  # Set in environment for production
+    PII_SCRUB_UUIDS: bool = True  # Scrub UUIDs (may be user IDs)
+
+    # Webhook settings
+    SENTRY_CLIENT_SECRET: str = ""  # For webhook signature verification
+    WEBHOOK_DEDUP_WINDOW_MINUTES: int = 5  # Deduplication window
+
+    # Knowledge base settings
+    SIMILARITY_THRESHOLD: float = 0.7  # Minimum similarity for RAG retrieval
+    MAX_SIMILAR_ISSUES: int = 5  # Max similar issues to retrieve
+
     # Feature flags
     ENABLE_DEADLOCK_ANALYSIS: bool = True
     ENABLE_OLLAMA: bool = True
@@ -108,6 +130,97 @@ class AppSettings(BaseSettings):
     ENABLE_REAL_TIME: bool = False
     ENABLE_CACHING: bool = True
     ENABLE_EXTERNAL_APIS: bool = True
+    ENABLE_KNOWLEDGE_BASE: bool = True  # Enable knowledge base features
+
+    # =====================================
+    # DATA ENRICHMENT FEATURE FLAGS (EPIC C)
+    # =====================================
+
+    # Release Intelligence
+    ENABLE_RELEASES: bool = Field(
+        default=True,
+        description="Enable release and suspect commit enrichment"
+    )
+
+    # Performance Observability
+    ENABLE_PERFORMANCE_SPANS: bool = Field(
+        default=True,
+        description="Enable performance span and transaction enrichment"
+    )
+
+    # Profiling
+    ENABLE_PROFILING: bool = Field(
+        default=False,  # Disabled by default (resource intensive)
+        description="Enable profiling data (function hotspots)"
+    )
+
+    # User Context
+    ENABLE_SESSIONS_REPLAYS: bool = Field(
+        default=True,
+        description="Enable session counts and replay metadata"
+    )
+
+    # Breadcrumbs
+    ENABLE_BREADCRUMBS: bool = Field(
+        default=True,
+        description="Enable breadcrumb timeline enrichment"
+    )
+
+    # Alerts & Incidents
+    ENABLE_ALERTS: bool = Field(
+        default=True,
+        description="Enable alert and incident correlation"
+    )
+
+    # Attachments
+    ENABLE_ATTACHMENTS: bool = Field(
+        default=False,  # Disabled by default (security sensitive)
+        description="Enable attachment download and summarization"
+    )
+
+    # Tag Analysis
+    ENABLE_TAG_DISTRIBUTIONS: bool = Field(
+        default=True,
+        description="Enable tag distribution and environment clustering"
+    )
+
+    # Ownership
+    ENABLE_OWNERSHIP: bool = Field(
+        default=True,
+        description="Enable issue ownership and team routing"
+    )
+
+    # Measurements
+    ENABLE_MEASUREMENTS: bool = Field(
+        default=True,
+        description="Enable custom measurements and web vitals"
+    )
+
+    # Grouping
+    ENABLE_GROUPING_INSIGHTS: bool = Field(
+        default=True,
+        description="Enable grouping variants and fingerprint insights"
+    )
+
+    # Master toggle (gates individual flags)
+    ENABLE_ALL_ENRICHMENTS: bool = Field(
+        default=True,
+        description="Master switch: when ON, individual flags control enrichments; when OFF, all disabled"
+    )
+
+    # Enrichment job settings
+    ENRICHMENT_BATCH_SIZE: int = Field(
+        default=50,
+        description="How many issues to enrich per batch"
+    )
+    ENRICHMENT_INTERVAL_SECONDS: int = Field(
+        default=300,
+        description="How often to run enrichment (5 min)"
+    )
+    ENRICHMENT_MAX_RETRIES: int = Field(
+        default=3,
+        description="Max retries for failed enrichment"
+    )
 
     # Cache Settings
     CACHE_ENABLED: bool = True
@@ -143,11 +256,38 @@ class AppSettings(BaseSettings):
 
     # Additional settings for backward compatibility
     REDIS_URL: str = "redis://localhost:6379/0"
-    SECRET_KEY: str = "development-secret-key-change-in-production"
+
+    # Security settings - CRITICAL: Change in production
+    SECRET_KEY: str = Field(
+        default="CHANGE_THIS_IN_PRODUCTION_USE_STRONG_SECRET_AT_LEAST_32_CHARS",
+        description="Secret key for JWT token signing (CRITICAL: Must be changed in production)"
+    )
     CSRF_SECRET: str = "development-csrf-secret-change-in-production"
     SENTRY_ORG: str = ""
     ORGANIZATION_SLUG: str = ""
     PROJECT_SLUG: str = ""
+
+    # Sentry organization and project (for enrichment services)
+    SENTRY_ORGANIZATION_SLUG: Optional[str] = Field(
+        default=None,
+        description="Sentry organization slug for API calls"
+    )
+    SENTRY_PROJECT_SLUG: Optional[str] = Field(
+        default=None,
+        description="Sentry project slug for API calls"
+    )
+
+    # Sentry Data Client Framework Settings
+    SENTRY_RATE_LIMIT_REQUESTS_PER_MIN: int = 100
+    SENTRY_RATE_LIMIT_MAX_BURST: int = 100
+    SENTRY_CIRCUIT_BREAKER_THRESHOLD: int = 5
+    SENTRY_CIRCUIT_BREAKER_TIMEOUT: float = 60.0
+    SENTRY_CIRCUIT_BREAKER_SUCCESS_THRESHOLD: int = 2
+    SENTRY_MAX_RETRIES: int = 3
+    SENTRY_RETRY_BACKOFF_BASE: int = 1
+    SENTRY_CACHE_ENABLED: bool = True
+    SENTRY_CACHE_TTL: int = 300
+    SENTRY_REQUEST_TIMEOUT: int = 30
 
     @field_validator("PORT")
     def validate_port(cls, v: int) -> int:
@@ -296,13 +436,48 @@ def load_yaml_config(app_mode: Union[AppMode, str]) -> Dict[str, Any]:
         return {}
 
 
+# Global settings cache for runtime reload support
+_settings_cache: Optional[AppSettings] = None
+
+
+def reload_settings() -> AppSettings:
+    """
+    Force reload settings from environment.
+
+    Clears cache and re-reads all environment variables.
+    This allows runtime configuration changes without application restart.
+
+    Returns:
+        Freshly loaded AppSettings object
+
+    Example:
+        >>> # Change environment variable
+        >>> os.environ['ENABLE_PROFILING'] = 'true'
+        >>> # Reload configuration
+        >>> new_settings = reload_settings()
+        >>> assert new_settings.ENABLE_PROFILING is True
+    """
+    global _settings_cache
+    _settings_cache = None
+    return get_settings()
+
+
 def get_settings() -> AppSettings:
     """
     Get application settings with YAML config applied.
 
+    Uses cached settings for performance. To force reload from environment,
+    use reload_settings() instead.
+
     Returns:
         AppSettings object with values from env vars and YAML config
     """
+    global _settings_cache
+
+    # Return cached settings if available
+    if _settings_cache is not None:
+        return _settings_cache
+
     # First load base settings from env vars and .env file
     app_settings = AppSettings()
 
@@ -324,5 +499,8 @@ def get_settings() -> AppSettings:
     else:
         settings_dict = app_settings.dict()
         app_settings = AppSettings.parse_obj(settings_dict)
+
+    # Cache the settings
+    _settings_cache = app_settings
 
     return app_settings

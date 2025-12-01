@@ -1,18 +1,19 @@
 // React import required for JSX
 import React, { useState } from 'react';
 import { Stack, NavLink, Text, Group, Box, Badge, ThemeIcon, ActionIcon, Tooltip, Divider } from '@mantine/core';
-import { 
-  IconDashboard, 
-  IconBug, 
-  IconBell, 
-  IconSearch, 
-  IconActivity, 
-  IconChartBar, 
+import {
+  IconDashboard,
+  IconBug,
+  IconBell,
+  IconSearch,
+  IconActivity,
+  IconChartBar,
   IconSettings,
   IconPlus,
   IconChevronRight,
   IconBrain,
-  IconRobot
+  IconRobot,
+  IconDatabase
 } from '@tabler/icons-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -76,26 +77,34 @@ export function Navbar() {
   ];
   
   const monitoringLinks = [
-    { 
-      label: 'Alert Rules', 
-      icon: IconBell, 
-      path: '/alert-rules', 
+    {
+      label: 'Alert Rules',
+      icon: IconBell,
+      path: '/alert-rules',
       description: 'Configure and manage alerts',
       badge: { label: 'New', color: 'blue' }
     },
-    { 
-      label: 'Performance', 
-      icon: IconChartBar, 
-      path: '/performance', 
+    {
+      label: 'Performance',
+      icon: IconChartBar,
+      path: '/performance',
       description: 'Application performance metrics',
       disabled: true
     },
-    { 
-      label: 'AI Metrics', 
-      icon: IconBrain, 
-      path: '/ai-metrics', 
+    {
+      label: 'AI Metrics',
+      icon: IconBrain,
+      path: '/ai-metrics',
       description: 'AI model performance and usage metrics',
       badge: { label: 'New', color: 'green' }
+    },
+    {
+      label: 'Knowledge Base',
+      icon: IconDatabase,
+      path: '/knowledge-base',
+      description: 'Browse past errors and validated solutions',
+      shortcut: 'G K',
+      badge: { label: 'New', color: 'violet' }
     },
   ];
 

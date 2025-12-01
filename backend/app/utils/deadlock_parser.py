@@ -8,7 +8,6 @@ Extracts detailed transaction and lock information to enable visualization and a
 import re
 import logging
 from typing import Dict, List, Any, Optional
-import networkx as nx
 from pydantic import BaseModel, Field, validator
 
 from .base_parser import BaseParser

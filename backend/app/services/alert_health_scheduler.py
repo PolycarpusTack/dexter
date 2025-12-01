@@ -7,6 +7,8 @@ alert health analysis tasks.
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Callable, Dict, Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -418,7 +420,7 @@ class AlertHealthScheduler:
 
     async def run_task_now(self, task_id: str) -> Dict[str, Any]:
         """Run a task immediately."""
-        task = self.tasks.get(task_)
+        task = self.tasks.get(task_id)
         if not task:
             return {"success": False, "error": f"Task {task_id} not found"}
 

@@ -396,6 +396,8 @@ class EnhancedLLMService:
         include_prompt: bool = False,
     ) -> Dict[str, Any]:
         """Get an explanation for an error with fallback support"""
+        start_time = time.time()  # Track total time for error metrics
+
         # Extract error information for model selection
         error_type = self._extract_error_type(event_data)
         error_message = self._extract_error_message(event_data)

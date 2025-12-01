@@ -1,12 +1,16 @@
 /**
  * Default error handler for API calls
- * 
+ *
  * @param error Error object from API call
- * @param defaultMessage Default message to show if error object doesn't have one
+ * @param defaultMessage Default message to show if error object doesn't have one (optional)
  * @returns ApiError with formatted message
  */
-export function handleApiError(error: unknown, defaultMessage: string = 'API call failed'): ApiError {
-  return createErrorHandler('API')(error as Error);
+export function handleApiError(error: unknown, defaultMessage?: string): ApiError {
+  const apiError = createErrorHandler('API')(error as Error);
+  if (defaultMessage && !apiError.message.includes(defaultMessage)) {
+    apiError.message = `${defaultMessage}: ${apiError.message}`;
+  }
+  return apiError;
 }
 
 /**

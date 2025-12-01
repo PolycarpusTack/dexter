@@ -19,17 +19,24 @@ logger = logging.getLogger(__name__)
 # Try to import Redis, but don't fail if it's not available
 redis_available = False
 try:
-    import redis
+    import redis.asyncio as redis
+    from redis.asyncio import Redis
     from redis.exceptions import RedisError
 
     redis_available = True
-    logger.info("Redis module found and loaded successfully")
+    logger.info("Redis async module found and loaded successfully")
 except ImportError:
     logger.warning("Redis module not found. Using in-memory cache only.")
 
     # Create placeholder for RedisError to avoid undefined reference
     class RedisError(Exception):
         """Placeholder for Redis errors when Redis is not available."""
+        pass
+
+    # Create placeholder for Redis type
+    class Redis:
+        """Placeholder for Redis client when Redis is not available."""
+        pass
 
 
 class InMemoryCache:
@@ -73,27 +80,27 @@ class InMemoryCache:
 
 class CacheService:
     """
-    Cache service with Redis support and in-memory fallback.
+    Cache service with async Redis support and in-memory fallback.
     """
 
     def __init__(self, redis_url: Optional[str] = None):
-        self.redis_client = None
+        self.redis_client: Optional[Redis] = None
         self.in_memory_cache = InMemoryCache()
+        self._redis_url = redis_url
 
         if redis_url and redis_available:
             try:
-                self.redis_client = redis.Redis.from_url(
+                # Use async Redis client
+                self.redis_client = redis.from_url(
                     redis_url,
                     decode_responses=True,
                     socket_connect_timeout=REDIS_CONNECT_TIMEOUT,
                     socket_timeout=REDIS_SOCKET_TIMEOUT,
-                    retry_on_timeout=True,
                     health_check_interval=REDIS_HEALTH_CHECK_INTERVAL,
+                    max_connections=50,  # Connection pool
                 )
-                # Test connection
-                self.redis_client.ping()
-                logger.info("Redis cache initialized successfully")
-            except (RedisError, ConnectionError) as e:
+                logger.info("Async Redis cache initialized successfully")
+            except Exception as e:
                 logger.warning(f"Failed to connect to Redis: {e}. Using in-memory cache.")
                 self.redis_client = None
         else:
@@ -108,7 +115,7 @@ class CacheService:
             return None
 
         try:
-            return self.redis_client.get(key)
+            return await self.redis_client.get(key)  # Now async!
         except RedisError as e:
             logger.warning(f"Redis get error: {e}")
             return None
@@ -119,7 +126,7 @@ class CacheService:
             return False
 
         try:
-            return bool(self.redis_client.setex(key, ttl, value))
+            return bool(await self.redis_client.setex(key, ttl, value))  # Now async!
         except RedisError as e:
             logger.warning(f"Redis set error: {e}")
             return False
@@ -130,7 +137,7 @@ class CacheService:
             return False
 
         try:
-            return bool(self.redis_client.delete(key))
+            return bool(await self.redis_client.delete(key))  # Now async!
         except RedisError as e:
             logger.warning(f"Redis delete error: {e}")
             return False
@@ -179,15 +186,20 @@ class CacheService:
         return redis_success or memory_success
 
     async def clear_pattern(self, pattern: str) -> bool:
-        """Clear keys matching pattern."""
+        """Clear keys matching pattern using cursor-based scan."""
         success = False
 
-        # Clear from Redis
+        # Clear from Redis using SCAN (not KEYS!) to avoid O(N) blocking
         if self.redis_client and redis_available:
             try:
-                keys = self.redis_client.keys(pattern)
-                if keys:
-                    self.redis_client.delete(*keys)
+                deleted_count = 0
+                # Use cursor-based scan instead of KEYS to avoid blocking the event loop
+                async for key in self.redis_client.scan_iter(match=pattern):
+                    await self.redis_client.delete(key)
+                    deleted_count += 1
+
+                if deleted_count > 0:
+                    logger.info(f"Deleted {deleted_count} keys matching pattern: {pattern}")
                 success = True
             except RedisError as e:
                 logger.warning(f"Redis clear pattern error: {e}")
@@ -205,6 +217,12 @@ class CacheService:
             success = True
 
         return success
+
+    async def close(self):
+        """Close Redis connection (call on shutdown)."""
+        if self.redis_client:
+            await self.redis_client.close()
+            logger.info("Redis connection closed")
 
     def create_key(self, prefix: str, params: Dict[str, Any]) -> str:
         """Create cache key from prefix and parameters."""

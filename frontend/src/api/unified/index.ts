@@ -23,6 +23,7 @@ import templateApi from './templateApi';
 import metricsApi from './metricsApi';
 import n1QueryApi from './n1QueryApi';
 import memoryLeakApi from './memoryLeakApi';
+import knowledgeBaseApi from './knowledgeBaseApi';
 
 // API hooks
 import { 
@@ -114,6 +115,24 @@ import {
   useMemoryLeakWorkflow
 } from './hooks/useMemoryLeak';
 
+import {
+  useKnowledgeBase,
+  useKnowledgeBaseStats,
+  useKnowledgeBaseIssues,
+  useKnowledgeBaseIssue,
+  useSimilarIssuesSearch,
+  useFeedback,
+  useFeedbackStats,
+  useSubmitFeedback,
+  useValidationQueue,
+  useValidationMetrics,
+  useValidateIssue,
+  useRejectIssue,
+  useApplyCorrection,
+  useRAGExplanation,
+  useRAGStatus
+} from './hooks/useKnowledgeBase';
+
 // Types
 import {
   // Core types
@@ -187,7 +206,8 @@ export const api = {
   templates: templateApi,
   metrics: metricsApi,
   n1Query: n1QueryApi,
-  memoryLeak: memoryLeakApi
+  memoryLeak: memoryLeakApi,
+  knowledgeBase: knowledgeBaseApi
 };
 
 // Export all API hooks
@@ -269,7 +289,24 @@ export const hooks = {
   useMemoryLeakCapabilities,
   useReanalyzeMemoryLeak,
   useExportMemoryLeakSVG,
-  useMemoryLeakWorkflow
+  useMemoryLeakWorkflow,
+
+  // Knowledge Base hooks
+  useKnowledgeBase,
+  useKnowledgeBaseStats,
+  useKnowledgeBaseIssues,
+  useKnowledgeBaseIssue,
+  useSimilarIssuesSearch,
+  useFeedback,
+  useFeedbackStats,
+  useSubmitFeedback,
+  useValidationQueue,
+  useValidationMetrics,
+  useValidateIssue,
+  useRejectIssue,
+  useApplyCorrection,
+  useRAGExplanation,
+  useRAGStatus
 };
 
 // Export utilities

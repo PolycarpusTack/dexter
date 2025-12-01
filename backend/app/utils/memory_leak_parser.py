@@ -11,7 +11,6 @@ from datetime import datetime
 from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field
 
-from .base_parser import BaseParser
 
 logger = logging.getLogger(__name__)
 

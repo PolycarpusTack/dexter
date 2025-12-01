@@ -4,10 +4,12 @@ Provides common dependencies for use with FastAPI's dependency injection system.
 """
 
 import logging
-from typing import AsyncGenerator, Dict, Optional
+from datetime import datetime
+from typing import AsyncGenerator, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 
 from app.core.settings import settings
 from app.services.cache_service import CacheService, get_cache_service as _get_cache_service
@@ -40,27 +42,23 @@ async def get_current_user(
 ) -> dict:
     """
     Dependency to get the current authenticated user.
-    In this basic implementation, we don't actually authenticate,
-    but this is where you would implement authentication logic.
+    Validates JWT tokens in production mode.
 
     Args:
         request: FastAPI request object
         credentials: Optional HTTP authorization credentials
 
     Returns:
-        dict: User information
+        dict: User information with id, username, email, and role
 
     Raises:
-        HTTPException: If authentication fails
+        HTTPException: If authentication fails (401) or token is invalid/expired
     """
-    # In a real app, this would validate a JWT token or other auth mechanism
-    # For now, we'll just return a mock user
-
     # For development, we don't require authentication
     if getattr(settings, "DEBUG", False):
         return {"id": "dev-user", "username": "dev", "email": "dev@example.com", "role": "admin"}
 
-    # If not in development and no credentials, raise error
+    # Require credentials in production
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -68,13 +66,49 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # In production, you would validate the token here
-    # For now, just log and accept any token
     token = credentials.credentials
-    logger.info(f"User authenticated with token starting with: {token[:5]}...")
 
-    # Return mock user information
-    return {"id": "user123", "username": "user", "email": "user@example.com", "role": "user"}
+    # Validate JWT token
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=["HS256"]
+        )
+
+        # Extract user info
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: missing user ID",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        return {
+            "id": user_id,
+            "username": payload.get("username", user_id),
+            "email": payload.get("email", ""),
+            "role": payload.get("role", "user"),
+        }
+
+    except JWTError as e:
+        # Check if it's an expiration error
+        error_msg = str(e).lower()
+        if "expired" in error_msg:
+            logger.warning(f"JWT token expired: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        logger.warning(f"JWT validation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 # Re-export cache service dependency for tests/integration
@@ -88,3 +122,32 @@ def get_cache_service(request: Request) -> CacheService:
         CacheService instance
     """
     return _get_cache_service(request)
+
+
+async def require_kb_initialized(request: Request) -> None:
+    """
+    Dependency that checks if the knowledge base is initialized.
+
+    Raises HTTPException 503 if the database failed to initialize.
+    This prevents knowledge base endpoints from being called when DB is unavailable.
+
+    Args:
+        request: FastAPI request object
+
+    Raises:
+        HTTPException: 503 Service Unavailable if KB not initialized
+    """
+    if not getattr(request.app.state, "kb_initialized", False):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "Knowledge base features are currently unavailable",
+                "reason": "Database connection could not be established",
+                "help": [
+                    "Ensure PostgreSQL with pgvector extension is running",
+                    "Run migrations: PYTHONPATH=/path/to/backend alembic upgrade head",
+                    "Verify DATABASE_URL environment variable is set correctly",
+                    "Check logs for specific database connection errors",
+                ],
+            },
+        )

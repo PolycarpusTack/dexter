@@ -3,15 +3,16 @@
 import { z } from 'zod';
 
 import { enhancedApiClient } from './enhancedApiClient';
-import type { 
-  ErrorExplanationRequest, 
+import {
+  ErrorExplanationRequest,
   ErrorExplanationResponse,
   ModelRequest,
   ModelResponse,
   ModelsResponse,
   Model,
   ModelPreferences,
-  FallbackChain
+  FallbackChain,
+  HttpMethod
 } from './types';
 import type { ProviderSettings } from './interfaces';
 
@@ -51,13 +52,13 @@ const explainResponseSchema = z.object({
  */
 export const fetchModelsList = async (): Promise<Model[]> => {
   try {
-    const response = await enhancedApiClient.callEndpoint(
+    const response = await enhancedApiClient.callEndpoint<Model[]>(
       'ai',
       'models',
       {},
       {},
       undefined,
-      { cache: 'stale-while-revalidate' }
+      { cache: true }
     );
     return response || [];
   } catch (error) {
@@ -79,18 +80,12 @@ export const fetchEnhancedModelsList = async (): Promise<ModelsResponse> => {
       {},
       {},
       undefined,
-      { 
-        cache: 'stale-while-revalidate',
-        errorHandling: {
-          suppressNotifications: true,
-          logToConsole: false
-        }
-      }
+      { cache: true }
     );
   } catch (error) {
     // If the endpoint fails, return an empty models response with properly structured data
     console.debug('Models API endpoint not available - returning empty list');
-    return { 
+    return {
       models: [],
       groups: [],
       fallback_chains: [],
@@ -112,7 +107,7 @@ export const pullModel = async (modelName: string): Promise<ModelResponse> => {
     { modelName },
     {},
     undefined,
-    { method: 'POST' }
+    { method: HttpMethod.POST }
   );
 };
 
@@ -126,7 +121,7 @@ export const pullModelEnhanced = async (modelId: string): Promise<ModelResponse>
     { modelId },
     {},
     undefined,
-    { method: 'POST' }
+    { method: HttpMethod.POST }
   );
 };
 
@@ -140,7 +135,7 @@ export const selectModel = async (modelName: string): Promise<ModelResponse> => 
     {},
     {},
     { model_name: modelName },
-    { method: 'POST' }
+    { method: HttpMethod.POST }
   );
 };
 
@@ -154,7 +149,7 @@ export const selectModelEnhanced = async (request: ModelRequest): Promise<ModelR
     {},
     {},
     request,
-    { method: 'POST' }
+    { method: HttpMethod.POST }
   );
 };
 
@@ -168,7 +163,7 @@ export const createFallbackChain = async (chain: FallbackChain): Promise<Fallbac
     {},
     {},
     chain,
-    { method: 'POST' }
+    { method: HttpMethod.POST }
   );
 };
 
@@ -182,7 +177,7 @@ export const setDefaultFallbackChain = async (chainId: string): Promise<{ succes
     { chainId },
     {},
     undefined,
-    { method: 'POST' }
+    { method: HttpMethod.POST }
   );
 };
 
@@ -203,7 +198,7 @@ export const getUserPreferences = async (userId: string): Promise<ModelPreferenc
  * Set user preferences
  */
 export const setUserPreferences = async (
-  userId: string, 
+  userId: string,
   preferences: ModelPreferences
 ): Promise<ModelPreferences> => {
   return enhancedApiClient.callEndpoint(
@@ -212,7 +207,7 @@ export const setUserPreferences = async (
     { userId },
     {},
     preferences,
-    { method: 'POST' }
+    { method: HttpMethod.POST }
   );
 };
 
@@ -224,11 +219,11 @@ export const explainError = async (
   options?: { debug?: boolean; timeout?: number; useEnhancedEndpoint?: boolean; [key: string]: unknown }
 ): Promise<ErrorExplanationResponse> => {
   // Validate at least one error source is provided
-  if (!request.eventId && !request.issueId && !request.errorText && 
+  if (!request.id && !request.content &&
       (!request.context || !request.context.eventData)) {
-    throw new Error('At least one of eventId, issueId, errorText, or eventData must be provided');
+    throw new Error('At least one of id, content, or eventData must be provided');
   }
-  
+
   // Determine if we should use the enhanced endpoint
   const useEnhancedEndpoint = request.context?.useEnhancedEndpoint === true ||
                                options?.useEnhancedEndpoint === true;
@@ -247,7 +242,7 @@ export const explainError = async (
       ...options,
       // AI requests may take longer, increase timeout
       timeout: options?.timeout || 60000,
-      method: 'POST'
+      method: HttpMethod.POST
     }
   );
   
@@ -274,7 +269,7 @@ export const setProviderConfig = async (
     { provider },
     {},
     config,
-    { method: 'POST' }
+    { method: HttpMethod.POST }
   );
 };
 
@@ -292,7 +287,7 @@ export const testProviderConnection = async (
     { provider },
     {},
     { apiKey, baseUrl },
-    { method: 'POST' }
+    { method: HttpMethod.POST }
   );
 };
 
@@ -306,7 +301,7 @@ export const getProviderAvailability = async (): Promise<Record<string, boolean>
     {},
     {},
     undefined,
-    { cache: 'stale-while-revalidate' }
+    { cache: true }
   );
 };
 

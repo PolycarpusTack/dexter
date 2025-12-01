@@ -5,21 +5,23 @@
  * path resolution, caching, and other performance optimizations.
  */
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 import {
   ApiCallOptions,
   ApiClient,
   ApiConfig,
   ApiError,
+  ApiResponse,
   ErrorCategory,
   HttpMethod,
   PathParams,
   QueryParams
 } from './types';
+import { ApiErrorDetails } from './interfaces';
 import apiConfig from './apiConfig';
-import { getFullUrl, getMethod, resolvePath, validateParams } from './utils';
-import { BoundedCache, CacheEntry, RequestDeduplicator } from './cache';
-import { RetryManager, RetryConfig } from './retryManager';
+import { getFullUrl, getMethod, resolvePath } from './utils';
+import { BoundedCache, RequestDeduplicator } from './cache';
+import { RetryManager } from './retryManager';
 import { tokenManager } from './tokenManager';
 import { useAuthStore } from '../../store';
 import { REQUEST_TIMEOUTS, CONTENT_TYPES } from '../../constants/api';
@@ -275,23 +277,23 @@ export class EnhancedApiClient implements ApiClient {
    * Create an enhanced API error from an Axios error
    */
   private createApiError(error: AxiosError): ApiError {
-    let category: ErrorCategory = ErrorCategory.UNKNOWN;
+    let category: ErrorCategory = ErrorCategory.Unknown;
     let message = 'An unknown error occurred';
     let status: number | undefined = undefined;
     let retryable = false;
     let data: unknown = undefined;
-    
+
     // Network errors
     if (!error.response) {
-      category = ErrorCategory.NETWORK;
+      category = ErrorCategory.Network;
       message = error.message || 'Network error';
       retryable = true;
-    } 
+    }
     // Response errors
     else {
       status = error.response.status;
       data = error.response.data;
-      
+
       // Extract message from response data if possible
       if (data) {
         if (typeof data === 'string') {
@@ -303,25 +305,25 @@ export class EnhancedApiClient implements ApiClient {
           else if (dataObj.detail) message = typeof dataObj.detail === 'string' ? dataObj.detail : JSON.stringify(dataObj.detail);
         }
       }
-      
+
       // Categorize based on status code
       if (status === 401 || status === 403) {
-        category = ErrorCategory.AUTH;
+        category = ErrorCategory.Authentication;
         message = status === 401 ? 'Authentication required' : 'Access denied';
         retryable = false;
       } else if (status === 422) {
-        category = ErrorCategory.VALIDATION;
+        category = ErrorCategory.Validation;
         retryable = false;
       } else if (status === 429) {
-        category = ErrorCategory.RATE_LIMIT;
+        category = ErrorCategory.RateLimit;
         message = 'Rate limit exceeded';
         retryable = true;
       } else if (status >= 500) {
-        category = ErrorCategory.SERVER;
+        category = ErrorCategory.Server;
         message = `Server error: ${status}`;
         retryable = true;
       } else if (status >= 400) {
-        category = ErrorCategory.CLIENT;
+        category = ErrorCategory.Unknown;
         retryable = false;
       }
     }
@@ -348,11 +350,49 @@ export class EnhancedApiClient implements ApiClient {
   }
 
   /**
+   * Make a generic request (implements ApiClient interface)
+   */
+  async request<T = unknown>(config: ApiCallOptions): Promise<ApiResponse<T>> {
+    const method = config.method || HttpMethod.GET;
+    const url = config.url || config.path || '';
+
+    // Use the appropriate method based on the HTTP method
+    let data: T;
+    switch (method) {
+      case HttpMethod.GET:
+        data = await this.get<T>(url, config);
+        break;
+      case HttpMethod.POST:
+        data = await this.post<T>(url, config.data, config);
+        break;
+      case HttpMethod.PUT:
+        data = await this.put<T>(url, config.data, config);
+        break;
+      case HttpMethod.DELETE:
+        data = await this.delete<T>(url, config);
+        break;
+      case HttpMethod.PATCH:
+        data = await this.patch<T>(url, config.data, config);
+        break;
+      default:
+        throw new Error(`Unsupported HTTP method: ${method}`);
+    }
+
+    // Return in ApiResponse format
+    return {
+      data,
+      status: 200,
+      headers: {},
+      requestId: config.requestId
+    };
+  }
+
+  /**
    * Make a GET request
    */
   async get<T = unknown>(url: string, options: ApiCallOptions = {}): Promise<T> {
     const cacheKey = url;
-    
+
     // Check cache first (unless bypass requested)
     if (!options.bypassCache) {
       const cachedData = this.cache.get<T>(cacheKey);
@@ -360,19 +400,18 @@ export class EnhancedApiClient implements ApiClient {
         return cachedData;
       }
     }
-    
+
     // Prepare request config
     const config: AxiosRequestConfig = {
       ...this.createRequestConfig(options),
       method: 'GET',
       url
     };
-    
+
     // Use deduplication for GET requests
     return this.deduplicator.deduplicate<T>(cacheKey, () => {
       return this.retryManager.execute(
-        () => this.axiosInstance.request<T>(config).then(response => response.data),
-        options.retry?.maxRetries || 3
+        () => this.axiosInstance.request<T>(config).then(response => response.data)
       );
     });
   }
@@ -387,10 +426,9 @@ export class EnhancedApiClient implements ApiClient {
       url,
       data
     };
-    
+
     return this.retryManager.execute(
-      () => this.axiosInstance.request<T>(config).then(response => response.data),
-      options.retry?.maxRetries || 3
+      () => this.axiosInstance.request<T>(config).then(response => response.data)
     );
   }
 
@@ -404,10 +442,9 @@ export class EnhancedApiClient implements ApiClient {
       url,
       data
     };
-    
+
     return this.retryManager.execute(
-      () => this.axiosInstance.request<T>(config).then(response => response.data),
-      options.retry?.maxRetries || 3
+      () => this.axiosInstance.request<T>(config).then(response => response.data)
     );
   }
 
@@ -417,16 +454,15 @@ export class EnhancedApiClient implements ApiClient {
   async delete<T = unknown>(url: string, options: ApiCallOptions = {}): Promise<T> {
     // Invalidate cache for this URL
     this.cache.remove(url);
-    
+
     const config: AxiosRequestConfig = {
       ...this.createRequestConfig(options),
       method: 'DELETE',
       url
     };
-    
+
     return this.retryManager.execute(
-      () => this.axiosInstance.request<T>(config).then(response => response.data),
-      options.retry?.maxRetries || 3
+      () => this.axiosInstance.request<T>(config).then(response => response.data)
     );
   }
 
@@ -436,17 +472,16 @@ export class EnhancedApiClient implements ApiClient {
   async patch<T = unknown>(url: string, data?: unknown, options: ApiCallOptions = {}): Promise<T> {
     // Invalidate cache for this URL
     this.cache.remove(url);
-    
+
     const config: AxiosRequestConfig = {
       ...this.createRequestConfig(options),
       method: 'PATCH',
       url,
       data
     };
-    
+
     return this.retryManager.execute(
-      () => this.axiosInstance.request<T>(config).then(response => response.data),
-      options.retry?.maxRetries || 3
+      () => this.axiosInstance.request<T>(config).then(response => response.data)
     );
   }
 

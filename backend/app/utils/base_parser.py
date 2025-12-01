@@ -33,7 +33,6 @@ class BaseParser(ABC):
         Returns:
             Parsed analysis result or None if not applicable
         """
-        pass
 
     # =====================================================================
     # COMMON EVENT EXTRACTION METHODS

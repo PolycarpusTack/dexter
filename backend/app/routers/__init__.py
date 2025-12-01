@@ -82,6 +82,9 @@ def _include_optional_routers(api_router: APIRouter, settings: AppSettings) -> N
         settings: Application settings
     """
     # Define optional routers with their feature flags
+    # Check for knowledge base flag (may not exist in older configs)
+    knowledge_base_enabled = getattr(settings, "ENABLE_KNOWLEDGE_BASE", False)
+
     optional_routers = [
         ("ai", "ai", settings.ENABLE_OLLAMA),
         (
@@ -104,6 +107,11 @@ def _include_optional_routers(api_router: APIRouter, settings: AppSettings) -> N
         ("metrics", None, True),  # Uses router's own prefix: /metrics
         ("system", None, True),  # Uses router's own prefix: /system
         ("integrations", "integrations", True),  # External integrations framework
+        # Knowledge base routers (Phase 1, 2 & 3)
+        ("webhooks", None, knowledge_base_enabled),  # Sentry webhook ingestion
+        ("knowledge_base", None, knowledge_base_enabled),  # KB search and feedback
+        ("validation", None, knowledge_base_enabled),  # Validation workflow
+        ("enrichment", None, knowledge_base_enabled),  # Data enrichment (EPIC C, E, etc.)
     ]
 
     for module_name, prefix, is_enabled in optional_routers:
